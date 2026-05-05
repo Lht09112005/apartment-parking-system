@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
+import UserManagement from "./pages/UserManagement";
 
 const PrivateRoute = ({ children }) => {
   const { token } = useAuth();
@@ -27,7 +28,7 @@ function App() {
             path="/admin/users"
             element={
               <PrivateRoute>
-                <Dashboard />
+                <UserManagement />
               </PrivateRoute>
             }
           />

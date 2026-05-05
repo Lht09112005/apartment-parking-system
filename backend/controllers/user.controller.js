@@ -5,10 +5,11 @@ const getAllUsers = async (req, res) => {
   try {
     const [rows] = await db.query(
       `SELECT u.user_id, u.username, u.status, u.created_at,
-              r.role_id, r.role_name
-       FROM users u
-       JOIN roles r ON u.role_id = r.role_id
-       ORDER BY u.created_at DESC`,
+          r.role_id, r.role_name
+   FROM users u
+   JOIN roles r ON u.role_id = r.role_id
+  WHERE r.role_id = 2
+   ORDER BY u.created_at DESC`,
     );
     res.json(rows);
   } catch (err) {
@@ -21,6 +22,11 @@ const createUser = async (req, res) => {
   const { username, password, role_id } = req.body;
   if (!username || !password || !role_id) {
     return res.status(400).json({ message: "Thiếu thông tin bắt buộc" });
+  }
+  if (role_id !== 2) {
+    return res
+      .status(403)
+      .json({ message: "Super Admin chỉ được tạo tài khoản Admin" });
   }
   try {
     const hashed = await bcrypt.hash(password, 10);
