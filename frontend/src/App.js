@@ -4,7 +4,7 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import UserManagement from "./pages/UserManagement";
-
+import ResidentManagement from "./pages/ResidentManagement";
 const PrivateRoute = ({ children }) => {
   const { token } = useAuth();
   return token ? children : <Navigate to="/login" />;
@@ -49,6 +49,14 @@ function App() {
             }
           />
           <Route path="*" element={<Navigate to="/login" />} />
+          <Route
+            path="/admin/residents"
+            element={
+              <PrivateRoute>
+                <ResidentManagement />
+              </PrivateRoute>
+            }
+          />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

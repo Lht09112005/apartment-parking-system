@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "../api/axios";
 import { useAuth } from "../context/AuthContext";
-import { useNavigate } from "react-router-dom";
+import Navbar from "../components/Navbar";
 
 const UserManagement = () => {
   const [users, setUsers] = useState([]);
@@ -9,8 +9,7 @@ const UserManagement = () => {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ username: "", password: "", role_id: 2 });
   const [message, setMessage] = useState("");
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
+  const { user } = useAuth();
 
   const fetchUsers = async () => {
     try {
@@ -53,11 +52,6 @@ const UserManagement = () => {
     }
   };
 
-  const handleLogout = () => {
-    logout();
-    navigate("/login");
-  };
-
   const roleColors = {
     "Super Admin": "#7c3aed",
     Admin: "#1a73e8",
@@ -67,21 +61,11 @@ const UserManagement = () => {
 
   return (
     <div style={styles.container}>
-      <div style={styles.header}>
-        <h2 style={{ margin: 0 }}>🅿️ Quản lý Bãi Đỗ Xe</h2>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <span>
-            Xin chào, <strong>{user?.username}</strong>
-          </span>
-          <button onClick={handleLogout} style={styles.logoutBtn}>
-            Đăng xuất
-          </button>
-        </div>
-      </div>
+      <Navbar />
 
       <div style={styles.content}>
         <div style={styles.titleRow}>
-          <h3 style={{ margin: 0 }}>Quản lý Tài khoản</h3>
+          <h3 style={{ margin: 0 }}>Quản lý Tài khoản Admin</h3>
           <button onClick={() => setShowForm(!showForm)} style={styles.addBtn}>
             + Thêm tài khoản
           </button>
@@ -219,22 +203,6 @@ const UserManagement = () => {
 
 const styles = {
   container: { minHeight: "100vh", backgroundColor: "#f0f2f5" },
-  header: {
-    background: "#1a73e8",
-    color: "#fff",
-    padding: "16px 24px",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  logoutBtn: {
-    background: "transparent",
-    border: "1px solid #fff",
-    color: "#fff",
-    padding: "6px 14px",
-    borderRadius: "6px",
-    cursor: "pointer",
-  },
   content: { padding: "24px" },
   titleRow: {
     display: "flex",
