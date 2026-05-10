@@ -97,7 +97,7 @@ const SecurityDashboard = () => {
       {/* Sidebar */}
       <div style={styles.sidebar}>
         <div style={styles.sidebarHeader}>
-          <h2 style={styles.sidebarTitle}>Central HQ</h2>
+          <h2 style={styles.sidebarTitle}>39°C</h2>
           <p style={styles.sidebarSubTitle}>Security Operations</p>
         </div>
         <div style={styles.menuItems}>
@@ -121,7 +121,7 @@ const SecurityDashboard = () => {
         {/* Top Header */}
         <div style={styles.topHeader}>
           <div style={styles.headerLeft}>
-            <h2 style={{margin: 0, fontSize: 20, color: '#1e293b'}}>SmartPark Pro</h2>
+            <h2 style={{margin: 0, fontSize: 20, color: '#1e293b'}}>39°C</h2>
             <div style={styles.onlineBadge}>
               <span style={styles.onlineDot}></span> System Online
             </div>
