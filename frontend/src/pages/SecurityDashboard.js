@@ -16,6 +16,15 @@ const SecurityDashboard = () => {
 
   const [vehicleTypes, setVehicleTypes] = useState([]);
   const [vehicles, setVehicles] = useState([]);
+  const [viewMode, setViewMode] = useState("gate");
+  const [vehicleLogs, setVehicleLogs] = useState([]);
+  const [reportSummary, setReportSummary] = useState(null);
+  const [feeConfig, setFeeConfig] = useState([]);
+  const [settings, setSettings] = useState({
+    autoGateOpen: true,
+    allowVisitorCheckIn: true,
+    overloadAlert: true,
+  });
   
   const [message, setMessage] = useState({ type: "", text: "" });
   const [ticketInfo, setTicketInfo] = useState(null);
@@ -25,6 +34,30 @@ const SecurityDashboard = () => {
     fetchVehicleTypes();
     fetchVehicles();
   }, []);
+
+  useEffect(() => {
+    if (viewMode === "logs") {
+      fetchVehicleLogs();
+    }
+    if (viewMode === "reports") {
+      fetchReportSummary();
+    }
+    if (viewMode === "settings") {
+      fetchFeeConfig();
+    }
+  }, [viewMode]);
+
+  useEffect(() => {
+    const selectedType = vehicleTypes.find((vt) => vt.type_id === typeId);
+    if (selectedType) {
+      const normalized = selectedType.type_name.toLowerCase();
+      if (normalized.includes("xe máy") || normalized.includes("xe điện")) {
+        setAreaId("A");
+      } else {
+        setAreaId("B");
+      }
+    }
+  }, [typeId, vehicleTypes]);
 
   const fetchVehicleTypes = async () => {
     try {
@@ -45,8 +78,41 @@ const SecurityDashboard = () => {
     }
   };
 
+  const fetchVehicleLogs = async () => {
+    try {
+      const res = await axios.get("/parking/sessions");
+      setVehicleLogs(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const fetchReportSummary = async () => {
+    try {
+      const res = await axios.get("/parking/report/summary");
+      setReportSummary(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const fetchFeeConfig = async () => {
+    try {
+      const res = await axios.get("/parking/fees");
+      setFeeConfig(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   // Find if plate is resident
   const currentVehicle = plate.trim() ? vehicles.find(v => v.plate_number.toLowerCase() === plate.trim().toLowerCase()) : null;
+
+  useEffect(() => {
+    if (currentVehicle) {
+      setTypeId(currentVehicle.type_id);
+    }
+  }, [currentVehicle]);
 
   const handleAction = async () => {
     setMessage({ type: "", text: "" });
@@ -101,11 +167,30 @@ const SecurityDashboard = () => {
           <p style={styles.sidebarSubTitle}>Security Operations</p>
         </div>
         <div style={styles.menuItems}>
-          <div style={styles.menuItem}>Dashboard</div>
-          <div style={{ ...styles.menuItem, ...styles.menuItemActive }}>Gate Control</div>
-          <div style={styles.menuItem}>Vehicle Logs</div>
-          <div style={styles.menuItem}>Financial Reports</div>
-          <div style={styles.menuItem}>System Settings</div>
+          <div
+            style={{ ...styles.menuItem, ...(viewMode === "gate" ? styles.menuItemActive : {}) }}
+            onClick={() => setViewMode("gate")}
+          >
+            Gate Control
+          </div>
+          <div
+            style={{ ...styles.menuItem, ...(viewMode === "logs" ? styles.menuItemActive : {}) }}
+            onClick={() => setViewMode("logs")}
+          >
+            Vehicle Logs
+          </div>
+          <div
+            style={{ ...styles.menuItem, ...(viewMode === "reports" ? styles.menuItemActive : {}) }}
+            onClick={() => setViewMode("reports")}
+          >
+            Financial Reports
+          </div>
+          <div
+            style={{ ...styles.menuItem, ...(viewMode === "settings" ? styles.menuItemActive : {}) }}
+            onClick={() => setViewMode("settings")}
+          >
+            System Settings
+          </div>
         </div>
         <div style={styles.sidebarFooter}>
           <button style={styles.emergencyBtn}>EMERGENCY LOCK</button>
@@ -140,208 +225,316 @@ const SecurityDashboard = () => {
           
           {/* Capacity Cards */}
           <div style={styles.capacityRow}>
-            <div style={{...styles.capacityCard, borderColor: '#fca5a5'}}>
-              <div style={{flex: 1}}>
-                <div style={styles.cardLabel}>KHU A - Ô TÔ</div>
-                <div style={styles.cardNumber}>142/150</div>
-              </div>
-              <div style={{...styles.cardIcon, background: '#fee2e2', color: '#ef4444'}}>⚠️</div>
-            </div>
-            <div style={{...styles.capacityCard, borderColor: '#86efac'}}>
-              <div style={{flex: 1}}>
-                <div style={styles.cardLabel}>KHU B - Ô TÔ</div>
-                <div style={styles.cardNumber}>45/120</div>
-              </div>
-              <div style={{...styles.cardIcon, background: '#dcfce7', color: '#10b981'}}>✓</div>
-            </div>
             <div style={{...styles.capacityCard, borderColor: '#86efac'}}>
               <div style={{flex: 1}}>
                 <div style={styles.cardLabel}>KHU A - XE MÁY</div>
                 <div style={styles.cardNumber}>890/1200</div>
               </div>
-              <div style={{...styles.cardIcon, background: '#dcfce7', color: '#10b981'}}>✓</div>
+              <div style={{...styles.cardIcon, background: '#dcfce7', color: '#10b981'}}>🏍️</div>
+            </div>
+            <div style={{...styles.capacityCard, borderColor: '#fca5a5'}}>
+              <div style={{flex: 1}}>
+                <div style={styles.cardLabel}>KHU B - Ô TÔ</div>
+                <div style={styles.cardNumber}>142/150</div>
+              </div>
+              <div style={{...styles.cardIcon, background: '#fee2e2', color: '#ef4444'}}>🚗</div>
+            </div>
+            <div style={{...styles.capacityCard, borderColor: '#7dd3fc'}}>
+              <div style={{flex: 1}}>
+                <div style={styles.cardLabel}>TỔNG BÃI</div>
+                <div style={styles.cardNumber}>1032/1350</div>
+              </div>
+              <div style={{...styles.cardIcon, background: '#dbeafe', color: '#0c4a6e'}}>📊</div>
             </div>
           </div>
 
           {/* Main Interaction Area */}
-          <div style={styles.mainPanelRow}>
-            {/* Left Box */}
-            <div style={styles.leftPanel}>
-              
-              {/* Mode Toggle */}
-              <div style={styles.modeToggle}>
-                <button 
-                  onClick={() => {setMode("IN"); setMessage({type: "", text: ""}); setTicketInfo(null)}} 
-                  style={{...styles.modeBtn, ...(mode === "IN" ? styles.modeActiveIn : {})}}
-                >
-                  XẾ VÀO (CHECK-IN)
-                </button>
-                <button 
-                  onClick={() => {setMode("OUT"); setMessage({type: "", text: ""}); setTicketInfo(null)}} 
-                  style={{...styles.modeBtn, ...(mode === "OUT" ? styles.modeActiveOut : {})}}
-                >
-                  XE RA (CHECK-OUT)
-                </button>
-              </div>
+          {viewMode === "gate" ? (
+            <div style={styles.mainPanelRow}>
+              {/* Left Box */}
+              <div style={styles.leftPanel}>
+                
+                {/* Mode Toggle */}
+                <div style={styles.modeToggle}>
+                  <button 
+                    onClick={() => {setMode("IN"); setMessage({type: "", text: ""}); setTicketInfo(null)}} 
+                    style={{...styles.modeBtn, ...(mode === "IN" ? styles.modeActiveIn : {})}}
+                  >
+                    XẾ VÀO (CHECK-IN)
+                  </button>
+                  <button 
+                    onClick={() => {setMode("OUT"); setMessage({type: "", text: ""}); setTicketInfo(null)}} 
+                    style={{...styles.modeBtn, ...(mode === "OUT" ? styles.modeActiveOut : {})}}
+                  >
+                    XE RA (CHECK-OUT)
+                  </button>
+                </div>
 
-              {/* Big Input */}
-              <div style={styles.inputContainer}>
-                <div style={styles.inputLabel}>NHẬP BIỂN SỐ XE / QUÉT THẺ</div>
-                <input 
-                  autoFocus
-                  value={plate}
-                  onChange={(e) => setPlate(e.target.value.toUpperCase())}
-                  style={styles.bigInput}
-                  placeholder="--- ---"
-                />
-                <div style={styles.inputUnderline}></div>
-              </div>
+                {/* Big Input */}
+                <div style={styles.inputContainer}>
+                  <div style={styles.inputLabel}>NHẬP BIỂN SỐ XE / QUÉT THẺ</div>
+                  <input 
+                    autoFocus
+                    value={plate}
+                    onChange={(e) => setPlate(e.target.value.toUpperCase())}
+                    style={styles.bigInput}
+                    placeholder="--- ---"
+                  />
+                  <div style={styles.inputUnderline}></div>
+                </div>
 
-              {/* Selectors */}
-              <div style={styles.selectorsRow}>
-                <div style={styles.selectorGroup}>
-                  <div style={styles.selectorTitle}>Loại Phương Tiện</div>
-                  <div style={styles.cardsWrap}>
-                    {vehicleTypes.map(vt => (
+                {/* Selectors */}
+                <div style={styles.selectorsRow}>
+                  <div style={styles.selectorGroup}>
+                    <div style={styles.selectorTitle}>Loại Phương Tiện</div>
+                    <div style={styles.cardsWrap}>
+                      {vehicleTypes.map(vt => (
+                        <div 
+                          key={vt.type_id}
+                          onClick={() => !currentVehicle && setTypeId(vt.type_id)}
+                          style={{
+                            ...styles.selectCard,
+                            backgroundColor: (currentVehicle ? currentVehicle.type_id === vt.type_id : typeId === vt.type_id) ? '#0f172a' : '#fff',
+                            color: (currentVehicle ? currentVehicle.type_id === vt.type_id : typeId === vt.type_id) ? '#fff' : '#64748b',
+                            cursor: currentVehicle ? 'not-allowed' : 'pointer',
+                            opacity: currentVehicle && currentVehicle.type_id !== vt.type_id ? 0.5 : 1
+                          }}
+                        >
+                          <div style={{fontSize: 24, marginBottom: 4}}>{vt.type_name === 'Ô tô' ? '🚘' : '🏍️'}</div>
+                          <div>{vt.type_name}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div style={styles.selectorGroup}>
+                    <div style={styles.selectorTitle}>Khu Vực Đỗ</div>
+                    <div style={styles.cardsWrap}>
                       <div 
-                        key={vt.type_id}
-                        onClick={() => !currentVehicle && setTypeId(vt.type_id)}
-                        style={{
-                          ...styles.selectCard,
-                          backgroundColor: (currentVehicle ? currentVehicle.type_id === vt.type_id : typeId === vt.type_id) ? '#0f172a' : '#fff',
-                          color: (currentVehicle ? currentVehicle.type_id === vt.type_id : typeId === vt.type_id) ? '#fff' : '#64748b',
-                          cursor: currentVehicle ? 'not-allowed' : 'pointer',
-                          opacity: currentVehicle && currentVehicle.type_id !== vt.type_id ? 0.5 : 1
-                        }}
+                        style={{...styles.selectCard, backgroundColor: areaId === "A" ? '#0f172a' : '#f8fafc', border: areaId === "A" ? '2px solid #0f172a' : '1px solid #e2e8f0', color: areaId === "A" ? '#fff' : '#0f172a'}}
                       >
-                        <div style={{fontSize: 24, marginBottom: 4}}>{vt.type_name === 'Ô tô' ? '🚘' : '🏍️'}</div>
-                        <div>{vt.type_name}</div>
+                        <div style={{fontSize: 20}}>A</div>
+                        <div>XE MÁY</div>
                       </div>
-                    ))}
+                      <div 
+                        style={{...styles.selectCard, backgroundColor: areaId === "B" ? '#0f172a' : '#f8fafc', border: areaId === "B" ? '2px solid #0f172a' : '1px solid #e2e8f0', color: areaId === "B" ? '#fff' : '#0f172a'}}
+                      >
+                        <div style={{fontSize: 20}}>B</div>
+                        <div>Ô TÔ</div>
+                      </div>
+                    </div>
+                    <div style={styles.areaHint}>Khu A dành cho xe máy, khu B dành cho ô tô. Chức năng được chọn tự động theo loại phương tiện.</div>
                   </div>
                 </div>
 
-                <div style={styles.selectorGroup}>
-                  <div style={styles.selectorTitle}>Khu Vực Đỗ</div>
-                  <div style={styles.cardsWrap}>
-                    <div 
-                      onClick={() => setAreaId("A")}
-                      style={{...styles.selectCard, backgroundColor: areaId === "A" ? '#fff' : '#f8fafc', border: areaId === "A" ? '2px solid #0f172a' : '1px solid #e2e8f0', color: '#0f172a'}}
-                    >
-                      KHU A
-                    </div>
-                    <div 
-                      onClick={() => setAreaId("B")}
-                      style={{...styles.selectCard, backgroundColor: areaId === "B" ? '#fff' : '#f8fafc', border: areaId === "B" ? '2px solid #0f172a' : '1px solid #e2e8f0', color: '#0f172a'}}
-                    >
-                      KHU B
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Toast Message inside Left Panel */}
-              {message.text && (
-                 <div style={{...styles.toast, backgroundColor: message.type === 'success' ? '#dcfce7' : '#fee2e2', color: message.type === 'success' ? '#166534' : '#991b1b'}}>
-                    {message.type === 'success' ? '✅' : '❌'} {message.text}
-                 </div>
-              )}
-
-              {/* Bottom Actions */}
-              <div style={styles.actionsRow}>
-                <button style={{...styles.actionBtn, backgroundColor: '#64748b', color: '#fff', fontSize: 18, padding: '0 30px'}} onClick={() => {setPlate(""); setTicketInfo(null)}}>
-                  🖨 In Vé Lẻ
-                </button>
-                <div style={{flex: 1}}></div>
-                <button style={{...styles.actionBtn, backgroundColor: '#fee2e2', color: '#ef4444', marginRight: 20, fontSize: 18, padding: '0 40px'}} onClick={() => {setPlate(""); setTicketInfo(null)}}>
-                  ⊗ Hủy Bỏ
-                </button>
-                <button 
-                  onClick={handleAction}
-                  style={{
-                    ...styles.actionBtn, 
-                    backgroundColor: mode === "IN" ? '#047857' : '#be123c', 
-                    color: '#fff', 
-                    fontSize: 24, 
-                    fontWeight: 'bold', 
-                    padding: '0 60px',
-                    minWidth: '40%',
-                    letterSpacing: 1
-                  }}
-                >
-                  {mode === "IN" ? '⨀ CHO VÀO (ENTER)' : '⨀ CHO RA (EXIT)'}
-                </button>
-              </div>
-
-            </div>
-
-            {/* Right Panel */}
-            <div style={styles.rightPanel}>
-              {currentVehicle ? (
-                <>
-                  <div style={styles.ticketValidHeader}>VÉ THÁNG - HỢP LỆ ✓</div>
-                  <div style={styles.userInfo}>
-                    <div style={styles.userPhotoPlaceholder}>👤</div>
-                    <div style={styles.userName}>{currentVehicle.resident_name || "Cư dân nội khu"}</div>
-                    <div style={styles.userApt}>Căn hộ: {currentVehicle.apartment_number || "---"}</div>
-                  </div>
-                  <div style={styles.ticketDetails}>
-                    <div style={styles.tdRow}><span>Đăng ký:</span> <strong>{currentVehicle.type_name} ({currentVehicle.color})</strong></div>
-                    <div style={styles.tdRow}><span>Biển số ĐK:</span> <strong>{currentVehicle.plate_number}</strong></div>
-                    <div style={styles.tdRow}><span>Hạn dùng:</span> <strong style={{color: '#047857'}}>Còn hạn</strong></div>
-                  </div>
-                </>
-              ) : plate.trim() ? (
-                <>
-                   <div style={{...styles.ticketValidHeader, backgroundColor: '#f59e0b', color: '#fff'}}>KHÁCH VÃNG LAI</div>
-                   <div style={{textAlign: 'center', marginTop: 40, color: '#64748b'}}>
-                     Xe này không có trong danh sách vé tháng. Tính phí theo giờ (Vé lượt).
+                {/* Toast Message inside Left Panel */}
+                {message.text && (
+                   <div style={{...styles.toast, backgroundColor: message.type === 'success' ? '#dcfce7' : '#fee2e2', color: message.type === 'success' ? '#166534' : '#991b1b'}}>
+                      {message.type === 'success' ? '✅' : '❌'} {message.text}
                    </div>
-                </>
-              ) : (
-                <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#94a3b8'}}>
-                  Chưa có thông tin xe
-                </div>
-              )}
+                )}
 
-              {ticketInfo && mode === "OUT" && (
-                <div style={styles.parkingInfoBox}>
-                  <div style={{textAlign: 'center', fontWeight: 'bold', marginBottom: 12, color: '#1e293b'}}>HÓA ĐƠN CHECK-OUT</div>
-                  <div style={styles.piRow}>
-                    <div style={styles.piCol}>
-                      <div style={styles.piLabel}>GIỜ VÀO</div>
-                      <div style={styles.piValue}>{ticketInfo.time_in.split(' ')[1]}</div>
+                {/* Bottom Actions */}
+                <div style={styles.actionsRow}>
+                  <button style={{...styles.actionBtn, backgroundColor: '#fee2e2', color: '#ef4444', marginRight: 20, fontSize: 18, padding: '0 40px'}} onClick={() => {setPlate(""); setTicketInfo(null)}}>
+                    ⊗ Hủy Bỏ
+                  </button>
+                  <button 
+                    onClick={handleAction}
+                    style={{
+                      ...styles.actionBtn, 
+                      backgroundColor: mode === "IN" ? '#047857' : '#be123c', 
+                      color: '#fff', 
+                      fontSize: 24, 
+                      fontWeight: 'bold', 
+                      padding: '0 60px',
+                      minWidth: '40%',
+                      letterSpacing: 1
+                    }}
+                  >
+                    {mode === "IN" ? '⨀ CHO VÀO (ENTER)' : '⨀ CHO RA (EXIT)'}
+                  </button>
+                </div>
+
+              </div>
+
+              {/* Right Panel */}
+              <div style={styles.rightPanel}>
+                {currentVehicle ? (
+                  <>
+                    <div style={styles.ticketValidHeader}>VÉ THÁNG - HỢP LỆ ✓</div>
+                    <div style={styles.userInfo}>
+                      <div style={styles.userPhotoPlaceholder}>👤</div>
+                      <div style={styles.userName}>{currentVehicle.resident_name || "Cư dân nội khu"}</div>
+                      <div style={styles.userApt}>Căn hộ: {currentVehicle.apartment_number || "---"}</div>
                     </div>
-                    <div style={styles.piCol}>
-                      <div style={styles.piLabel}>GIỜ RA</div>
-                      <div style={styles.piValue}>{ticketInfo.time_out.split(' ')[1]}</div>
+                    <div style={styles.ticketDetails}>
+                      <div style={styles.tdRow}><span>Đăng ký:</span> <strong>{currentVehicle.type_name} ({currentVehicle.color})</strong></div>
+                      <div style={styles.tdRow}><span>Biển số ĐK:</span> <strong>{currentVehicle.plate_number}</strong></div>
+                      <div style={styles.tdRow}><span>Hạn dùng:</span> <strong style={{color: '#047857'}}>Còn hạn</strong></div>
+                    </div>
+                  </>
+                ) : plate.trim() ? (
+                  <>
+                     <div style={{...styles.ticketValidHeader, backgroundColor: '#f59e0b', color: '#fff'}}>KHÁCH VÃNG LAI</div>
+                     <div style={{textAlign: 'center', marginTop: 40, color: '#64748b'}}>
+                       Xe này không có trong danh sách vé tháng. Tính phí theo giờ (Vé lượt).
+                     </div>
+                  </>
+                ) : (
+                  <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#94a3b8'}}>
+                    Chưa có thông tin xe
+                  </div>
+                )}
+
+                {ticketInfo && mode === "OUT" && (
+                  <div style={styles.parkingInfoBox}>
+                    <div style={{textAlign: 'center', fontWeight: 'bold', marginBottom: 12, color: '#1e293b'}}>HÓA ĐƠN CHECK-OUT</div>
+                    <div style={styles.piRow}>
+                      <div style={styles.piCol}>
+                        <div style={styles.piLabel}>GIỜ VÀO</div>
+                        <div style={styles.piValue}>{ticketInfo.time_in.split(' ')[1]}</div>
+                      </div>
+                      <div style={styles.piCol}>
+                        <div style={styles.piLabel}>GIỜ RA</div>
+                        <div style={styles.piValue}>{ticketInfo.time_out.split(' ')[1]}</div>
+                      </div>
+                    </div>
+                    <div style={{textAlign: 'center', marginTop: 16}}>
+                      <div style={styles.piLabel}>TỔNG TIỀN ({ticketInfo.duration} giờ)</div>
+                      <div style={{fontSize: 24, fontWeight: 'bold', color: '#be123c'}}>{ticketInfo.fee.toLocaleString()} VNĐ</div>
                     </div>
                   </div>
-                  <div style={{textAlign: 'center', marginTop: 16}}>
-                    <div style={styles.piLabel}>TỔNG TIỀN ({ticketInfo.duration} giờ)</div>
-                    <div style={{fontSize: 24, fontWeight: 'bold', color: '#be123c'}}>{ticketInfo.fee.toLocaleString()} VNĐ</div>
-                  </div>
-                </div>
-              )}
+                )}
 
-              {!ticketInfo && (
-                <div style={{...styles.parkingInfoBox, marginTop: 'auto'}}>
-                  <div style={{textAlign: 'center', fontWeight: 'bold', marginBottom: 12, color: '#1e293b'}}>THÔNG TIN BÃI ĐỖ</div>
-                  <div style={styles.piRow}>
-                    <div style={styles.piCol}>
-                      <div style={styles.piLabel}>LƯỢT VÀO</div>
-                      <div style={styles.piValue}>--:--</div>
-                    </div>
-                    <div style={styles.piCol}>
-                      <div style={styles.piLabel}>NGÀY</div>
-                      <div style={styles.piValue}>--/--</div>
+                {!ticketInfo && (
+                  <div style={{...styles.parkingInfoBox, marginTop: 'auto'}}>
+                    <div style={{textAlign: 'center', fontWeight: 'bold', marginBottom: 12, color: '#1e293b'}}>THÔNG TIN BÃI ĐỖ</div>
+                    <div style={styles.piRow}>
+                      <div style={styles.piCol}>
+                        <div style={styles.piLabel}>LƯỢT VÀO</div>
+                        <div style={styles.piValue}>--:--</div>
+                      </div>
+                      <div style={styles.piCol}>
+                        <div style={styles.piLabel}>NGÀY</div>
+                        <div style={styles.piValue}>--/--</div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
 
+              </div>
             </div>
-          </div>
+          ) : (
+            <div style={styles.mainPanelRow}>
+              <div style={styles.dashboardPanel}>
+                <div style={styles.sectionHeader}>
+                  {viewMode === 'logs' ? 'Vehicle Logs' : viewMode === 'reports' ? 'Financial Reports' : 'System Settings'}
+                </div>
+
+                {viewMode === 'logs' && (
+                  <>
+                    <div style={styles.sectionSummaryRow}>
+                      <div style={styles.summaryCard}>
+                        <div style={styles.summaryLabel}>Phiên gửi gần nhất</div>
+                        <div style={styles.summaryValue}>{vehicleLogs.length}</div>
+                      </div>
+                      <div style={styles.summaryCard}>
+                        <div style={styles.summaryLabel}>Xe đang gửi</div>
+                        <div style={styles.summaryValue}>{vehicleLogs.filter((item) => item.status === 'parking').length}</div>
+                      </div>
+                      <div style={styles.summaryCard}>
+                        <div style={styles.summaryLabel}>Xe đã ra</div>
+                        <div style={styles.summaryValue}>{vehicleLogs.filter((item) => item.status === 'completed').length}</div>
+                      </div>
+                    </div>
+                    <div style={styles.logsTable}>
+                      <div style={styles.tableRowHeader}>
+                        <div style={styles.tableCell}>Biển số</div>
+                        <div style={styles.tableCell}>Trạng thái</div>
+                        <div style={styles.tableCell}>Vào</div>
+                        <div style={styles.tableCell}>Ra</div>
+                        <div style={styles.tableCell}>Nhân viên</div>
+                      </div>
+                      {vehicleLogs.length === 0 ? (
+                        <div style={styles.emptyState}>Chưa có bản ghi nào</div>
+                      ) : vehicleLogs.map((log) => (
+                        <div key={log.session_id} style={styles.tableRow}>
+                          <div style={styles.tableCell}>{log.plate_number || log.guest_plate}</div>
+                          <div style={styles.tableCell}>{log.status === 'parking' ? 'Đang gửi' : 'Đã ra'}</div>
+                          <div style={styles.tableCell}>{log.time_in ? new Date(log.time_in).toLocaleString() : '-'}</div>
+                          <div style={styles.tableCell}>{log.time_out ? new Date(log.time_out).toLocaleString() : '-'}</div>
+                          <div style={styles.tableCell}>{log.security_name || 'N/A'}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                {viewMode === 'reports' && (
+                  <>
+                    <div style={styles.sectionSummaryRow}>
+                      <div style={styles.reportCard}>
+                        <div style={styles.reportLabel}>Doanh thu hôm nay</div>
+                        <div style={styles.reportValue}>{reportSummary ? reportSummary.totalRevenue.toLocaleString() : '0'} VNĐ</div>
+                      </div>
+                      <div style={styles.reportCard}>
+                        <div style={styles.reportLabel}>Xe đã ra hôm nay</div>
+                        <div style={styles.reportValue}>{reportSummary?.completedCheckouts ?? 0}</div>
+                      </div>
+                      <div style={styles.reportCard}>
+                        <div style={styles.reportLabel}>Xe đang gửi</div>
+                        <div style={styles.reportValue}>{reportSummary?.activeParking ?? 0}</div>
+                      </div>
+                    </div>
+                    <div style={styles.reportNote}>
+                      <div>Hệ thống báo cáo tổng quan tài chính và vận hành của bãi đỗ. Các con số dựa trên các phiên gửi đã hoàn tất trong ngày và tình trạng hiện tại của bãi.</div>
+                    </div>
+                  </>
+                )}
+
+                {viewMode === 'settings' && (
+                  <>
+                    <div style={styles.settingsBlock}>
+                      <div style={styles.settingTitle}>Bảng giá hiện tại</div>
+                      {feeConfig.length === 0 ? (
+                        <div style={styles.emptyState}>Đang tải cấu hình...</div>
+                      ) : feeConfig.map((fee) => (
+                        <div key={fee.type_id} style={styles.settingRow}>
+                          <div>
+                            <div style={styles.settingLabel}>{fee.type_name}</div>
+                            <div style={styles.settingHint}>Giá giờ: {fee.price_per_hour.toLocaleString()} VNĐ · Vé tháng: {fee.monthly_fee.toLocaleString()} VNĐ</div>
+                          </div>
+                          <div style={styles.settingBadge}>Cập nhật</div>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={styles.settingsBlock}>
+                      <div style={styles.settingTitle}>Cài đặt hệ thống</div>
+                      <div style={styles.toggleRow}>
+                        <span>Auto-gate khi xe vào</span>
+                        <button style={styles.toggleBtn} onClick={() => setSettings((prev) => ({ ...prev, autoGateOpen: !prev.autoGateOpen }))}>
+                          {settings.autoGateOpen ? 'Bật' : 'Tắt'}
+                        </button>
+                      </div>
+                      <div style={styles.toggleRow}>
+                        <span>Cho phép khách vãng lai check-in</span>
+                        <button style={styles.toggleBtn} onClick={() => setSettings((prev) => ({ ...prev, allowVisitorCheckIn: !prev.allowVisitorCheckIn }))}>
+                          {settings.allowVisitorCheckIn ? 'Bật' : 'Tắt'}
+                        </button>
+                      </div>
+                      <div style={styles.toggleRow}>
+                        <span>Cảnh báo khi quá tải</span>
+                        <button style={styles.toggleBtn} onClick={() => setSettings((prev) => ({ ...prev, overloadAlert: !prev.overloadAlert }))}>
+                          {settings.overloadAlert ? 'Bật' : 'Tắt'}
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
 
         </div>
       </div>
@@ -350,7 +543,7 @@ const SecurityDashboard = () => {
 };
 
 const styles = {
-  container: { display: "flex", height: "100vh", backgroundColor: "#f1f5f9", fontFamily: "sans-serif" },
+  container: { display: "flex", minHeight: "100vh", backgroundColor: "#f1f5f9", fontFamily: "sans-serif" },
   sidebar: { width: 260, backgroundColor: "#0f172a", color: "#fff", display: "flex", flexDirection: "column", flexShrink: 0 },
   sidebarHeader: { padding: "30px 24px", borderBottom: "1px solid #1e293b" },
   sidebarTitle: { margin: 0, fontSize: 22, fontWeight: "bold" },
@@ -362,7 +555,7 @@ const styles = {
   emergencyBtn: { backgroundColor: "#dc2626", color: "#fff", border: "none", padding: "12px", borderRadius: 6, fontWeight: "bold", cursor: "pointer" },
   bottomLink: { color: "#94a3b8", fontSize: 14, cursor: "pointer", marginBottom: 8 },
   
-  main: { flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" },
+  main: { flex: 1, display: "flex", flexDirection: "column", overflow: "visible" },
   topHeader: { height: 70, backgroundColor: "#fff", borderBottom: "1px solid #e2e8f0", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 30px", flexShrink: 0 },
   headerLeft: { display: "flex", alignItems: "center", gap: 24 },
   onlineBadge: { display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#059669", fontWeight: "600", backgroundColor: "#ecfdf5", padding: "4px 12px", borderRadius: 20 },
@@ -370,7 +563,7 @@ const styles = {
   headerRight: { display: "flex", alignItems: "center" },
   avatar: { width: 40, height: 40, backgroundColor: "#e2e8f0", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 },
   
-  contentBody: { flex: 1, padding: 24, overflow: "hidden", display: "flex", flexDirection: "column" },
+  contentBody: { flex: 1, padding: 24, overflow: "visible", display: "flex", flexDirection: "column" },
   capacityRow: { display: "flex", gap: 20, marginBottom: 20, flexShrink: 0 },
   capacityCard: { flex: 1, backgroundColor: "#fff", borderRadius: 10, padding: 16, display: "flex", alignItems: "center", border: "1px solid #e2e8f0", borderLeftWidth: 4, boxShadow: "0 1px 3px rgba(0,0,0,0.05)" },
   cardLabel: { fontSize: 13, fontWeight: "600", color: "#64748b", marginBottom: 4 },
@@ -394,12 +587,37 @@ const styles = {
   selectorGroup: { flex: 1, backgroundColor: "#f8fafc", padding: "16px 20px", borderRadius: 10 },
   selectorTitle: { fontSize: 13, fontWeight: "600", color: "#64748b", marginBottom: 12 },
   cardsWrap: { display: "flex", gap: 12 },
-  selectCard: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "12px 0", borderRadius: 8, fontWeight: "600", fontSize: 14, transition: "0.2s", border: "1px solid #e2e8f0" },
+  selectCard: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "18px 0", borderRadius: 12, fontWeight: "700", fontSize: 14, transition: "0.2s", border: "1px solid #e2e8f0", minHeight: 110 },
+  areaHint: { marginTop: 14, color: "#475569", fontSize: 13, lineHeight: 1.6, backgroundColor: "#e2e8f0", borderRadius: 10, padding: "12px 14px", border: "1px solid #cbd5e1" },
   
   actionsRow: { display: "flex", alignItems: "stretch", height: 75, borderTop: "1px solid #f1f5f9", paddingTop: 20, flexShrink: 0 },
   actionBtn: { border: "none", borderRadius: 10, padding: "0 20px", fontWeight: "600", cursor: "pointer" },
   
   toast: { padding: "12px 20px", borderRadius: 8, marginBottom: 20, fontWeight: "600", display: "flex", alignItems: "center", gap: 10, position: "absolute", top: 120, right: 40, zIndex: 100, boxShadow: "0 4px 12px rgba(0,0,0,0.15)" },
+
+  dashboardPanel: { flex: 1, backgroundColor: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: 24, boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)", overflowY: "auto" },
+  sectionHeader: { fontSize: 22, fontWeight: "bold", marginBottom: 20, color: "#0f172a" },
+  sectionSummaryRow: { display: "flex", gap: 16, marginBottom: 24, flexWrap: "wrap" },
+  summaryCard: { flex: 1, minWidth: 180, backgroundColor: "#f8fafc", borderRadius: 14, padding: 18, border: "1px solid #e2e8f0", boxShadow: "0 1px 2px rgba(15,23,42,0.05)" },
+  summaryLabel: { fontSize: 12, fontWeight: "600", color: "#64748b", marginBottom: 8, textTransform: "uppercase", letterSpacing: 1 },
+  summaryValue: { fontSize: 28, fontWeight: "bold", color: "#0f172a" },
+  logsTable: { borderRadius: 14, overflow: "hidden", border: "1px solid #e2e8f0" },
+  tableRowHeader: { display: "grid", gridTemplateColumns: "1.2fr 1fr 1.5fr 1.5fr 1fr", backgroundColor: "#0f172a", color: "#fff", padding: "14px 16px", fontSize: 13, fontWeight: "700" },
+  tableRow: { display: "grid", gridTemplateColumns: "1.2fr 1fr 1.5fr 1.5fr 1fr", padding: "14px 16px", borderBottom: "1px solid #e2e8f0", fontSize: 14, color: "#0f172a" },
+  tableCell: { wordBreak: "break-word" },
+  emptyState: { padding: 48, textAlign: "center", color: "#64748b", fontSize: 14 },
+  reportCard: { flex: 1, minWidth: 180, backgroundColor: "#f8fafc", borderRadius: 14, padding: 20, border: "1px solid #e2e8f0", display: "flex", flexDirection: "column", justifyContent: "space-between" },
+  reportLabel: { fontSize: 13, fontWeight: "600", color: "#64748b", marginBottom: 10, textTransform: "uppercase", letterSpacing: 1 },
+  reportValue: { fontSize: 28, fontWeight: "bold", color: "#0f172a" },
+  reportNote: { backgroundColor: "#eef2ff", padding: 18, borderRadius: 12, color: "#334155", border: "1px solid #c7d2fe" },
+  settingsBlock: { marginBottom: 24, backgroundColor: "#f8fafc", borderRadius: 14, padding: 20, border: "1px solid #e2e8f0" },
+  settingTitle: { fontSize: 16, fontWeight: "700", color: "#0f172a", marginBottom: 16 },
+  settingRow: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 0", borderTop: "1px solid #e2e8f0" },
+  settingLabel: { fontSize: 14, fontWeight: "700", color: "#0f172a" },
+  settingHint: { fontSize: 13, color: "#64748b", marginTop: 4 },
+  settingBadge: { backgroundColor: "#0f172a", color: "#fff", borderRadius: 999, padding: "8px 14px", fontSize: 12, fontWeight: "700" },
+  toggleRow: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 0", borderTop: "1px solid #e2e8f0" },
+  toggleBtn: { border: "none", borderRadius: 999, padding: "10px 18px", backgroundColor: "#0f172a", color: "#fff", cursor: "pointer", fontWeight: "700" },
 
   rightPanel: { flex: 1, backgroundColor: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: 0, display: "flex", flexDirection: "column", overflowY: "auto", overflowX: "hidden", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" },
   ticketValidHeader: { backgroundColor: "#34d399", color: "#fff", padding: "16px", textAlign: "center", fontWeight: "bold", fontSize: 16, letterSpacing: 1 },
