@@ -27,7 +27,7 @@ const Navbar = () => {
 
   return (
     <div style={styles.navbar}>
-      <div style={styles.brand}>🅿️ Parking System</div>
+      <div style={styles.brand}>39°C</div>
       <div style={styles.menu}>
         {items.map((item) => (
           <button
@@ -36,14 +36,26 @@ const Navbar = () => {
             style={{
               ...styles.menuItem,
               backgroundColor:
-                location.pathname === item.path
-                  ? "rgba(255,255,255,0.2)"
-                  : "transparent",
+                location.pathname === item.path ? "#3b82f6" : "transparent",
+              color: location.pathname === item.path ? "#fff" : "#cbd5e1",
             }}
           >
             {item.label}
           </button>
         ))}
+        {user?.role_name === "Super Admin" && (
+          <button
+            onClick={() => navigate("/users")}
+            style={{
+              ...styles.menuItem,
+              backgroundColor:
+                location.pathname === "/users" ? "#3b82f6" : "transparent",
+              color: location.pathname === "/users" ? "#fff" : "#cbd5e1",
+            }}
+          >
+            Quản lý tài khoản
+          </button>
+        )}
       </div>
       <div style={styles.right}>
         <span style={styles.username}>{user?.username}</span>

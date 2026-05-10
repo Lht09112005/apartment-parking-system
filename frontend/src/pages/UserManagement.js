@@ -8,6 +8,7 @@ const UserManagement = () => {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ username: "", password: "", role_id: 2 });
+  const [editingUser, setEditingUser] = useState(null);
   const [message, setMessage] = useState("");
   const { user } = useAuth();
 
@@ -26,17 +27,33 @@ const UserManagement = () => {
     fetchUsers();
   }, []);
 
-  const handleCreate = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post("/users", form);
-      setMessage("Tạo tài khoản thành công!");
+      if (editingUser) {
+        await axios.put(`/users/${editingUser.user_id}`, {
+          ...form,
+          status: editingUser.status,
+        });
+        setMessage("Cập nhật tài khoản thành công!");
+      } else {
+        await axios.post("/users", form);
+        setMessage("Tạo tài khoản thành công!");
+      }
       setShowForm(false);
+      setEditingUser(null);
       setForm({ username: "", password: "", role_id: 2 });
       fetchUsers();
     } catch (err) {
-      setMessage(err.response?.data?.message || "Lỗi tạo tài khoản");
+      setMessage(err.response?.data?.message || (editingUser ? "Lỗi cập nhật tài khoản" : "Lỗi tạo tài khoản"));
     }
+  };
+
+  const handleEdit = (u) => {
+    setEditingUser(u);
+    setForm({ username: u.username, password: "", role_id: u.role_id });
+    setShowForm(true);
+    setMessage("");
   };
 
   const handleToggleStatus = async (u) => {
@@ -66,7 +83,15 @@ const UserManagement = () => {
       <div style={styles.content}>
         <div style={styles.titleRow}>
           <h3 style={{ margin: 0 }}>Quản lý Tài khoản Admin</h3>
-          <button onClick={() => setShowForm(!showForm)} style={styles.addBtn}>
+          <button
+            onClick={() => {
+              setEditingUser(null);
+              setForm({ username: "", password: "", role_id: 2 });
+              setShowForm(!showForm);
+              setMessage("");
+            }}
+            style={styles.addBtn}
+          >
             + Thêm tài khoản
           </button>
         </div>
@@ -75,8 +100,8 @@ const UserManagement = () => {
 
         {showForm && (
           <div style={styles.formCard}>
-            <h4 style={{ marginTop: 0 }}>Tạo tài khoản mới</h4>
-            <form onSubmit={handleCreate}>
+            <h4 style={{ marginTop: 0 }}>{editingUser ? "Chỉnh sửa tài khoản" : "Tạo tài khoản mới"}</h4>
+            <form onSubmit={handleSubmit}>
               <div style={styles.formRow}>
                 <div style={styles.formGroup}>
                   <label style={styles.label}>Tên đăng nhập</label>
@@ -98,28 +123,29 @@ const UserManagement = () => {
                     onChange={(e) =>
                       setForm({ ...form, password: e.target.value })
                     }
-                    required
+                    required={!editingUser}
+                    placeholder={editingUser ? "Để trống nếu không muốn đổi" : ""}
                   />
                 </div>
                 <div style={styles.formGroup}>
                   <label style={styles.label}>Role</label>
-                  <select
-                    style={styles.input}
-                    value={form.role_id}
-                    onChange={(e) =>
-                      setForm({ ...form, role_id: parseInt(e.target.value) })
-                    }
-                  >
-                    <option value={2}>Admin</option>
-                  </select>
+                  <input
+                    style={{ ...styles.input, backgroundColor: "#f3f4f6", color: "#6b7280", cursor: "not-allowed" }}
+                    value="Admin"
+                    readOnly
+                  />
                 </div>
               </div>
               <button type="submit" style={styles.addBtn}>
-                Tạo tài khoản
+                {editingUser ? "Lưu thay đổi" : "Tạo tài khoản"}
               </button>
               <button
                 type="button"
-                onClick={() => setShowForm(false)}
+                onClick={() => {
+                  setShowForm(false);
+                  setEditingUser(null);
+                  setForm({ username: "", password: "", role_id: 2 });
+                }}
                 style={{
                   ...styles.addBtn,
                   backgroundColor: "#6b7280",
@@ -179,16 +205,27 @@ const UserManagement = () => {
                   </td>
                   <td style={styles.td}>
                     {u.username !== "superadmin" && (
-                      <button
-                        onClick={() => handleToggleStatus(u)}
-                        style={{
-                          ...styles.actionBtn,
-                          backgroundColor:
-                            u.status === "active" ? "#ef4444" : "#10b981",
-                        }}
-                      >
-                        {u.status === "active" ? "Khóa" : "Mở khóa"}
-                      </button>
+                      <div style={{ display: "flex", gap: "8px" }}>
+                        <button
+                          onClick={() => handleEdit(u)}
+                          style={{
+                            ...styles.actionBtn,
+                            backgroundColor: "#1a73e8",
+                          }}
+                        >
+                          Sửa
+                        </button>
+                        <button
+                          onClick={() => handleToggleStatus(u)}
+                          style={{
+                            ...styles.actionBtn,
+                            backgroundColor:
+                              u.status === "active" ? "#ef4444" : "#10b981",
+                          }}
+                        >
+                          {u.status === "active" ? "Khóa" : "Mở khóa"}
+                        </button>
+                      </div>
                     )}
                   </td>
                 </tr>
