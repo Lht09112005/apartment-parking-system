@@ -48,14 +48,32 @@ const createUser = async (req, res) => {
 
 const updateUser = async (req, res) => {
   const { id } = req.params;
-  const { role_id, status } = req.body;
+  const { role_id, status, username, password } = req.body;
+
   try {
-    await db.query(
-      `UPDATE users SET role_id = ?, status = ? WHERE user_id = ?`,
-      [role_id, status, id],
-    );
+    let query = `UPDATE users SET role_id = ?, status = ?`;
+    let params = [role_id, status];
+
+    if (username) {
+      query += `, username = ?`;
+      params.push(username);
+    }
+
+    if (password) {
+      const hashed = await bcrypt.hash(password, 10);
+      query += `, password = ?`;
+      params.push(hashed);
+    }
+
+    query += ` WHERE user_id = ?`;
+    params.push(id);
+
+    await db.query(query, params);
     res.json({ message: "Cập nhật tài khoản thành công" });
   } catch (err) {
+    if (err.code === "ER_DUP_ENTRY") {
+      return res.status(400).json({ message: "Tên đăng nhập đã tồn tại" });
+    }
     console.error(err);
     res.status(500).json({ message: "Lỗi server" });
   }
