@@ -147,4 +147,51 @@ const getAllSessions = async (req, res) => {
     }
 };
 
-module.exports = { checkIn, checkOut, getAllSessions };
+const getFeeConfig = async (req, res) => {
+  try {
+    const [fees] = await db.query(
+      `SELECT pf.type_id, vt.type_name, pf.price_per_hour, pf.monthly_fee
+       FROM parking_fee pf
+       JOIN vehicle_types vt ON pf.type_id = vt.type_id`
+    );
+    res.json(fees);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Lỗi server" });
+  }
+};
+
+const getFinancialSummary = async (req, res) => {
+  try {
+    const [[summary]] = await db.query(
+      `SELECT
+           COUNT(CASE WHEN s.status = 'completed' AND DATE(s.time_out) = CURDATE() THEN 1 END) as completedCheckouts,
+           SUM(CASE
+               WHEN m.monthly_id IS NOT NULL THEN 0
+               ELSE GREATEST(CEIL(TIME_TO_SEC(TIMEDIFF(s.time_out, s.time_in))/3600), 1) * pf.price_per_hour
+             END) as totalRevenue
+         FROM parking_session s
+         LEFT JOIN vehicles v ON s.plate_number = v.plate_number
+         LEFT JOIN parking_fee pf ON COALESCE(s.type_id, v.type_id) = pf.type_id
+         LEFT JOIN monthly_parking m ON v.plate_number = m.plate_number
+            AND m.status = 'active'
+            AND m.start_date <= CURDATE()
+            AND m.end_date >= CURDATE()`
+    );
+
+    const [[{ activeParking }]] = await db.query(
+      `SELECT COUNT(*) as activeParking FROM parking_session WHERE status = 'parking'`
+    );
+
+    res.json({
+      completedCheckouts: summary.completedCheckouts || 0,
+      totalRevenue: parseFloat(summary.totalRevenue || 0),
+      activeParking: activeParking || 0,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Lỗi server" });
+  }
+};
+
+module.exports = { checkIn, checkOut, getAllSessions, getFeeConfig, getFinancialSummary };
