@@ -17,6 +17,7 @@ const Navbar = () => {
     Admin: [
       { label: "Dashboard", path: "/admin/dashboard" },
       { label: "Cư dân", path: "/admin/residents" },
+      { label: "Xe cộ", path: "/admin/vehicles" },
     ],
     Security: [{ label: "Check-in/out", path: "/security" }],
     Resident: [{ label: "Xe của tôi", path: "/resident" }],

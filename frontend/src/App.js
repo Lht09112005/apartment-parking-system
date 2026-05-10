@@ -5,6 +5,8 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import UserManagement from "./pages/UserManagement";
 import ResidentManagement from "./pages/ResidentManagement";
+import VehicleManagement from "./pages/VehicleManagement";
+import SecurityDashboard from "./pages/SecurityDashboard";
 const PrivateRoute = ({ children }) => {
   const { token } = useAuth();
   return token ? children : <Navigate to="/login" />;
@@ -36,7 +38,7 @@ function App() {
             path="/security"
             element={
               <PrivateRoute>
-                <Dashboard />
+                <SecurityDashboard />
               </PrivateRoute>
             }
           />
@@ -54,6 +56,14 @@ function App() {
             element={
               <PrivateRoute>
                 <ResidentManagement />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/admin/vehicles"
+            element={
+              <PrivateRoute>
+                <VehicleManagement />
               </PrivateRoute>
             }
           />
