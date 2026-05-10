@@ -6,6 +6,8 @@ const ResidentManagement = () => {
   const [residents, setResidents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
   const [message, setMessage] = useState("");
   const [editData, setEditData] = useState(null);
   const [form, setForm] = useState({
@@ -64,6 +66,34 @@ const ResidentManagement = () => {
     }
   };
 
+  const handleSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const filteredAndSortedResidents = React.useMemo(() => {
+    let result = residents.filter(r => 
+      r.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      (r.username && r.username.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (r.apartment_number && r.apartment_number.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (r.phone && r.phone.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (r.email && r.email.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+    if (sortConfig.key) {
+      result.sort((a, b) => {
+        const valA = a[sortConfig.key] || '';
+        const valB = b[sortConfig.key] || '';
+        if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+    return result;
+  }, [residents, searchTerm, sortConfig]);
+
   return (
     <div style={styles.container}>
       <Navbar />
@@ -80,6 +110,15 @@ const ResidentManagement = () => {
           >
             + Thêm cư dân
           </button>
+        </div>
+
+        <div style={{ display: 'flex', marginBottom: '16px', gap: '12px' }}>
+          <input 
+            style={{ ...styles.input, flex: 1, maxWidth: '400px' }} 
+            placeholder="Tìm kiếm theo: tên, tài khoản, căn hộ, điện thoại, email..." 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </div>
 
         {message && <p style={styles.message}>{message}</p>}
@@ -247,9 +286,13 @@ const ResidentManagement = () => {
             <thead>
               <tr style={styles.thead}>
                 <th style={styles.th}>ID</th>
-                <th style={styles.th}>Họ tên</th>
+                <th style={{...styles.th, cursor: 'pointer'}} onClick={() => handleSort('name')}>
+                  Họ tên {sortConfig.key === 'name' ? (sortConfig.direction === 'asc' ? '▲' : '▼') : ''}
+                </th>
                 <th style={styles.th}>Tài khoản</th>
-                <th style={styles.th}>Căn hộ</th>
+                <th style={{...styles.th, cursor: 'pointer'}} onClick={() => handleSort('apartment_number')}>
+                  Căn hộ {sortConfig.key === 'apartment_number' ? (sortConfig.direction === 'asc' ? '▲' : '▼') : ''}
+                </th>
                 <th style={styles.th}>Điện thoại</th>
                 <th style={styles.th}>Email</th>
                 <th style={styles.th}>Trạng thái</th>
@@ -257,7 +300,7 @@ const ResidentManagement = () => {
               </tr>
             </thead>
             <tbody>
-              {residents.map((r) => (
+              {filteredAndSortedResidents.map((r) => (
                 <tr key={r.resident_id} style={styles.tr}>
                   <td style={styles.td}>{r.resident_id}</td>
                   <td style={styles.td}>

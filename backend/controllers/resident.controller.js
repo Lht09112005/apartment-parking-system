@@ -25,6 +25,17 @@ const createResident = async (req, res) => {
   }
   const conn = await db.getConnection();
   try {
+    // Kiểm tra xem cư dân đã tồn tại chưa (trùng tên và căn hộ, hoặc trùng email/sđt)
+    const [existing] = await conn.query(
+      `SELECT * FROM residents WHERE (name = ? AND apartment_number = ?) OR (email != '' AND email = ?) OR (phone != '' AND phone = ?)`,
+      [name, apartment_number, email, phone]
+    );
+
+    if (existing.length > 0) {
+      conn.release();
+      return res.status(400).json({ message: "Cư dân này (hoặc email/sđt) đã tồn tại trong hệ thống" });
+    }
+
     await conn.beginTransaction();
     const bcrypt = require("bcrypt");
     const hashed = await bcrypt.hash(password, 10);
