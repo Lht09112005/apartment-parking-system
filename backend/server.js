@@ -8,6 +8,7 @@ const residentRoutes = require("./routes/resident.routes");
 const dashboardRoutes = require("./routes/dashboard.routes");
 const vehicleRoutes = require("./routes/vehicle.routes");
 const parkingRoutes = require("./routes/parking.routes");
+const residentPortalRoutes = require("./routes/resident.portal.routes");
 const app = express();
 
 app.use(cors());
@@ -19,6 +20,7 @@ app.use("/api/residents", residentRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/vehicles", vehicleRoutes);
 app.use("/api/parking", parkingRoutes);
+app.use("/api/resident", residentPortalRoutes);
 app.get("/", (req, res) => res.json({ message: "Parking API running..." }));
 
 const PORT = process.env.PORT || 5000;

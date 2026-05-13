@@ -18,13 +18,9 @@ const SecurityDashboard = () => {
   const [vehicles, setVehicles] = useState([]);
   const [viewMode, setViewMode] = useState("gate");
   const [vehicleLogs, setVehicleLogs] = useState([]);
-  const [reportSummary, setReportSummary] = useState(null);
-  const [feeConfig, setFeeConfig] = useState([]);
-  const [settings, setSettings] = useState({
-    autoGateOpen: true,
-    allowVisitorCheckIn: true,
-    overloadAlert: true,
-  });
+  const [searchPlate, setSearchPlate] = useState("");
+  const [searchResult, setSearchResult] = useState(null);
+  const [searchDone, setSearchDone] = useState(false);
   
   const [message, setMessage] = useState({ type: "", text: "" });
   const [ticketInfo, setTicketInfo] = useState(null);
@@ -39,11 +35,10 @@ const SecurityDashboard = () => {
     if (viewMode === "logs") {
       fetchVehicleLogs();
     }
-    if (viewMode === "reports") {
-      fetchReportSummary();
-    }
-    if (viewMode === "settings") {
-      fetchFeeConfig();
+    if (viewMode === "search") {
+      setSearchResult(null);
+      setSearchDone(false);
+      setSearchPlate("");
     }
   }, [viewMode]);
 
@@ -87,23 +82,27 @@ const SecurityDashboard = () => {
     }
   };
 
-  const fetchReportSummary = async () => {
+  const handleSearch = async () => {
+    if (!searchPlate.trim()) return;
+    setSearchDone(false);
+    setSearchResult(null);
     try {
-      const res = await axios.get("/parking/report/summary");
-      setReportSummary(res.data);
+      const res = await axios.get("/vehicles");
+      const found = res.data.find(v => v.plate_number.toLowerCase() === searchPlate.trim().toLowerCase());
+      if (found) {
+        // Also get parking history for this plate
+        const sessions = await axios.get("/parking/sessions");
+        const history = sessions.data.filter(s => (s.plate_number || '').toLowerCase() === searchPlate.trim().toLowerCase());
+        setSearchResult({ vehicle: found, history: history.slice(0, 10) });
+      }
+      setSearchDone(true);
     } catch (err) {
       console.error(err);
+      setSearchDone(true);
     }
   };
 
-  const fetchFeeConfig = async () => {
-    try {
-      const res = await axios.get("/parking/fees");
-      setFeeConfig(res.data);
-    } catch (err) {
-      console.error(err);
-    }
-  };
+
 
   // Find if plate is resident
   const currentVehicle = plate.trim() ? vehicles.find(v => v.plate_number.toLowerCase() === plate.trim().toLowerCase()) : null;
@@ -171,25 +170,19 @@ const SecurityDashboard = () => {
             style={{ ...styles.menuItem, ...(viewMode === "gate" ? styles.menuItemActive : {}) }}
             onClick={() => setViewMode("gate")}
           >
-            Gate Control
+            🚧 Ghi nhận xe vào/ra
           </div>
           <div
             style={{ ...styles.menuItem, ...(viewMode === "logs" ? styles.menuItemActive : {}) }}
             onClick={() => setViewMode("logs")}
           >
-            Vehicle Logs
+            📜 Lịch sử gửi xe
           </div>
           <div
-            style={{ ...styles.menuItem, ...(viewMode === "reports" ? styles.menuItemActive : {}) }}
-            onClick={() => setViewMode("reports")}
+            style={{ ...styles.menuItem, ...(viewMode === "search" ? styles.menuItemActive : {}) }}
+            onClick={() => setViewMode("search")}
           >
-            Financial Reports
-          </div>
-          <div
-            style={{ ...styles.menuItem, ...(viewMode === "settings" ? styles.menuItemActive : {}) }}
-            onClick={() => setViewMode("settings")}
-          >
-            System Settings
+            🔍 Tìm kiếm thông tin xe
           </div>
         </div>
         <div style={styles.sidebarFooter}>
@@ -429,7 +422,7 @@ const SecurityDashboard = () => {
             <div style={styles.mainPanelRow}>
               <div style={styles.dashboardPanel}>
                 <div style={styles.sectionHeader}>
-                  {viewMode === 'logs' ? 'Vehicle Logs' : viewMode === 'reports' ? 'Financial Reports' : 'System Settings'}
+                  {viewMode === 'logs' ? '📜 Lịch sử gửi xe' : '🔍 Tìm kiếm thông tin xe'}
                 </div>
 
                 {viewMode === 'logs' && (
@@ -471,65 +464,80 @@ const SecurityDashboard = () => {
                   </>
                 )}
 
-                {viewMode === 'reports' && (
+                {viewMode === 'search' && (
                   <>
-                    <div style={styles.sectionSummaryRow}>
-                      <div style={styles.reportCard}>
-                        <div style={styles.reportLabel}>Doanh thu hôm nay</div>
-                        <div style={styles.reportValue}>{reportSummary ? reportSummary.totalRevenue.toLocaleString() : '0'} VNĐ</div>
-                      </div>
-                      <div style={styles.reportCard}>
-                        <div style={styles.reportLabel}>Xe đã ra hôm nay</div>
-                        <div style={styles.reportValue}>{reportSummary?.completedCheckouts ?? 0}</div>
-                      </div>
-                      <div style={styles.reportCard}>
-                        <div style={styles.reportLabel}>Xe đang gửi</div>
-                        <div style={styles.reportValue}>{reportSummary?.activeParking ?? 0}</div>
-                      </div>
+                    <div style={{display:'flex',gap:12,marginBottom:24}}>
+                      <input
+                        value={searchPlate}
+                        onChange={(e) => setSearchPlate(e.target.value.toUpperCase())}
+                        onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                        placeholder="Nhập biển số xe cần tìm..."
+                        style={{flex:1,padding:'14px 18px',border:'2px solid #e2e8f0',borderRadius:10,fontSize:16,outline:'none',backgroundColor:'#f8fafc'}}
+                      />
+                      <button onClick={handleSearch} style={{padding:'14px 28px',backgroundColor:'#0f172a',color:'#fff',border:'none',borderRadius:10,fontSize:15,fontWeight:'700',cursor:'pointer'}}>
+                        🔍 Tìm kiếm
+                      </button>
                     </div>
-                    <div style={styles.reportNote}>
-                      <div>Hệ thống báo cáo tổng quan tài chính và vận hành của bãi đỗ. Các con số dựa trên các phiên gửi đã hoàn tất trong ngày và tình trạng hiện tại của bãi.</div>
-                    </div>
-                  </>
-                )}
 
-                {viewMode === 'settings' && (
-                  <>
-                    <div style={styles.settingsBlock}>
-                      <div style={styles.settingTitle}>Bảng giá hiện tại</div>
-                      {feeConfig.length === 0 ? (
-                        <div style={styles.emptyState}>Đang tải cấu hình...</div>
-                      ) : feeConfig.map((fee) => (
-                        <div key={fee.type_id} style={styles.settingRow}>
-                          <div>
-                            <div style={styles.settingLabel}>{fee.type_name}</div>
-                            <div style={styles.settingHint}>Giá giờ: {fee.price_per_hour.toLocaleString()} VNĐ · Vé tháng: {fee.monthly_fee.toLocaleString()} VNĐ</div>
+                    {searchDone && !searchResult && (
+                      <div style={styles.emptyState}>Không tìm thấy xe với biển số "{searchPlate}". Xe này có thể là khách vãng lai.</div>
+                    )}
+
+                    {searchResult && (
+                      <>
+                        <div style={{backgroundColor:'#f8fafc',borderRadius:14,padding:24,border:'1px solid #e2e8f0',marginBottom:20}}>
+                          <div style={{fontSize:14,fontWeight:'700',color:'#64748b',marginBottom:16,textTransform:'uppercase',letterSpacing:1}}>Thông tin xe</div>
+                          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:16}}>
+                            <div>
+                              <div style={{fontSize:12,color:'#94a3b8',fontWeight:'600'}}>BIỂN SỐ</div>
+                              <div style={{fontSize:20,fontWeight:'900',color:'#0f172a',marginTop:4}}>{searchResult.vehicle.plate_number}</div>
+                            </div>
+                            <div>
+                              <div style={{fontSize:12,color:'#94a3b8',fontWeight:'600'}}>CHỦ XE</div>
+                              <div style={{fontSize:16,fontWeight:'600',color:'#0f172a',marginTop:4}}>{searchResult.vehicle.resident_name || 'Chưa rõ'}</div>
+                            </div>
+                            <div>
+                              <div style={{fontSize:12,color:'#94a3b8',fontWeight:'600'}}>CĂN HỘ</div>
+                              <div style={{fontSize:16,fontWeight:'600',color:'#0f172a',marginTop:4}}>{searchResult.vehicle.apartment_number || '---'}</div>
+                            </div>
+                            <div>
+                              <div style={{fontSize:12,color:'#94a3b8',fontWeight:'600'}}>LOẠI XE</div>
+                              <div style={{fontSize:16,fontWeight:'600',color:'#0f172a',marginTop:4}}>{searchResult.vehicle.type_name}</div>
+                            </div>
+                            <div>
+                              <div style={{fontSize:12,color:'#94a3b8',fontWeight:'600'}}>MÀU XE</div>
+                              <div style={{fontSize:16,fontWeight:'600',color:'#0f172a',marginTop:4}}>{searchResult.vehicle.color || '---'}</div>
+                            </div>
                           </div>
-                          <div style={styles.settingBadge}>Cập nhật</div>
                         </div>
-                      ))}
-                    </div>
-                    <div style={styles.settingsBlock}>
-                      <div style={styles.settingTitle}>Cài đặt hệ thống</div>
-                      <div style={styles.toggleRow}>
-                        <span>Auto-gate khi xe vào</span>
-                        <button style={styles.toggleBtn} onClick={() => setSettings((prev) => ({ ...prev, autoGateOpen: !prev.autoGateOpen }))}>
-                          {settings.autoGateOpen ? 'Bật' : 'Tắt'}
-                        </button>
-                      </div>
-                      <div style={styles.toggleRow}>
-                        <span>Cho phép khách vãng lai check-in</span>
-                        <button style={styles.toggleBtn} onClick={() => setSettings((prev) => ({ ...prev, allowVisitorCheckIn: !prev.allowVisitorCheckIn }))}>
-                          {settings.allowVisitorCheckIn ? 'Bật' : 'Tắt'}
-                        </button>
-                      </div>
-                      <div style={styles.toggleRow}>
-                        <span>Cảnh báo khi quá tải</span>
-                        <button style={styles.toggleBtn} onClick={() => setSettings((prev) => ({ ...prev, overloadAlert: !prev.overloadAlert }))}>
-                          {settings.overloadAlert ? 'Bật' : 'Tắt'}
-                        </button>
-                      </div>
-                    </div>
+
+                        <div style={{fontSize:14,fontWeight:'700',color:'#64748b',marginBottom:12,textTransform:'uppercase',letterSpacing:1}}>Lịch sử gửi xe gần nhất</div>
+                        <div style={styles.logsTable}>
+                          <div style={styles.tableRowHeader}>
+                            <div style={styles.tableCell}>Giờ vào</div>
+                            <div style={styles.tableCell}>Giờ ra</div>
+                            <div style={styles.tableCell}>Trạng thái</div>
+                            <div style={styles.tableCell}>Nhân viên</div>
+                          </div>
+                          {searchResult.history.length === 0 ? (
+                            <div style={styles.emptyState}>Chưa có lịch sử gửi xe</div>
+                          ) : searchResult.history.map((h) => (
+                            <div key={h.session_id} style={styles.tableRow}>
+                              <div style={styles.tableCell}>{h.time_in ? new Date(h.time_in).toLocaleString('vi-VN') : '-'}</div>
+                              <div style={styles.tableCell}>{h.time_out ? new Date(h.time_out).toLocaleString('vi-VN') : '-'}</div>
+                              <div style={styles.tableCell}>
+                                <span style={{padding:'4px 10px',borderRadius:999,fontSize:12,fontWeight:'600',
+                                  backgroundColor: h.status==='parking'?'#dbeafe':'#dcfce7',
+                                  color: h.status==='parking'?'#1e40af':'#166534'}}>
+                                  {h.status === 'parking' ? 'Đang gửi' : 'Đã ra'}
+                                </span>
+                              </div>
+                              <div style={styles.tableCell}>{h.security_name || 'N/A'}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
                   </>
                 )}
               </div>

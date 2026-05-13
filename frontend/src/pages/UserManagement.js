@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "../api/axios";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import Sidebar from "../components/Sidebar";
 
 const UserManagement = () => {
   const [users, setUsers] = useState([]);
@@ -61,15 +62,18 @@ const UserManagement = () => {
   };
 
   const handleToggleStatus = async (u) => {
-    const newStatus = u.status === "active" ? "locked" : "active";
-    try {
-      await axios.put(`/users/${u.user_id}`, {
-        role_id: u.role_id,
-        status: newStatus,
-      });
-      fetchUsers();
-    } catch (err) {
-      console.error(err);
+    const action = u.status === "active" ? "khóa" : "mở khóa";
+    if (window.confirm(`Bạn có chắc chắn muốn ${action} tài khoản này?`)) {
+      const newStatus = u.status === "active" ? "locked" : "active";
+      try {
+        await axios.put(`/users/${u.user_id}`, {
+          role_id: u.role_id,
+          status: newStatus,
+        });
+        fetchUsers();
+      } catch (err) {
+        console.error(err);
+      }
     }
   };
 
@@ -87,23 +91,7 @@ const UserManagement = () => {
 
   return (
     <div style={styles.container}>
-      {/* Sidebar */}
-      <div style={styles.sidebar}>
-        <div style={styles.sidebarHeader}>
-          <h2 style={styles.sidebarTitle}>39°C</h2>
-          <p style={styles.sidebarSubTitle}>Super Admin Portal</p>
-        </div>
-        <div style={styles.menuItems}>
-          <div style={{ ...styles.menuItem, ...styles.menuItemActive }}>Quản lý Tài khoản</div>
-          {/* Add more Super Admin menus here if needed */}
-        </div>
-        <div style={styles.sidebarFooter}>
-          <button style={styles.emergencyBtn}>HỆ THỐNG AN TOÀN</button>
-          <div style={{marginTop: 'auto'}}>
-            <div style={styles.bottomLink} onClick={handleLogout}>Đăng xuất</div>
-          </div>
-        </div>
-      </div>
+      <Sidebar />
 
       {/* Main Content */}
       <div style={styles.main}>
@@ -117,10 +105,14 @@ const UserManagement = () => {
           </div>
           <div style={styles.headerRight}>
             <div style={{textAlign: 'right', marginRight: 12}}>
-              <div style={{fontSize: 14, fontWeight: '600', color: '#1e293b'}}>Super Admin: {user?.username}</div>
-              <div style={{fontSize: 12, color: '#64748b'}}>TOÀN QUYỀN HỆ THỐNG</div>
+              <div style={{fontSize: 14, fontWeight: '600', color: '#1e293b'}}>
+                {user?.role_id === 1 ? "Super Admin" : "Admin"}: {user?.username}
+              </div>
+              <div style={{fontSize: 12, color: '#64748b'}}>
+                {user?.role_id === 1 ? "TOÀN QUYỀN HỆ THỐNG" : "QUẢN TRỊ VIÊN"}
+              </div>
             </div>
-            <div style={styles.avatar}>👑</div>
+            <div style={styles.avatar}>{user?.role_id === 1 ? "👑" : "🛡️"}</div>
           </div>
         </div>
 
@@ -129,19 +121,23 @@ const UserManagement = () => {
           
           <div style={styles.titleRow}>
             <div>
-               <h3 style={{ margin: 0, fontSize: 24, color: '#0f172a' }}>Danh sách tài khoản Admin</h3>
-               <p style={{ margin: '4px 0 0 0', color: '#64748b', fontSize: 14 }}>Quản lý quyền truy cập và tài khoản ban quản lý.</p>
+               <h3 style={{ margin: 0, fontSize: 24, color: '#0f172a' }}>
+                 {user?.role_id === 1 ? "Danh sách tài khoản Admin" : "Quản lý tài khoản Bảo vệ"}
+               </h3>
+               <p style={{ margin: '4px 0 0 0', color: '#64748b', fontSize: 14 }}>
+                 {user?.role_id === 1 ? "Cấp quyền truy cập cho nhân viên quản trị hệ thống." : "Quản lý nhân sự đội ngũ an ninh tòa nhà."}
+               </p>
             </div>
             <button
               onClick={() => {
                 setEditingUser(null);
-                setForm({ username: "", password: "", role_id: 2 });
+                setForm({ username: "", password: "", role_id: user?.role_id === 1 ? 2 : 3 });
                 setShowForm(!showForm);
                 setMessage({ type: "", text: "" });
               }}
               style={styles.addBtn}
             >
-              + Tạo tài khoản Admin mới
+              + {user?.role_id === 1 ? "Tạo Admin mới" : "Thêm Bảo vệ mới"}
             </button>
           </div>
 
@@ -154,7 +150,7 @@ const UserManagement = () => {
           {showForm && (
             <div style={styles.formCard}>
               <h4 style={{ marginTop: 0, marginBottom: 20, fontSize: 18, color: '#0f172a' }}>
-                {editingUser ? "Chỉnh sửa tài khoản" : "Tạo tài khoản mới"}
+                {editingUser ? "Chỉnh sửa tài khoản" : (user?.role_id === 1 ? "Đăng ký Admin mới" : "Thêm Bảo vệ mới")}
               </h4>
               <form onSubmit={handleSubmit}>
                 <div style={styles.formRow}>
@@ -186,7 +182,7 @@ const UserManagement = () => {
                     <label style={styles.label}>Phân quyền (Role)</label>
                     <input
                       style={{ ...styles.input, backgroundColor: "#f1f5f9", color: "#64748b", cursor: "not-allowed" }}
-                      value="Admin"
+                      value={user?.role_id === 1 ? "Admin" : "Security"}
                       readOnly
                     />
                   </div>

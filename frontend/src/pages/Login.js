@@ -34,6 +34,11 @@ const Login = () => {
     }
   };
 
+  const fillDemoAccount = (u, p) => {
+    setUsername(u);
+    setPassword(p);
+  };
+
   return (
     <div style={styles.container}>
       {/* Left Branding Panel */}
@@ -87,6 +92,16 @@ const Login = () => {
               {loading ? "AUTHENTICATING..." : "LOGIN TO SYSTEM"}
             </button>
           </form>
+
+          <div style={styles.demoSection}>
+            <p style={styles.demoTitle}>QUICK LOGIN (DEMO)</p>
+            <div style={styles.demoButtons}>
+              <button type="button" onClick={() => fillDemoAccount("superadmin", "123456")} style={styles.demoBtn}>👑 Super Admin</button>
+              <button type="button" onClick={() => fillDemoAccount("admin", "123456")} style={styles.demoBtn}>🛠️ Admin</button>
+              <button type="button" onClick={() => fillDemoAccount("security", "123456")} style={styles.demoBtn}>🛡️ Security</button>
+              <button type="button" onClick={() => fillDemoAccount("resident", "123456")} style={styles.demoBtn}>🏠 Cư dân</button>
+            </div>
+          </div>
           
           <p style={styles.helpText}>Need help? Contact the IT Helpdesk at support@39c.vn</p>
         </div>
@@ -227,6 +242,40 @@ const styles = {
     display: "flex",
     alignItems: "center",
     gap: "8px",
+  },
+  demoSection: {
+    marginTop: "32px",
+    paddingTop: "24px",
+    borderTop: "1px dashed #e2e8f0",
+  },
+  demoTitle: {
+    fontSize: "11px",
+    fontWeight: "bold",
+    color: "#94a3b8",
+    letterSpacing: "1px",
+    marginBottom: "12px",
+    textAlign: "center",
+  },
+  demoButtons: {
+    display: "flex",
+    gap: "8px",
+    flexWrap: "wrap",
+    justifyContent: "center",
+  },
+  demoBtn: {
+    padding: "8px 12px",
+    backgroundColor: "#f1f5f9",
+    border: "1px solid #e2e8f0",
+    borderRadius: "6px",
+    fontSize: "12px",
+    fontWeight: "600",
+    color: "#475569",
+    cursor: "pointer",
+    transition: "all 0.2s",
+    "&:hover": {
+      backgroundColor: "#e2e8f0",
+      borderColor: "#cbd5e1",
+    }
   },
   helpText: {
     textAlign: "center",

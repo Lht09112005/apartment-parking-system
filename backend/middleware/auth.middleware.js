@@ -23,6 +23,7 @@ const verifyToken = (req, res, next) => {
 
 const authorizeRoles = (...roles) => {
   return (req, res, next) => {
+    console.log("Checking roles:", roles, "User role:", req.user?.role_name);
     if (!roles.includes(req.user.role_name)) {
       return res.status(403).json({
         message: `Không có quyền. Yêu cầu role: ${roles.join(", ")}`,
