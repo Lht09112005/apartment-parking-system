@@ -12,11 +12,10 @@ const {
 } = require("../middleware/auth.middleware");
 
 router.use(verifyToken);
-router.use(authorizeRoles("Super Admin"));
 
-router.get("/", getAllUsers);
-router.post("/", createUser);
-router.put("/:id", updateUser);
-router.put("/:id/reset-password", resetPassword);
+router.get("/", authorizeRoles("Super Admin", "Admin"), getAllUsers);
+router.post("/", authorizeRoles("Super Admin", "Admin"), createUser);
+router.put("/:id", authorizeRoles("Super Admin", "Admin"), updateUser);
+router.put("/:id/reset-password", authorizeRoles("Super Admin", "Admin"), resetPassword);
 
 module.exports = router;

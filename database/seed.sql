@@ -39,13 +39,25 @@ VALUES (
         'active'
     ),
     (
-        'resident1',
+        'resident',
         '$2b$10$B4Sx4pi/0IVLnLp4E/Mt5eNUCA1vczBDWtMu7RYftuQZlDLv/asWa',
         4,
         'active'
     ),
     (
         'resident2',
+        '$2b$10$B4Sx4pi/0IVLnLp4E/Mt5eNUCA1vczBDWtMu7RYftuQZlDLv/asWa',
+        4,
+        'active'
+    ),
+    (
+        'resident3',
+        '$2b$10$B4Sx4pi/0IVLnLp4E/Mt5eNUCA1vczBDWtMu7RYftuQZlDLv/asWa',
+        4,
+        'active'
+    ),
+    (
+        'resident4',
         '$2b$10$B4Sx4pi/0IVLnLp4E/Mt5eNUCA1vczBDWtMu7RYftuQZlDLv/asWa',
         4,
         'active'
@@ -80,6 +92,20 @@ VALUES (
         'B202',
         '0923456789',
         'binh@email.com'
+    ),
+    (
+        6,
+        'Phạm Quang Dũng',
+        'C303',
+        '0934567890',
+        'dungpq@email.com'
+    ),
+    (
+        7,
+        'Nguyễn Mai Anh',
+        'A405',
+        '0945678901',
+        'maianh@email.com'
     );
 
 INSERT INTO
@@ -93,19 +119,19 @@ VALUES (
         'Tầng hầm B1 - Xe máy',
         1,
         100,
-        100
+        95
     ),
     (
         'Tầng hầm B2 - Ô tô',
         2,
         50,
-        50
+        48
     ),
     (
         'Tầng trệt - Xe điện',
         3,
         30,
-        30
+        29
     );
 
 INSERT INTO
@@ -126,7 +152,10 @@ INSERT INTO
         color
     )
 VALUES ('29A-12345', 1, 1, 'Đỏ'),
-    ('30B-67890', 2, 2, 'Trắng');
+    ('30B-67890', 2, 2, 'Trắng'),
+    ('51F-99999', 3, 2, 'Đen'),
+    ('59M1-11111', 3, 1, 'Xanh'),
+    ('60C-88888', 4, 1, 'Xám');
 
 INSERT INTO
     monthly_parking (
@@ -149,4 +178,65 @@ VALUES (
         '2024-03-01',
         '2024-09-01',
         'active'
+    ),
+    (
+        '51F-99999',
+        2,
+        '2024-05-01',
+        '2024-11-01',
+        'pending'
+    ),
+    (
+        '59M1-11111',
+        1,
+        '2023-01-01',
+        '2023-12-31',
+        'expired'
+    );
+
+INSERT INTO
+    parking_session (
+        plate_number,
+        guest_plate,
+        type_id,
+        time_in,
+        time_out,
+        status,
+        staff_id
+    )
+VALUES (
+        '29A-12345',
+        NULL,
+        1,
+        DATE_SUB(NOW(), INTERVAL 5 HOUR),
+        DATE_SUB(NOW(), INTERVAL 1 HOUR),
+        'completed',
+        1
+    ),
+    (
+        '30B-67890',
+        NULL,
+        2,
+        DATE_SUB(NOW(), INTERVAL 2 HOUR),
+        NULL,
+        'parking',
+        1
+    ),
+    (
+        NULL,
+        '99Z-55555',
+        1,
+        DATE_SUB(NOW(), INTERVAL 10 HOUR),
+        DATE_SUB(NOW(), INTERVAL 2 HOUR),
+        'completed',
+        1
+    ),
+    (
+        '59M1-11111',
+        NULL,
+        1,
+        DATE_SUB(NOW(), INTERVAL 30 MINUTE),
+        NULL,
+        'parking',
+        1
     );

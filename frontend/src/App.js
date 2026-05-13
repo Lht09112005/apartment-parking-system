@@ -7,9 +7,24 @@ import UserManagement from "./pages/UserManagement";
 import ResidentManagement from "./pages/ResidentManagement";
 import VehicleManagement from "./pages/VehicleManagement";
 import SecurityDashboard from "./pages/SecurityDashboard";
-const PrivateRoute = ({ children }) => {
-  const { token } = useAuth();
-  return token ? children : <Navigate to="/login" />;
+import FeeManagement from "./pages/FeeManagement";
+import MonthlyApproval from "./pages/MonthlyApproval";
+import ResidentDashboard from "./pages/ResidentDashboard";
+import SystemSettings from "./pages/SystemSettings";
+const PrivateRoute = ({ children, roles }) => {
+  const { token, user } = useAuth();
+  
+  if (!token) return <Navigate to="/login" />;
+  
+  if (roles && !roles.includes(user?.role_id)) {
+    // Redirect based on role
+    if (user?.role_id === 4) return <Navigate to="/resident" />;
+    if (user?.role_id === 3) return <Navigate to="/security" />;
+    if (user?.role_id === 1) return <Navigate to="/admin/users" />;
+    return <Navigate to="/admin/dashboard" />;
+  }
+  
+  return children;
 };
 
 function App() {
@@ -21,7 +36,7 @@ function App() {
           <Route
             path="/admin/dashboard"
             element={
-              <PrivateRoute>
+              <PrivateRoute roles={[1, 2]}>
                 <Dashboard />
               </PrivateRoute>
             }
@@ -29,7 +44,7 @@ function App() {
           <Route
             path="/admin/users"
             element={
-              <PrivateRoute>
+              <PrivateRoute roles={[1, 2]}>
                 <UserManagement />
               </PrivateRoute>
             }
@@ -37,7 +52,7 @@ function App() {
           <Route
             path="/security"
             element={
-              <PrivateRoute>
+              <PrivateRoute roles={[3]}>
                 <SecurityDashboard />
               </PrivateRoute>
             }
@@ -45,8 +60,8 @@ function App() {
           <Route
             path="/resident"
             element={
-              <PrivateRoute>
-                <Dashboard />
+              <PrivateRoute roles={[4]}>
+                <ResidentDashboard />
               </PrivateRoute>
             }
           />
@@ -54,7 +69,7 @@ function App() {
           <Route
             path="/admin/residents"
             element={
-              <PrivateRoute>
+              <PrivateRoute roles={[2]}>
                 <ResidentManagement />
               </PrivateRoute>
             }
@@ -62,8 +77,32 @@ function App() {
           <Route
             path="/admin/vehicles"
             element={
-              <PrivateRoute>
+              <PrivateRoute roles={[2]}>
                 <VehicleManagement />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/admin/fees"
+            element={
+              <PrivateRoute roles={[2]}>
+                <FeeManagement />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/admin/settings"
+            element={
+              <PrivateRoute roles={[1]}>
+                <SystemSettings />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/admin/monthly"
+            element={
+              <PrivateRoute roles={[2]}>
+                <MonthlyApproval />
               </PrivateRoute>
             }
           />

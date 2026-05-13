@@ -194,4 +194,56 @@ const getFinancialSummary = async (req, res) => {
   }
 };
 
-module.exports = { checkIn, checkOut, getAllSessions, getFeeConfig, getFinancialSummary };
+const updateFeeConfig = async (req, res) => {
+  const { type_id, price_per_hour, monthly_fee } = req.body;
+  try {
+    await db.query(
+      `UPDATE parking_fee SET price_per_hour = ?, monthly_fee = ? WHERE type_id = ?`,
+      [price_per_hour, monthly_fee, type_id]
+    );
+    res.json({ message: "Cập nhật bảng giá thành công" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Lỗi server" });
+  }
+};
+
+const getMonthlyParking = async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      `SELECT m.*, v.resident_id, r.name as resident_name, r.apartment_number, vt.type_name
+       FROM monthly_parking m
+       JOIN vehicles v ON m.plate_number = v.plate_number
+       JOIN residents r ON v.resident_id = r.resident_id
+       JOIN vehicle_types vt ON v.type_id = vt.type_id
+       ORDER BY m.monthly_id DESC`
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Lỗi server" });
+  }
+};
+
+const updateMonthlyStatus = async (req, res) => {
+  const { monthly_id } = req.params;
+  const { status } = req.body;
+  try {
+    await db.query(`UPDATE monthly_parking SET status = ? WHERE monthly_id = ?`, [status, monthly_id]);
+    res.json({ message: "Cập nhật trạng thái vé tháng thành công" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Lỗi server" });
+  }
+};
+
+module.exports = { 
+  checkIn, 
+  checkOut, 
+  getAllSessions, 
+  getFeeConfig, 
+  updateFeeConfig,
+  getMonthlyParking,
+  updateMonthlyStatus,
+  getFinancialSummary 
+};
