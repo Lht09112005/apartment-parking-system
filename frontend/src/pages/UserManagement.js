@@ -8,7 +8,7 @@ const UserManagement = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ username: "", password: "", role_id: 2 });
+  const [form, setForm] = useState({ username: "", password: "", role_id: 2, name: "", phone: "" });
   const [editingUser, setEditingUser] = useState(null);
   const [message, setMessage] = useState({ type: "", text: "" });
   
@@ -45,7 +45,7 @@ const UserManagement = () => {
       }
       setShowForm(false);
       setEditingUser(null);
-      setForm({ username: "", password: "", role_id: 2 });
+      setForm({ username: "", password: "", role_id: user?.role_id === 1 ? 2 : 3, name: "", phone: "" });
       fetchUsers();
       setTimeout(() => setMessage({ type: "", text: "" }), 3000);
     } catch (err) {
@@ -56,7 +56,13 @@ const UserManagement = () => {
 
   const handleEdit = (u) => {
     setEditingUser(u);
-    setForm({ username: u.username, password: "", role_id: u.role_id });
+    setForm({ 
+      username: u.username, 
+      password: "", 
+      role_id: u.role_id,
+      name: u.staff_name || "",
+      phone: u.staff_phone || ""
+    });
     setShowForm(true);
     setMessage({ type: "", text: "" });
   };
@@ -131,7 +137,7 @@ const UserManagement = () => {
             <button
               onClick={() => {
                 setEditingUser(null);
-                setForm({ username: "", password: "", role_id: user?.role_id === 1 ? 2 : 3 });
+                setForm({ username: "", password: "", role_id: user?.role_id === 1 ? 2 : 3, name: "", phone: "" });
                 setShowForm(!showForm);
                 setMessage({ type: "", text: "" });
               }}
@@ -178,15 +184,37 @@ const UserManagement = () => {
                       placeholder={editingUser ? "Để trống nếu không muốn đổi" : ""}
                     />
                   </div>
-                  <div style={styles.formGroup}>
-                    <label style={styles.label}>Phân quyền (Role)</label>
-                    <input
-                      style={{ ...styles.input, backgroundColor: "#f1f5f9", color: "#64748b", cursor: "not-allowed" }}
-                      value={user?.role_id === 1 ? "Admin" : "Security"}
-                      readOnly
-                    />
-                  </div>
                 </div>
+
+                {user?.role_id === 2 && (
+                  <div style={{ ...styles.formRow, marginTop: 16 }}>
+                    <div style={styles.formGroup}>
+                      <label style={styles.label}>Họ và tên bảo vệ *</label>
+                      <input
+                        style={styles.input}
+                        value={form.name}
+                        placeholder="Nhập tên bảo vệ..."
+                        onChange={(e) =>
+                          setForm({ ...form, name: e.target.value })
+                        }
+                        required
+                      />
+                    </div>
+                    <div style={styles.formGroup}>
+                      <label style={styles.label}>Số điện thoại *</label>
+                      <input
+                        style={styles.input}
+                        value={form.phone}
+                        placeholder="Nhập số điện thoại..."
+                        onChange={(e) =>
+                          setForm({ ...form, phone: e.target.value })
+                        }
+                        required
+                      />
+                    </div>
+                  </div>
+                )}
+
                 <div style={{ marginTop: 24 }}>
                   <button type="submit" style={styles.submitBtn}>
                     {editingUser ? "Lưu thay đổi" : "Tạo tài khoản"}
@@ -196,7 +224,7 @@ const UserManagement = () => {
                     onClick={() => {
                       setShowForm(false);
                       setEditingUser(null);
-                      setForm({ username: "", password: "", role_id: 2 });
+                      setForm({ username: "", password: "", role_id: user?.role_id === 1 ? 2 : 3, name: "", phone: "" });
                     }}
                     style={{
                       ...styles.cancelBtn,
@@ -219,7 +247,8 @@ const UserManagement = () => {
                   <tr style={styles.thead}>
                     <th style={styles.th}>ID</th>
                     <th style={styles.th}>Tên đăng nhập</th>
-                    <th style={styles.th}>Role</th>
+                    {user?.role_id === 2 && <th style={styles.th}>Họ và tên</th>}
+                    {user?.role_id === 2 && <th style={styles.th}>Số điện thoại</th>}
                     <th style={styles.th}>Trạng thái</th>
                     <th style={styles.th}>Ngày tạo</th>
                     <th style={{...styles.th, textAlign: 'right'}}>Hành động</th>
@@ -235,16 +264,9 @@ const UserManagement = () => {
                            <strong style={{ color: '#0f172a' }}>{u.username}</strong>
                         </div>
                       </td>
-                      <td style={styles.td}>
-                        <span
-                          style={{
-                            ...styles.badge,
-                            backgroundColor: roleColors[u.role_name] || "#888",
-                          }}
-                        >
-                          {u.role_name}
-                        </span>
-                      </td>
+                      {user?.role_id === 2 && <td style={styles.td}>{u.staff_name || "—"}</td>}
+                      {user?.role_id === 2 && <td style={styles.td}>{u.staff_phone || "—"}</td>}
+
                       <td style={styles.td}>
                         <span
                           style={{

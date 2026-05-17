@@ -14,9 +14,13 @@ const login = async (req, res) => {
   try {
     const [rows] = await db.query(
       `SELECT u.user_id, u.username, u.password, u.status,
-              r.role_id, r.role_name
+              r.role_id, r.role_name,
+              COALESCE(res.name, sec.name) as name,
+              COALESCE(res.phone, sec.phone) as phone
        FROM users u
        JOIN roles r ON u.role_id = r.role_id
+       LEFT JOIN residents res ON u.user_id = res.user_id
+       LEFT JOIN security sec ON u.user_id = sec.user_id
        WHERE u.username = ?`,
       [username],
     );
@@ -61,6 +65,8 @@ const login = async (req, res) => {
         username: user.username,
         role_id: user.role_id,
         role_name: user.role_name,
+        name: user.name,
+        phone: user.phone,
       },
     });
   } catch (err) {
@@ -72,9 +78,13 @@ const login = async (req, res) => {
 const getMe = async (req, res) => {
   try {
     const [rows] = await db.query(
-      `SELECT u.user_id, u.username, u.status, r.role_id, r.role_name
+      `SELECT u.user_id, u.username, u.status, r.role_id, r.role_name,
+              COALESCE(res.name, sec.name) as name,
+              COALESCE(res.phone, sec.phone) as phone
        FROM users u
        JOIN roles r ON u.role_id = r.role_id
+       LEFT JOIN residents res ON u.user_id = res.user_id
+       LEFT JOIN security sec ON u.user_id = sec.user_id
        WHERE u.user_id = ?`,
       [req.user.user_id],
     );

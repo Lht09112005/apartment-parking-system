@@ -63,7 +63,7 @@ router.get("/vehicles", async (req, res) => {
       return res.json([]);
     }
     const [rows] = await db.query(
-      `SELECT v.plate_number, v.color, vt.type_name, v.type_id,
+      `SELECT v.plate_number, v.color, vt.type_name, v.type_id, v.status,
               mp.monthly_id, mp.start_date, mp.end_date, mp.status as monthly_status
        FROM vehicles v
        LEFT JOIN vehicle_types vt ON v.type_id = vt.type_id
@@ -94,7 +94,7 @@ router.post("/vehicles", async (req, res) => {
       return res.status(404).json({ message: "Không tìm thấy thông tin cư dân" });
     }
     await db.query(
-      `INSERT INTO vehicles (plate_number, resident_id, type_id, color) VALUES (?, ?, ?, ?)`,
+      `INSERT INTO vehicles (plate_number, resident_id, type_id, color, status) VALUES (?, ?, ?, ?, 'pending')`,
       [plate_number, resident[0].resident_id, type_id, color]
     );
     res.status(201).json({ message: "Đăng ký xe thành công" });
@@ -123,11 +123,14 @@ router.post("/monthly", async (req, res) => {
       return res.status(404).json({ message: "Không tìm thấy thông tin cư dân" });
     }
     const [vehicle] = await db.query(
-      `SELECT v.plate_number, v.type_id FROM vehicles v WHERE v.plate_number = ? AND v.resident_id = ?`,
+      `SELECT v.plate_number, v.type_id, v.status FROM vehicles v WHERE v.plate_number = ? AND v.resident_id = ?`,
       [plate_number, resident[0].resident_id]
     );
     if (vehicle.length === 0) {
       return res.status(403).json({ message: "Xe không thuộc quyền sở hữu của bạn" });
+    }
+    if (vehicle[0].status !== 'active') {
+      return res.status(400).json({ message: "Xe chưa được duyệt. Vui lòng đợi Admin duyệt trước khi đăng ký vé tháng." });
     }
 
     // Check if already has active monthly
@@ -205,7 +208,8 @@ router.get("/fees", async (req, res) => {
     const [feeConfig] = await db.query(
       `SELECT pf.type_id, vt.type_name, pf.price_per_hour, pf.monthly_fee
        FROM parking_fee pf
-       JOIN vehicle_types vt ON pf.type_id = vt.type_id`
+       JOIN vehicle_types vt ON pf.type_id = vt.type_id
+       WHERE vt.type_name != 'Xe điện'`
     );
 
     // Vé tháng đang đăng ký
@@ -231,7 +235,7 @@ router.get("/fees", async (req, res) => {
 // GET /api/resident/vehicle-types
 router.get("/vehicle-types", async (req, res) => {
   try {
-    const [rows] = await db.query(`SELECT * FROM vehicle_types`);
+    const [rows] = await db.query(`SELECT * FROM vehicle_types WHERE type_name != 'Xe điện'`);
     res.json(rows);
   } catch (err) {
     console.error(err);

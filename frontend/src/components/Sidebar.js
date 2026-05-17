@@ -8,8 +8,10 @@ const Sidebar = () => {
   const { user, logout } = useAuth();
 
   const handleLogout = () => {
-    logout();
-    navigate("/login");
+    if (window.confirm("Bạn có chắc chắn muốn đăng xuất khỏi hệ thống?")) {
+      logout();
+      navigate("/login");
+    }
   };
 
   const isActive = (path) => location.pathname === path;

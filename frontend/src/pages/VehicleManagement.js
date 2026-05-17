@@ -16,6 +16,7 @@ const VehicleManagement = () => {
   const [filterApartment, setFilterApartment] = useState("");
   const [filterPlate, setFilterPlate] = useState("");
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+  const [activeTab, setActiveTab] = useState("active");
   const [form, setForm] = useState({
     plate_number: "",
     resident_id: "",
@@ -98,6 +99,30 @@ const VehicleManagement = () => {
     }
   };
 
+  const handleApprove = async (plate_number) => {
+    try {
+      const res = await axios.put(`/vehicles/${plate_number}/approve`);
+      setMessage({ type: "success", text: res.data.message || "Duyệt đăng ký xe thành công!" });
+      fetchData();
+      setTimeout(() => setMessage({ type: "", text: "" }), 3000);
+    } catch (err) {
+      setMessage({ type: "error", text: err.response?.data?.message || "Lỗi khi duyệt xe" });
+    }
+  };
+
+  const handleReject = async (plate_number) => {
+    if (window.confirm(`Bạn có chắc chắn muốn TỪ CHỐI yêu cầu đăng ký xe ${plate_number}?`)) {
+      try {
+        const res = await axios.put(`/vehicles/${plate_number}/reject`);
+        setMessage({ type: "success", text: res.data.message || "Từ chối duyệt xe thành công!" });
+        fetchData();
+        setTimeout(() => setMessage({ type: "", text: "" }), 3000);
+      } catch (err) {
+        setMessage({ type: "error", text: err.response?.data?.message || "Lỗi khi từ chối xe" });
+      }
+    }
+  };
+
   const handleDelete = async (plate_number) => {
     if (window.confirm("Bạn có chắc chắn muốn xóa xe này?")) {
       try {
@@ -121,10 +146,12 @@ const VehicleManagement = () => {
 
   const filteredAndSortedVehicles = React.useMemo(() => {
     let result = vehicles.filter(v => {
+      const status = v.status || 'active';
+      const matchesTab = status === activeTab;
       const matchesType = !filterVehicleType || v.type_id === parseInt(filterVehicleType);
       const matchesApartment = !filterApartment || (v.apartment_number && v.apartment_number.toLowerCase().includes(filterApartment.toLowerCase()));
       const matchesPlate = !filterPlate || (v.plate_number && v.plate_number.toLowerCase().includes(filterPlate.toLowerCase()));
-      return matchesType && matchesApartment && matchesPlate;
+      return matchesTab && matchesType && matchesApartment && matchesPlate;
     });
 
     if (sortConfig.key) {
@@ -137,7 +164,7 @@ const VehicleManagement = () => {
       });
     }
     return result;
-  }, [vehicles, filterVehicleType, filterApartment, filterPlate, sortConfig]);
+  }, [vehicles, activeTab, filterVehicleType, filterApartment, filterPlate, sortConfig]);
 
   return (
     <div style={styles.container}>
@@ -182,6 +209,42 @@ const VehicleManagement = () => {
             </button>
           </div>
 
+          {/* Tabs */}
+          <div style={{ display: 'flex', borderBottom: '2px solid #e2e8f0', marginBottom: 24 }}>
+            <button
+              onClick={() => setActiveTab("active")}
+              style={{
+                padding: '12px 24px',
+                border: 'none',
+                background: 'none',
+                fontWeight: 'bold',
+                color: activeTab === 'active' ? '#3b82f6' : '#64748b',
+                borderBottom: activeTab === 'active' ? '2px solid #3b82f6' : 'none',
+                cursor: 'pointer',
+                marginBottom: -2,
+                fontSize: 15
+              }}
+            >
+              🚗 Xe đang hoạt động ({vehicles.filter(v => (v.status || 'active') === 'active').length})
+            </button>
+            <button
+              onClick={() => setActiveTab("pending")}
+              style={{
+                padding: '12px 24px',
+                border: 'none',
+                background: 'none',
+                fontWeight: 'bold',
+                color: activeTab === 'pending' ? '#3b82f6' : '#64748b',
+                borderBottom: activeTab === 'pending' ? '2px solid #3b82f6' : 'none',
+                cursor: 'pointer',
+                marginBottom: -2,
+                fontSize: 15
+              }}
+            >
+              ⏳ Yêu cầu chờ duyệt ({vehicles.filter(v => v.status === 'pending').length})
+            </button>
+          </div>
+          
           <div style={{ display: 'flex', gap: '20px', marginBottom: '24px', flexWrap: 'wrap' }}>
             <div style={{ flex: '0 1 240px' }}>
               <label style={styles.filterLabel}>Tìm theo biển số</label>
@@ -350,22 +413,41 @@ const VehicleManagement = () => {
                       </td>
                       <td style={styles.td}>{v.color || "—"}</td>
                       <td style={{...styles.td, textAlign: 'right'}}>
-                        <button
-                          onClick={() => {
-                            setEditData(v);
-                            setShowForm(false);
-                            window.scrollTo({ top: 0, behavior: 'smooth' });
-                          }}
-                          style={styles.actionBtn}
-                        >
-                          Sửa
-                        </button>
-                        <button
-                          onClick={() => handleDelete(v.plate_number)}
-                          style={{ ...styles.actionBtn, color: '#ef4444', marginLeft: 8 }}
-                        >
-                          Xóa
-                        </button>
+                        {activeTab === 'active' ? (
+                          <>
+                            <button
+                              onClick={() => {
+                                setEditData(v);
+                                setShowForm(false);
+                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                              }}
+                              style={styles.actionBtn}
+                            >
+                              Sửa
+                            </button>
+                            <button
+                              onClick={() => handleDelete(v.plate_number)}
+                              style={{ ...styles.actionBtn, color: '#ef4444', marginLeft: 8 }}
+                            >
+                              Xóa
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => handleApprove(v.plate_number)}
+                              style={{ ...styles.actionBtn, color: '#10b981' }}
+                            >
+                              Duyệt
+                            </button>
+                            <button
+                              onClick={() => handleReject(v.plate_number)}
+                              style={{ ...styles.actionBtn, color: '#ef4444', marginLeft: 8 }}
+                            >
+                              Từ chối
+                            </button>
+                          </>
+                        )}
                       </td>
                     </tr>
                   ))}

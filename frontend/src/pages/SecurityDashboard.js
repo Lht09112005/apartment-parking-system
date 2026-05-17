@@ -57,8 +57,9 @@ const SecurityDashboard = () => {
   const fetchVehicleTypes = async () => {
     try {
       const res = await axios.get("/vehicles/types");
-      setVehicleTypes(res.data);
-      if (res.data.length > 0) setTypeId(res.data[0].type_id);
+      const filteredTypes = res.data.filter(t => t.type_name.toLowerCase() !== 'xe điện');
+      setVehicleTypes(filteredTypes);
+      if (filteredTypes.length > 0) setTypeId(filteredTypes[0].type_id);
     } catch (err) {
       console.error(err);
     }
@@ -152,8 +153,10 @@ const SecurityDashboard = () => {
   };
 
   const handleLogout = () => {
-    logout();
-    navigate("/login");
+    if (window.confirm("Bạn có chắc chắn muốn đăng xuất khỏi hệ thống?")) {
+      logout();
+      navigate("/login");
+    }
   };
 
   // ----- RENDER -----
@@ -189,7 +192,7 @@ const SecurityDashboard = () => {
           <button style={styles.emergencyBtn}>EMERGENCY LOCK</button>
           <div style={{marginTop: 'auto'}}>
             <div style={styles.bottomLink}>Help Center</div>
-            <div style={styles.bottomLink} onClick={handleLogout}>Logout</div>
+            <div style={styles.bottomLink} onClick={handleLogout}>Đăng xuất</div>
           </div>
         </div>
       </div>
@@ -206,8 +209,8 @@ const SecurityDashboard = () => {
           </div>
           <div style={styles.headerRight}>
             <div style={{textAlign: 'right', marginRight: 12}}>
-              <div style={{fontSize: 14, fontWeight: '600', color: '#1e293b'}}>Operator: {user?.username}</div>
-              <div style={{fontSize: 12, color: '#64748b'}}>SHIFT A (06:00 - 14:00)</div>
+              <div style={{fontSize: 14, fontWeight: '600', color: '#1e293b'}}>Bảo vệ: {user?.name || user?.username}</div>
+              <div style={{fontSize: 12, color: '#64748b'}}>{user?.phone ? `SĐT: ${user.phone}` : 'ĐỘI AN NINH'}</div>
             </div>
             <div style={styles.avatar}>👤</div>
           </div>

@@ -4,7 +4,7 @@ const db = require("../config/db");
 const getAllVehicles = async (req, res) => {
   try {
     const [rows] = await db.query(
-      `SELECT v.plate_number, v.color, r.name as resident_name, r.apartment_number, vt.type_name, v.resident_id, v.type_id
+      `SELECT v.plate_number, v.color, r.name as resident_name, r.apartment_number, vt.type_name, v.resident_id, v.type_id, v.status
        FROM vehicles v
        LEFT JOIN residents r ON v.resident_id = r.resident_id
        LEFT JOIN vehicle_types vt ON v.type_id = vt.type_id
@@ -25,7 +25,7 @@ const createVehicle = async (req, res) => {
   }
   try {
     await db.query(
-      `INSERT INTO vehicles (plate_number, resident_id, type_id, color) VALUES (?, ?, ?, ?)`,
+      `INSERT INTO vehicles (plate_number, resident_id, type_id, color, status) VALUES (?, ?, ?, ?, 'active')`,
       [plate_number, resident_id, type_id, color]
     );
 
@@ -92,4 +92,61 @@ const getVehicleTypes = async (req, res) => {
   }
 };
 
-module.exports = { getAllVehicles, createVehicle, updateVehicle, deleteVehicle, getVehicleTypes };
+// GET /api/vehicles/pending
+const getPendingVehicles = async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      `SELECT v.plate_number, v.color, r.name as resident_name, r.apartment_number, vt.type_name, v.resident_id, v.type_id
+       FROM vehicles v
+       LEFT JOIN residents r ON v.resident_id = r.resident_id
+       LEFT JOIN vehicle_types vt ON v.type_id = vt.type_id
+       WHERE v.status = 'pending'
+       ORDER BY v.plate_number ASC`
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Lỗi server" });
+  }
+};
+
+// PUT /api/vehicles/:plate_number/approve
+const approveVehicle = async (req, res) => {
+  const { plate_number } = req.params;
+  try {
+    const [rows] = await db.query(`UPDATE vehicles SET status = 'active' WHERE plate_number = ?`, [plate_number]);
+    if (rows.affectedRows === 0) {
+      return res.status(404).json({ message: "Không tìm thấy xe" });
+    }
+    res.json({ message: "Duyệt đăng ký xe thành công" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Lỗi server" });
+  }
+};
+
+// PUT /api/vehicles/:plate_number/reject
+const rejectVehicle = async (req, res) => {
+  const { plate_number } = req.params;
+  try {
+    const [rows] = await db.query(`DELETE FROM vehicles WHERE plate_number = ? AND status = 'pending'`, [plate_number]);
+    if (rows.affectedRows === 0) {
+      return res.status(404).json({ message: "Không tìm thấy xe hoặc xe không ở trạng thái chờ duyệt" });
+    }
+    res.json({ message: "Từ chối đăng ký xe thành công" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Lỗi server" });
+  }
+};
+
+module.exports = {
+  getAllVehicles,
+  createVehicle,
+  updateVehicle,
+  deleteVehicle,
+  getVehicleTypes,
+  getPendingVehicles,
+  approveVehicle,
+  rejectVehicle
+};
