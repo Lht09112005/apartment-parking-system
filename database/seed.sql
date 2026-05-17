@@ -149,13 +149,15 @@ INSERT INTO
         plate_number,
         resident_id,
         type_id,
-        color
+        color,
+        status
     )
-VALUES ('29A-12345', 1, 1, 'Đỏ'),
-    ('30B-67890', 2, 2, 'Trắng'),
-    ('51F-99999', 3, 2, 'Đen'),
-    ('59M1-11111', 3, 1, 'Xanh'),
-    ('60C-88888', 4, 1, 'Xám');
+VALUES ('29A-12345', 1, 1, 'Đỏ', 'active'),
+    ('30B-67890', 2, 2, 'Trắng', 'active'),
+    ('51F-99999', 3, 2, 'Đen', 'active'),
+    ('59M1-11111', 3, 1, 'Xanh', 'active'),
+    ('60C-88888', 4, 1, 'Xám', 'active'),
+    ('99A-88888', 1, 2, 'Vàng', 'pending');
 
 INSERT INTO
     monthly_parking (

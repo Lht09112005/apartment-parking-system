@@ -152,7 +152,8 @@ const getFeeConfig = async (req, res) => {
     const [fees] = await db.query(
       `SELECT pf.type_id, vt.type_name, pf.price_per_hour, pf.monthly_fee
        FROM parking_fee pf
-       JOIN vehicle_types vt ON pf.type_id = vt.type_id`
+       JOIN vehicle_types vt ON pf.type_id = vt.type_id
+       WHERE vt.type_name != 'Xe điện'`
     );
     res.json(fees);
   } catch (err) {

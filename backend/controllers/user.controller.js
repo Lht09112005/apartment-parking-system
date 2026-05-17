@@ -10,9 +10,11 @@ const getAllUsers = async (req, res) => {
 
     const [rows] = await db.query(
       `SELECT u.user_id, u.username, u.status, u.created_at,
-          r.role_id, r.role_name
+          r.role_id, r.role_name,
+          s.name as staff_name, s.phone as staff_phone
        FROM users u
        JOIN roles r ON u.role_id = r.role_id
+       LEFT JOIN security s ON u.user_id = s.user_id
        WHERE r.role_id = ?
        ORDER BY u.created_at DESC`,
        [targetRoleId]
@@ -25,7 +27,7 @@ const getAllUsers = async (req, res) => {
 };
 
 const createUser = async (req, res) => {
-  const { username, password, role_id } = req.body;
+  const { username, password, role_id, name, phone } = req.body;
   if (!username || !password || !role_id) {
     return res.status(400).json({ message: "Thiếu thông tin bắt buộc" });
   }
@@ -47,7 +49,7 @@ const createUser = async (req, res) => {
 
     // If creating Security, also add to security table
     if (role_id === 3) {
-      await db.query(`INSERT INTO security (user_id, name) VALUES (?, ?)`, [result.insertId, username]);
+      await db.query(`INSERT INTO security (user_id, name, phone) VALUES (?, ?, ?)`, [result.insertId, name || username, phone || null]);
     }
 
     res.status(201).json({ message: "Tạo tài khoản thành công", user_id: result.insertId });
@@ -62,7 +64,7 @@ const createUser = async (req, res) => {
 
 const updateUser = async (req, res) => {
   const { id } = req.params;
-  const { role_id, status, username, password } = req.body;
+  const { role_id, status, username, password, name, phone } = req.body;
 
   try {
     // Permission check
@@ -103,6 +105,23 @@ const updateUser = async (req, res) => {
     params.push(id);
 
     await db.query(query, params);
+
+    // If updating Security, also update security table
+    if (targetUserRole === 3) {
+      const [secExists] = await db.query(`SELECT staff_id FROM security WHERE user_id = ?`, [id]);
+      if (secExists.length > 0) {
+        await db.query(
+          `UPDATE security SET name = ?, phone = ? WHERE user_id = ?`,
+          [name || username, phone || null, id]
+        );
+      } else {
+        await db.query(
+          `INSERT INTO security (user_id, name, phone) VALUES (?, ?, ?)`,
+          [id, name || username, phone || null]
+        );
+      }
+    }
+
     res.json({ message: "Cập nhật tài khoản thành công" });
   } catch (err) {
     if (err.code === "ER_DUP_ENTRY") {

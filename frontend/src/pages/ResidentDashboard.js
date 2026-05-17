@@ -66,7 +66,12 @@ const ResidentDashboard = () => {
     } catch (e) { showMsg("error", e.response?.data?.message || "Lỗi cập nhật"); }
   };
 
-  const handleLogout = () => { logout(); navigate("/login"); };
+  const handleLogout = () => { 
+    if (window.confirm("Bạn có chắc chắn muốn đăng xuất khỏi hệ thống?")) {
+      logout(); 
+      navigate("/login"); 
+    }
+  };
 
   const menuItems = [
     { key: "vehicles", label: "Xe của tôi", icon: "🏍️" },
@@ -177,7 +182,15 @@ const ResidentDashboard = () => {
                 <div style={S.empty}>Bạn chưa đăng ký xe nào. Hãy nhấn "Đăng ký xe mới" để bắt đầu.</div>
               ) : (
                 <div style={S.tableWrap}>
-                  <div style={S.tHeader}><div style={S.tCell}>Biển số</div><div style={S.tCell}>Căn hộ</div><div style={S.tCell}>Loại xe</div><div style={S.tCell}>Màu</div><div style={S.tCell}>Vé tháng</div><div style={S.tCell}>Thao tác</div></div>
+                  <div style={S.tHeader}>
+                    <div style={S.tCell}>Biển số</div>
+                    <div style={S.tCell}>Căn hộ</div>
+                    <div style={S.tCell}>Loại xe</div>
+                    <div style={S.tCell}>Màu</div>
+                    <div style={S.tCell}>Trạng thái xe</div>
+                    <div style={S.tCell}>Vé tháng</div>
+                    <div style={S.tCell}>Thao tác</div>
+                  </div>
                   {vehicles.map(v=>(
                     <div key={v.plate_number} style={S.tRow}>
                       <div style={{...S.tCell,fontWeight:'700'}}>{v.plate_number}</div>
@@ -185,13 +198,28 @@ const ResidentDashboard = () => {
                       <div style={S.tCell}>{v.type_name}</div>
                       <div style={S.tCell}>{v.color || "---"}</div>
                       <div style={S.tCell}>
+                        {v.status==='active'?<span style={{...S.badge,background:'#dcfce7',color:'#166534'}}>Đã duyệt</span>
+                          :<span style={{...S.badge,background:'#fef3c7',color:'#92400e'}}>Chờ duyệt</span>}
+                      </div>
+                      <div style={S.tCell}>
                         {v.monthly_status==='active'?<span style={{...S.badge,background:'#dcfce7',color:'#166534'}}>Đang hoạt động</span>
                           :v.monthly_status==='pending'?<span style={{...S.badge,background:'#fef3c7',color:'#92400e'}}>Chờ duyệt</span>
                           :<span style={{...S.badge,background:'#f1f5f9',color:'#64748b'}}>Chưa đăng ký</span>}
                       </div>
                       <div style={S.tCell}>
                         {!v.monthly_status || v.monthly_status==='expired' ? (
-                          <button onClick={()=>handleRegisterMonthly(v.plate_number)} style={S.smallBtn}>Đăng ký vé tháng</button>
+                          <button 
+                            onClick={()=>handleRegisterMonthly(v.plate_number)} 
+                            disabled={v.status !== 'active'}
+                            style={{
+                              ...S.smallBtn,
+                              opacity: v.status !== 'active' ? 0.5 : 1,
+                              cursor: v.status !== 'active' ? 'not-allowed' : 'pointer'
+                            }}
+                            title={v.status !== 'active' ? "Cần được Admin duyệt xe trước khi đăng ký vé tháng" : ""}
+                          >
+                            Đăng ký vé tháng
+                          </button>
                         ) : null}
                       </div>
                     </div>
@@ -215,11 +243,25 @@ const ResidentDashboard = () => {
                   <div style={{flex:1}}>
                     <div style={{fontSize:18,fontWeight:'bold',color:'#0f172a'}}>{v.plate_number}</div>
                     <div style={{fontSize:14,color:'#64748b',marginTop:4}}>Căn hộ: {profile?.apartment_number || '---'} · {v.type_name} · {v.color||"---"}</div>
+                    <div style={{marginTop: 6, fontSize:13}}>
+                      Trạng thái xe: {v.status === 'active' ? <span style={{color: '#059669', fontWeight: 'bold'}}>✅ Đã duyệt</span> : <span style={{color: '#d97706', fontWeight: 'bold'}}>⏳ Chờ duyệt</span>}
+                    </div>
                     {v.monthly_status==='active' && <div style={{marginTop:8,fontSize:13,color:'#059669'}}>✅ Vé tháng: {new Date(v.start_date).toLocaleDateString('vi-VN')} → {new Date(v.end_date).toLocaleDateString('vi-VN')}</div>}
                     {v.monthly_status==='pending' && <div style={{marginTop:8,fontSize:13,color:'#d97706'}}>⏳ Đang chờ duyệt</div>}
                   </div>
                   {(!v.monthly_status || v.monthly_status==='expired') && (
-                    <button onClick={()=>handleRegisterMonthly(v.plate_number)} style={S.primaryBtn}>Đăng ký vé tháng</button>
+                    <button 
+                      onClick={()=>handleRegisterMonthly(v.plate_number)} 
+                      disabled={v.status !== 'active'}
+                      style={{
+                        ...S.primaryBtn,
+                        backgroundColor: v.status !== 'active' ? '#cbd5e1' : '#3b82f6',
+                        cursor: v.status !== 'active' ? 'not-allowed' : 'pointer'
+                      }}
+                      title={v.status !== 'active' ? "Cần được Admin duyệt xe trước khi đăng ký vé tháng" : ""}
+                    >
+                      Đăng ký vé tháng
+                    </button>
                   )}
                 </div>
               ))}

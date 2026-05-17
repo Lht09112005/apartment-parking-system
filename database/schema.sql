@@ -45,6 +45,7 @@ CREATE TABLE vehicles (
     resident_id INT,
     type_id INT,
     color VARCHAR(30),
+    status VARCHAR(20) DEFAULT 'pending',
     FOREIGN KEY (resident_id) REFERENCES residents (resident_id),
     FOREIGN KEY (type_id) REFERENCES vehicle_types (type_id)
 );
