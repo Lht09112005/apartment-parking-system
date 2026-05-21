@@ -1,4 +1,5 @@
 const db = require("../config/db");
+const { logAudit } = require("../utils/auditLogger");
 
 // POST /api/parking/check-in
 const checkIn = async (req, res) => {
@@ -202,6 +203,21 @@ const updateFeeConfig = async (req, res) => {
       `UPDATE parking_fee SET price_per_hour = ?, monthly_fee = ? WHERE type_id = ?`,
       [price_per_hour, monthly_fee, type_id]
     );
+
+    if (req.user) {
+      await logAudit(
+        req.user.user_id, 
+        req.user.username, 
+        "UPDATE", 
+        "fee_config", 
+        type_id, 
+        null, 
+        { price_per_hour, monthly_fee }, 
+        `Cập nhật bảng giá cho loại xe ${type_id}`, 
+        req.ip
+      );
+    }
+
     res.json({ message: "Cập nhật bảng giá thành công" });
   } catch (err) {
     console.error(err);

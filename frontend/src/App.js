@@ -11,6 +11,8 @@ import FeeManagement from "./pages/FeeManagement";
 import MonthlyApproval from "./pages/MonthlyApproval";
 import ResidentDashboard from "./pages/ResidentDashboard";
 import SystemSettings from "./pages/SystemSettings";
+import AuditLogs from "./pages/AuditLogs";
+import BackupManagement from "./pages/BackupManagement";
 const PrivateRoute = ({ children, roles }) => {
   const { token, user } = useAuth();
   
@@ -20,7 +22,7 @@ const PrivateRoute = ({ children, roles }) => {
     // Redirect based on role
     if (user?.role_id === 4) return <Navigate to="/resident" />;
     if (user?.role_id === 3) return <Navigate to="/security" />;
-    if (user?.role_id === 1) return <Navigate to="/admin/users" />;
+    if (user?.role_id === 1) return <Navigate to="/admin/dashboard" />;
     return <Navigate to="/admin/dashboard" />;
   }
   
@@ -95,6 +97,22 @@ function App() {
             element={
               <PrivateRoute roles={[1]}>
                 <SystemSettings />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/admin/audit"
+            element={
+              <PrivateRoute roles={[1]}>
+                <AuditLogs />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/admin/backup"
+            element={
+              <PrivateRoute roles={[1]}>
+                <BackupManagement />
               </PrivateRoute>
             }
           />

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Background -->
+  <rect width="512" height="512" rx="120" fill="#2563eb" />
+  
+  <!-- "P" Letter -->
+  <path d="M200 150h90c44.18 0 80 35.82 80 80s-35.82 80-80 80h-50v80h-40V150zm40 40v80h50c22.09 0 40-17.91 40-40s-17.91-40-40-40h-50z" fill="#ffffff" />
+  
+  <!-- Barrier -->
+  <path d="M420 370H92v-24h328v24z" fill="#facc15" />
+  <path d="M120 346h40v24h-40zm80 0h40v24h-40zm80 0h40v24h-40zm80 0h40v24h-40z" fill="#1e293b" />
+</svg>

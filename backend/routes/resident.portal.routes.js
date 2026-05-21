@@ -107,6 +107,72 @@ router.post("/vehicles", async (req, res) => {
   }
 });
 
+// PUT /api/resident/vehicles/:plate_number - Cập nhật thông tin xe
+router.put("/vehicles/:plate_number", async (req, res) => {
+  const { plate_number } = req.params;
+  const { type_id, color, new_plate_number } = req.body;
+  console.log("PUT /vehicles/:plate_number called with params:", req.params, "body:", req.body);
+  try {
+    const [resident] = await db.query(
+      `SELECT resident_id FROM residents WHERE user_id = ?`,
+      [req.user.user_id]
+    );
+    if (resident.length === 0) {
+      console.log("Resident not found for user_id:", req.user.user_id);
+      return res.status(404).json({ message: "Không tìm thấy thông tin cư dân" });
+    }
+    console.log("Found resident:", resident[0]);
+
+    // Verify ownership
+    console.log("Verifying ownership for plate:", plate_number, "resident_id:", resident[0].resident_id);
+    const [vehicle] = await db.query(`SELECT status FROM vehicles WHERE plate_number = ? AND resident_id = ?`, [plate_number, resident[0].resident_id]);
+    if (vehicle.length === 0) {
+      console.log("Vehicle not found for ownership verify");
+      return res.status(403).json({ message: "Xe không thuộc quyền sở hữu của bạn" });
+    }
+    console.log("Vehicle found:", vehicle[0]);
+
+    const targetPlate = new_plate_number && new_plate_number.trim() ? new_plate_number : plate_number;
+
+    await db.query(`UPDATE vehicles SET plate_number=?, type_id=?, color=?, status='pending' WHERE plate_number=? AND resident_id=?`, [targetPlate, type_id, color, plate_number, resident[0].resident_id]);
+    res.json({ message: "Cập nhật thành công, đang chờ Admin duyệt lại" });
+  } catch (err) {
+    console.error(err);
+    if (err.code === "ER_DUP_ENTRY") {
+      return res.status(400).json({ message: "Biển số xe mới đã tồn tại trong hệ thống" });
+    }
+    if (err.code === "ER_ROW_IS_REFERENCED_2" || err.code === "ER_ROW_IS_REFERENCED") {
+      return res.status(400).json({ message: "Không thể đổi biển số vì xe đã có lịch sử gửi xe hoặc vé tháng. Vui lòng liên hệ Admin." });
+    }
+    res.status(500).json({ message: "Lỗi server" });
+  }
+});
+
+// DELETE /api/resident/vehicles/:plate_number - Xóa xe
+router.delete("/vehicles/:plate_number", async (req, res) => {
+  const { plate_number } = req.params;
+  try {
+    const [resident] = await db.query(
+      `SELECT resident_id FROM residents WHERE user_id = ?`,
+      [req.user.user_id]
+    );
+    if (resident.length === 0) return res.status(404).json({ message: "Không tìm thấy thông tin cư dân" });
+
+    // Verify ownership
+    const [vehicle] = await db.query(`SELECT plate_number FROM vehicles WHERE plate_number = ? AND resident_id = ?`, [plate_number, resident[0].resident_id]);
+    if (vehicle.length === 0) return res.status(403).json({ message: "Xe không thuộc quyền sở hữu của bạn" });
+
+    await db.query(`DELETE FROM vehicles WHERE plate_number=? AND resident_id=?`, [plate_number, resident[0].resident_id]);
+    res.json({ message: "Xóa xe thành công" });
+  } catch (err) {
+    console.error(err);
+    if (err.code === "ER_ROW_IS_REFERENCED_2" || err.code === "ER_ROW_IS_REFERENCED") {
+      return res.status(400).json({ message: "Không thể xóa xe vì xe đã có lịch sử gửi xe hoặc vé tháng. Vui lòng liên hệ Admin." });
+    }
+    res.status(500).json({ message: "Lỗi server" });
+  }
+});
+
 // POST /api/resident/monthly - Đăng ký gửi xe theo tháng
 router.post("/monthly", async (req, res) => {
   const { plate_number } = req.body;

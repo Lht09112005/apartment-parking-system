@@ -23,8 +23,17 @@ const verifyToken = (req, res, next) => {
 
 const authorizeRoles = (...roles) => {
   return (req, res, next) => {
-    console.log("Checking roles:", roles, "User role:", req.user?.role_name);
-    if (!roles.includes(req.user.role_name)) {
+    const userRole = req.user?.role_name;
+    const userRoleId = req.user?.role_id;
+    
+    // Map role_id to standard names just in case string comparison fails
+    let normalizedRole = userRole;
+    if (userRoleId === 1) normalizedRole = "Super Admin";
+    if (userRoleId === 2) normalizedRole = "Admin";
+    if (userRoleId === 3) normalizedRole = "Security";
+    if (userRoleId === 4) normalizedRole = "Resident";
+
+    if (!roles.includes(normalizedRole) && !roles.includes(userRole)) {
       return res.status(403).json({
         message: `Không có quyền. Yêu cầu role: ${roles.join(", ")}`,
       });

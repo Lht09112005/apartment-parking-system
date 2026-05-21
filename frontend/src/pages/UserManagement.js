@@ -343,7 +343,7 @@ const styles = {
   headerRight: { display: "flex", alignItems: "center" },
   avatar: { width: 40, height: 40, backgroundColor: "#fef3c7", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, marginLeft: 12 },
   
-  contentBody: { flex: 1, padding: 30, overflowY: "auto", display: "flex", flexDirection: "column" },
+  contentBody: { flex: 1, padding: 30, overflowY: "auto" },
   
   titleRow: { display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 24 },
   addBtn: { backgroundColor: "#0f172a", color: "#fff", border: "none", padding: "12px 24px", borderRadius: "8px", cursor: "pointer", fontWeight: "bold", fontSize: 14, transition: "0.2s" },
