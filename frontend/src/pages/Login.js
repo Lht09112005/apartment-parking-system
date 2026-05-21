@@ -23,7 +23,7 @@ const Login = () => {
 
       // Điều hướng theo role
       const role = res.data.user.role_name;
-      if (role === "Super Admin") navigate("/admin/users");
+      if (role === "Super Admin") navigate("/admin/dashboard");
       else if (role === "Admin") navigate("/admin/dashboard");
       else if (role === "Security") navigate("/security");
       else navigate("/resident");

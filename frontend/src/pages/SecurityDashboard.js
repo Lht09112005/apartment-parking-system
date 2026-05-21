@@ -83,30 +83,41 @@ const SecurityDashboard = () => {
     }
   };
 
-  const handleSearch = async () => {
-    if (!searchPlate.trim()) return;
+  const normalizePlate = (p) => (p || "").replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+
+  const handleSearch = async (overridePlate) => {
+    const query = typeof overridePlate === 'string' ? overridePlate : searchPlate;
+    if (!query.trim()) return;
     setSearchDone(false);
     setSearchResult(null);
     try {
       const res = await axios.get("/vehicles");
-      const found = res.data.find(v => v.plate_number.toLowerCase() === searchPlate.trim().toLowerCase());
+      const found = res.data.find(v => normalizePlate(v.plate_number) === normalizePlate(query));
       if (found) {
         // Also get parking history for this plate
         const sessions = await axios.get("/parking/sessions");
-        const history = sessions.data.filter(s => (s.plate_number || '').toLowerCase() === searchPlate.trim().toLowerCase());
+        const history = sessions.data.filter(s => normalizePlate(s.plate_number) === normalizePlate(query) || normalizePlate(s.guest_plate) === normalizePlate(query));
         setSearchResult({ vehicle: found, history: history.slice(0, 10) });
       }
       setSearchDone(true);
+      setSearchPlate(query);
     } catch (err) {
       console.error(err);
       setSearchDone(true);
     }
   };
 
+  const getSuggestions = () => {
+    if (!searchPlate.trim()) return [];
+    const term = normalizePlate(searchPlate);
+    const matches = vehicles.filter(v => normalizePlate(v.plate_number).includes(term));
+    return matches.slice(0, 5); // limit 5
+  };
+
 
 
   // Find if plate is resident
-  const currentVehicle = plate.trim() ? vehicles.find(v => v.plate_number.toLowerCase() === plate.trim().toLowerCase()) : null;
+  const currentVehicle = plate.trim() ? vehicles.find(v => normalizePlate(v.plate_number) === normalizePlate(plate)) : null;
 
   useEffect(() => {
     if (currentVehicle) {
@@ -114,14 +125,24 @@ const SecurityDashboard = () => {
     }
   }, [currentVehicle]);
 
+  const getActualPlate = () => {
+    if (currentVehicle) return currentVehicle.plate_number;
+    if (mode === "OUT") {
+      const activeSession = vehicleLogs.find(v => v.status === 'parking' && (normalizePlate(v.plate_number) === normalizePlate(plate) || normalizePlate(v.guest_plate) === normalizePlate(plate)));
+      if (activeSession) return activeSession.plate_number || activeSession.guest_plate;
+    }
+    return plate.trim().toUpperCase();
+  };
+
   const handleAction = async () => {
     setMessage({ type: "", text: "" });
     setTicketInfo(null);
+    const actualPlate = getActualPlate();
     
     if (mode === "IN") {
       try {
         const res = await axios.post("/parking/check-in", {
-          plate_number: plate,
+          plate_number: actualPlate,
           type_id: currentVehicle ? currentVehicle.type_id : typeId,
         });
         setMessage({ type: "success", text: res.data.message });
@@ -133,7 +154,7 @@ const SecurityDashboard = () => {
     } else {
       try {
         const res = await axios.post("/parking/check-out", {
-          plate_number: plate,
+          plate_number: actualPlate,
         });
         setMessage({ type: "success", text: res.data.message });
         setTicketInfo({
@@ -159,40 +180,93 @@ const SecurityDashboard = () => {
     }
   };
 
+  const userName = user?.name || user?.username || '';
+  const userInitial = userName ? userName.charAt(0).toUpperCase() : 'B';
+
+  const menuItems = [
+    { key: 'gate', label: 'Ghi nhận xe', icon: 'directions_car' },
+    { key: 'logs', label: 'Lịch sử gửi xe', icon: 'history' },
+    { key: 'search', label: 'Tìm kiếm xe', icon: 'search' },
+  ];
+
+  const getPageTitle = () => {
+    switch (viewMode) {
+      case 'gate': return 'Ghi nhận xe';
+      case 'logs': return 'Lịch sử gửi xe';
+      case 'search': return 'Tìm kiếm xe';
+      default: return 'Ghi nhận xe';
+    }
+  };
+
   // ----- RENDER -----
   return (
-    <div style={styles.container}>
-      {/* Sidebar */}
-      <div style={styles.sidebar}>
+    <>
+      <link href="https://fonts.googleapis.com/icon?family=Material+Symbols+Rounded" rel="stylesheet" />
+      <style>{`
+        .material-symbols-rounded {
+          font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+      `}</style>
+      <div style={styles.container}>
+        {/* Sidebar */}
+        <div style={styles.sidebar}>
+        {/* Logo Area */}
         <div style={styles.sidebarHeader}>
-          <h2 style={styles.sidebarTitle}>39°C</h2>
-          <p style={styles.sidebarSubTitle}>Security Operations</p>
-        </div>
-        <div style={styles.menuItems}>
-          <div
-            style={{ ...styles.menuItem, ...(viewMode === "gate" ? styles.menuItemActive : {}) }}
-            onClick={() => setViewMode("gate")}
-          >
-            🚧 Ghi nhận xe vào/ra
-          </div>
-          <div
-            style={{ ...styles.menuItem, ...(viewMode === "logs" ? styles.menuItemActive : {}) }}
-            onClick={() => setViewMode("logs")}
-          >
-            📜 Lịch sử gửi xe
-          </div>
-          <div
-            style={{ ...styles.menuItem, ...(viewMode === "search" ? styles.menuItemActive : {}) }}
-            onClick={() => setViewMode("search")}
-          >
-            🔍 Tìm kiếm thông tin xe
+          <div style={styles.logoRow}>
+            <div style={styles.logoIcon}>P</div>
+            <div>
+              <div style={styles.logoText}>Parking</div>
+              <div style={styles.logoSubText}>Bảo vệ</div>
+            </div>
           </div>
         </div>
+
+        {/* Menu */}
+        <div style={styles.menuSection}>
+          <div style={styles.menuLabel}>MENU</div>
+          <div style={styles.menuItems}>
+            {menuItems.map((item) => (
+              <div
+                key={item.key}
+                style={{
+                  ...styles.menuItem,
+                  ...(viewMode === item.key ? styles.menuItemActive : {}),
+                }}
+                onClick={() => setViewMode(item.key)}
+                onMouseEnter={(e) => {
+                  if (viewMode !== item.key) {
+                    e.currentTarget.style.backgroundColor = '#f5f5f5';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (viewMode !== item.key) {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }
+                }}
+              >
+                <span className="material-symbols-rounded" style={{ fontSize: 20, color: viewMode === item.key ? '#1a73e8' : '#5f6368', marginRight: 12 }}>
+                  {item.icon}
+                </span>
+                <span style={{ fontWeight: viewMode === item.key ? '600' : '400', color: viewMode === item.key ? '#1a73e8' : '#3c4043' }}>
+                  {item.label}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Footer */}
         <div style={styles.sidebarFooter}>
-          <button style={styles.emergencyBtn}>EMERGENCY LOCK</button>
-          <div style={{marginTop: 'auto'}}>
-            <div style={styles.bottomLink}>Help Center</div>
-            <div style={styles.bottomLink} onClick={handleLogout}>Đăng xuất</div>
+          <div style={styles.footerUserRow}>
+            <div style={styles.footerAvatar}>{userInitial}</div>
+            <div style={styles.footerUserInfo}>
+              <div style={styles.footerUserName}>{userName}</div>
+              <div style={styles.footerUserRole}>Bảo vệ</div>
+            </div>
+          </div>
+          <div style={{...styles.logoutBtn, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8}} onClick={handleLogout}>
+            <span className="material-symbols-rounded" style={{ fontSize: 18, color: '#c5221f' }}>logout</span>
+            <span style={{ color: '#c5221f' }}>Đăng xuất</span>
           </div>
         </div>
       </div>
@@ -202,17 +276,14 @@ const SecurityDashboard = () => {
         {/* Top Header */}
         <div style={styles.topHeader}>
           <div style={styles.headerLeft}>
-            <h2 style={{margin: 0, fontSize: 20, color: '#1e293b'}}>39°C</h2>
-            <div style={styles.onlineBadge}>
-              <span style={styles.onlineDot}></span> System Online
-            </div>
+            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: '#202124' }}>{getPageTitle()}</h2>
           </div>
           <div style={styles.headerRight}>
-            <div style={{textAlign: 'right', marginRight: 12}}>
-              <div style={{fontSize: 14, fontWeight: '600', color: '#1e293b'}}>Bảo vệ: {user?.name || user?.username}</div>
-              <div style={{fontSize: 12, color: '#64748b'}}>{user?.phone ? `SĐT: ${user.phone}` : 'ĐỘI AN NINH'}</div>
+            <div style={{ textAlign: 'right', marginRight: 12 }}>
+              <div style={{ fontSize: 14, fontWeight: '600', color: '#202124' }}>{userName}</div>
+              <div style={{ fontSize: 12, color: '#5f6368' }}>Bảo vệ</div>
             </div>
-            <div style={styles.avatar}>👤</div>
+            <div style={styles.avatar}>{userInitial}</div>
           </div>
         </div>
 
@@ -425,7 +496,7 @@ const SecurityDashboard = () => {
             <div style={styles.mainPanelRow}>
               <div style={styles.dashboardPanel}>
                 <div style={styles.sectionHeader}>
-                  {viewMode === 'logs' ? '📜 Lịch sử gửi xe' : '🔍 Tìm kiếm thông tin xe'}
+                  {viewMode === 'logs' ? 'Lịch sử gửi xe' : 'Tìm kiếm thông tin xe'}
                 </div>
 
                 {viewMode === 'logs' && (
@@ -469,16 +540,37 @@ const SecurityDashboard = () => {
 
                 {viewMode === 'search' && (
                   <>
-                    <div style={{display:'flex',gap:12,marginBottom:24}}>
-                      <input
-                        value={searchPlate}
-                        onChange={(e) => setSearchPlate(e.target.value.toUpperCase())}
-                        onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                        placeholder="Nhập biển số xe cần tìm..."
-                        style={{flex:1,padding:'14px 18px',border:'2px solid #e2e8f0',borderRadius:10,fontSize:16,outline:'none',backgroundColor:'#f8fafc'}}
-                      />
+                    <div style={{display:'flex',gap:12,marginBottom:24, position: 'relative'}}>
+                      <div style={{ flex: 1, position: 'relative' }}>
+                        <input
+                          value={searchPlate}
+                          onChange={(e) => {
+                            setSearchPlate(e.target.value.toUpperCase());
+                            setSearchDone(false);
+                            setSearchResult(null);
+                          }}
+                          onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                          placeholder="Nhập biển số xe cần tìm..."
+                          style={{width: '100%', padding:'14px 18px',border:'2px solid #e2e8f0',borderRadius:10,fontSize:16,outline:'none',backgroundColor:'#f8fafc',boxSizing: 'border-box'}}
+                        />
+                        {searchPlate.trim() && !searchDone && getSuggestions().length > 0 && (
+                          <div style={{position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, marginTop: 4, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', zIndex: 10, overflow: 'hidden'}}>
+                            {getSuggestions().map(v => (
+                              <div
+                                key={v.plate_number}
+                                onClick={() => handleSearch(v.plate_number)}
+                                style={{padding: '12px 18px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', fontWeight: '600', color: '#0f172a'}}
+                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
+                                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                              >
+                                {v.plate_number} <span style={{fontSize: 12, color: '#64748b', fontWeight: '400', marginLeft: 8}}>{v.resident_name}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                       <button onClick={handleSearch} style={{padding:'14px 28px',backgroundColor:'#0f172a',color:'#fff',border:'none',borderRadius:10,fontSize:15,fontWeight:'700',cursor:'pointer'}}>
-                        🔍 Tìm kiếm
+                        Tìm kiếm
                       </button>
                     </div>
 
@@ -550,58 +642,195 @@ const SecurityDashboard = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 
 const styles = {
-  container: { display: "flex", minHeight: "100vh", backgroundColor: "#f1f5f9", fontFamily: "sans-serif" },
-  sidebar: { width: 260, backgroundColor: "#0f172a", color: "#fff", display: "flex", flexDirection: "column", flexShrink: 0 },
-  sidebarHeader: { padding: "30px 24px", borderBottom: "1px solid #1e293b" },
-  sidebarTitle: { margin: 0, fontSize: 22, fontWeight: "bold" },
-  sidebarSubTitle: { margin: 0, fontSize: 13, color: "#94a3b8", marginTop: 4 },
-  menuItems: { padding: "20px 0", flex: 1 },
-  menuItem: { padding: "14px 24px", color: "#cbd5e1", cursor: "pointer", fontSize: 15, fontWeight: "500", transition: "0.2s" },
-  menuItemActive: { backgroundColor: "#059669", color: "#fff", borderLeft: "4px solid #34d399" },
-  sidebarFooter: { padding: "24px", borderTop: "1px solid #1e293b", display: "flex", flexDirection: "column", gap: 16 },
-  emergencyBtn: { backgroundColor: "#dc2626", color: "#fff", border: "none", padding: "12px", borderRadius: 6, fontWeight: "bold", cursor: "pointer" },
-  bottomLink: { color: "#94a3b8", fontSize: 14, cursor: "pointer", marginBottom: 8 },
-  
-  main: { flex: 1, display: "flex", flexDirection: "column", overflow: "visible" },
-  topHeader: { height: 70, backgroundColor: "#fff", borderBottom: "1px solid #e2e8f0", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 30px", flexShrink: 0 },
-  headerLeft: { display: "flex", alignItems: "center", gap: 24 },
-  onlineBadge: { display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#059669", fontWeight: "600", backgroundColor: "#ecfdf5", padding: "4px 12px", borderRadius: 20 },
-  onlineDot: { width: 8, height: 8, backgroundColor: "#059669", borderRadius: "50%" },
+  container: { display: "flex", height: "100vh", backgroundColor: "#f8f9fa", fontFamily: "'Segoe UI', -apple-system, sans-serif", overflow: "hidden" },
+
+  // ── Sidebar ──
+  sidebar: {
+    width: 256,
+    backgroundColor: "#fff",
+    borderRight: "1px solid #e0e0e0",
+    display: "flex",
+    flexDirection: "column",
+    flexShrink: 0,
+  },
+  sidebarHeader: {
+    padding: "24px 20px",
+    borderBottom: "1px solid #e0e0e0",
+  },
+  logoRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+  },
+  logoIcon: {
+    width: 36,
+    height: 36,
+    backgroundColor: "#1a73e8",
+    borderRadius: 8,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: 700,
+  },
+  logoText: {
+    fontSize: 16,
+    fontWeight: 700,
+    color: "#202124",
+  },
+  logoSubText: {
+    fontSize: 12,
+    color: "#5f6368",
+    marginTop: 1,
+  },
+  menuSection: {
+    flex: 1,
+    padding: "20px 0",
+  },
+  menuLabel: {
+    fontSize: 11,
+    fontWeight: 600,
+    color: "#5f6368",
+    letterSpacing: 1,
+    textTransform: "uppercase",
+    padding: "0 20px",
+    marginBottom: 8,
+  },
+  menuItems: {
+    display: "flex",
+    flexDirection: "column",
+  },
+  menuItem: {
+    padding: "10px 20px",
+    color: "#3c4043",
+    cursor: "pointer",
+    fontSize: 14,
+    fontWeight: 500,
+    borderRadius: 0,
+    margin: "1px 0",
+    transition: "background-color 0.15s",
+  },
+  menuItemActive: {
+    backgroundColor: "#e8f0fe",
+    color: "#1a73e8",
+    fontWeight: 600,
+  },
+
+  // ── Sidebar Footer ──
+  sidebarFooter: {
+    padding: "16px 20px",
+    borderTop: "1px solid #e0e0e0",
+    display: "flex",
+    flexDirection: "column",
+    gap: 12,
+  },
+  footerUserRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+  },
+  footerAvatar: {
+    width: 36,
+    height: 36,
+    backgroundColor: "#e8f0fe",
+    color: "#1a73e8",
+    borderRadius: "50%",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 15,
+    fontWeight: 700,
+    flexShrink: 0,
+  },
+  footerUserInfo: {
+    overflow: "hidden",
+  },
+  footerUserName: {
+    fontSize: 14,
+    fontWeight: 600,
+    color: "#202124",
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+  },
+  footerUserRole: {
+    fontSize: 12,
+    color: "#5f6368",
+  },
+  logoutBtn: {
+    backgroundColor: "#fce8e6",
+    color: "#d93025",
+    border: "none",
+    padding: "8px 0",
+    borderRadius: 6,
+    fontSize: 13,
+    fontWeight: 600,
+    cursor: "pointer",
+    textAlign: "center",
+  },
+
+  // ── Header ──
+  main: { flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" },
+  topHeader: {
+    height: 56,
+    backgroundColor: "#fff",
+    borderBottom: "1px solid #e0e0e0",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: "0 24px",
+    flexShrink: 0,
+  },
+  headerLeft: { display: "flex", alignItems: "center" },
   headerRight: { display: "flex", alignItems: "center" },
-  avatar: { width: 40, height: 40, backgroundColor: "#e2e8f0", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 },
-  
-  contentBody: { flex: 1, padding: 24, overflow: "visible", display: "flex", flexDirection: "column" },
-  capacityRow: { display: "flex", gap: 20, marginBottom: 20, flexShrink: 0 },
+  avatar: {
+    width: 36,
+    height: 36,
+    backgroundColor: "#e8f0fe",
+    color: "#1a73e8",
+    borderRadius: "50%",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 15,
+    fontWeight: 700,
+  },
+
+  // ── Content (unchanged) ──
+  contentBody: { flex: 1, padding: "16px 24px", overflow: "hidden", display: "flex", flexDirection: "column" },
+  capacityRow: { display: "flex", gap: 20, marginBottom: 16, flexShrink: 0 },
   capacityCard: { flex: 1, backgroundColor: "#fff", borderRadius: 10, padding: 16, display: "flex", alignItems: "center", border: "1px solid #e2e8f0", borderLeftWidth: 4, boxShadow: "0 1px 3px rgba(0,0,0,0.05)" },
   cardLabel: { fontSize: 13, fontWeight: "600", color: "#64748b", marginBottom: 4 },
   cardNumber: { fontSize: 24, fontWeight: "bold", color: "#0f172a" },
   cardIcon: { width: 48, height: 48, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 },
   
   mainPanelRow: { display: "flex", gap: 24, flex: 1, minHeight: 0 },
-  leftPanel: { flex: 2, backgroundColor: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", display: "flex", flexDirection: "column", padding: "24px 30px", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)", overflow: "hidden" },
+  leftPanel: { flex: 2, backgroundColor: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", display: "flex", flexDirection: "column", padding: "16px 24px", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)", overflow: "hidden" },
   
-  modeToggle: { display: "flex", backgroundColor: "#f1f5f9", borderRadius: 8, padding: 4, marginBottom: 16, alignSelf: "center", flexShrink: 0 },
+  modeToggle: { display: "flex", backgroundColor: "#f1f5f9", borderRadius: 8, padding: 4, marginBottom: 8, alignSelf: "center", flexShrink: 0 },
   modeBtn: { padding: "10px 30px", borderRadius: 6, border: "none", backgroundColor: "transparent", fontWeight: "bold", fontSize: 14, color: "#64748b", cursor: "pointer", transition: "0.2s" },
   modeActiveIn: { backgroundColor: "#fff", color: "#059669", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" },
   modeActiveOut: { backgroundColor: "#fff", color: "#dc2626", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" },
 
   inputContainer: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 0 },
-  inputLabel: { fontSize: 14, fontWeight: "600", color: "#64748b", marginBottom: 16, letterSpacing: 1 },
-  bigInput: { fontSize: 70, fontWeight: "900", color: "#0f172a", textAlign: "center", border: "none", outline: "none", width: "100%", background: "transparent" },
-  inputUnderline: { height: 4, width: 300, backgroundColor: "#cbd5e1", marginTop: 10 },
+  inputLabel: { fontSize: 13, fontWeight: "600", color: "#64748b", marginBottom: 8, letterSpacing: 1 },
+  bigInput: { fontSize: 56, fontWeight: "900", color: "#0f172a", textAlign: "center", border: "none", outline: "none", width: "100%", background: "transparent" },
+  inputUnderline: { height: 4, width: 250, backgroundColor: "#cbd5e1", marginTop: 6 },
   
-  selectorsRow: { display: "flex", gap: 30, marginBottom: 20, borderTop: "1px solid #f1f5f9", paddingTop: 20, flexShrink: 0 },
-  selectorGroup: { flex: 1, backgroundColor: "#f8fafc", padding: "16px 20px", borderRadius: 10 },
-  selectorTitle: { fontSize: 13, fontWeight: "600", color: "#64748b", marginBottom: 12 },
+  selectorsRow: { display: "flex", gap: 20, marginBottom: 12, borderTop: "1px solid #f1f5f9", paddingTop: 12, flexShrink: 0 },
+  selectorGroup: { flex: 1, backgroundColor: "#f8fafc", padding: "12px 16px", borderRadius: 10 },
+  selectorTitle: { fontSize: 13, fontWeight: "600", color: "#64748b", marginBottom: 10 },
   cardsWrap: { display: "flex", gap: 12 },
-  selectCard: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "18px 0", borderRadius: 12, fontWeight: "700", fontSize: 14, transition: "0.2s", border: "1px solid #e2e8f0", minHeight: 110 },
-  areaHint: { marginTop: 14, color: "#475569", fontSize: 13, lineHeight: 1.6, backgroundColor: "#e2e8f0", borderRadius: 10, padding: "12px 14px", border: "1px solid #cbd5e1" },
+  selectCard: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "10px 0", borderRadius: 12, fontWeight: "700", fontSize: 14, transition: "0.2s", border: "1px solid #e2e8f0", minHeight: 80 },
+  areaHint: { marginTop: 10, color: "#475569", fontSize: 12, lineHeight: 1.5, backgroundColor: "#e2e8f0", borderRadius: 8, padding: "8px 12px", border: "1px solid #cbd5e1" },
   
-  actionsRow: { display: "flex", alignItems: "stretch", height: 75, borderTop: "1px solid #f1f5f9", paddingTop: 20, flexShrink: 0 },
+  actionsRow: { display: "flex", alignItems: "stretch", height: 60, borderTop: "1px solid #f1f5f9", paddingTop: 12, flexShrink: 0 },
   actionBtn: { border: "none", borderRadius: 10, padding: "0 20px", fontWeight: "600", cursor: "pointer" },
   
   toast: { padding: "12px 20px", borderRadius: 8, marginBottom: 20, fontWeight: "600", display: "flex", alignItems: "center", gap: 10, position: "absolute", top: 120, right: 40, zIndex: 100, boxShadow: "0 4px 12px rgba(0,0,0,0.15)" },

@@ -1,6 +1,10 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const db = require("../config/db");
+const fs = require("fs").promises;
+const path = require("path");
+
+const SETTINGS_FILE = path.join(__dirname, '../data/settings.json');
 
 const login = async (req, res) => {
   const { username, password } = req.body;
@@ -44,6 +48,18 @@ const login = async (req, res) => {
       return res
         .status(401)
         .json({ message: "Tên đăng nhập hoặc mật khẩu không đúng" });
+    }
+
+    try {
+      if (user.role_id !== 1) {
+        const data = await fs.readFile(SETTINGS_FILE, 'utf8');
+        const settings = JSON.parse(data);
+        if (settings.maintenance_mode === true) {
+          return res.status(503).json({ message: "Hệ thống đang bảo trì, vui lòng quay lại sau." });
+        }
+      }
+    } catch (e) {
+      // Ignore settings file error and proceed
     }
 
     const token = jwt.sign(

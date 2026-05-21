@@ -1,0 +1,28 @@
+[
+  {
+    "log_id": 1779352469536,
+    "user_id": 2,
+    "username": "admin",
+    "action": "UPDATE",
+    "target_type": "fee_config",
+    "target_id": 1,
+    "old_value": null,
+    "new_value": "{\"price_per_hour\":\"5000.00\",\"monthly_fee\":\"200000.00\"}",
+    "description": "Cập nhật bảng giá cho loại xe 1",
+    "ip_address": "::1",
+    "created_at": "2026-05-21T08:34:29.536Z"
+  },
+  {
+    "log_id": 1779336053864,
+    "user_id": 1,
+    "username": "superadmin",
+    "action": "DATA_PURGE",
+    "target_type": "system",
+    "target_id": null,
+    "old_value": null,
+    "new_value": "{\"before_date\":\"2026-05-01\",\"deleted_rows\":0}",
+    "description": "Dọn dẹp 0 dòng dữ liệu cũ trước 2026-05-01",
+    "ip_address": "::1",
+    "created_at": "2026-05-21T04:00:53.864Z"
+  }
+]

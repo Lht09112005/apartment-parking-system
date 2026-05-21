@@ -29,20 +29,6 @@ const createVehicle = async (req, res) => {
       [plate_number, resident_id, type_id, color]
     );
 
-    // Tự động đăng ký vé tháng cho xe mới
-    const [areas] = await db.query(`SELECT area_id FROM parking_area WHERE type_id = ? LIMIT 1`, [type_id]);
-    const area_id = areas.length > 0 ? areas[0].area_id : null;
-
-    if (area_id) {
-      const startDate = new Date();
-      const endDate = new Date();
-      endDate.setFullYear(endDate.getFullYear() + 1); // Cấp mặc định 1 năm
-      
-      await db.query(
-        `INSERT INTO monthly_parking (plate_number, area_id, start_date, end_date, status) VALUES (?, ?, ?, ?, 'active')`,
-        [plate_number, area_id, startDate, endDate]
-      );
-    }
     res.status(201).json({ message: "Thêm xe thành công" });
   } catch (err) {
     if (err.code === "ER_DUP_ENTRY") {

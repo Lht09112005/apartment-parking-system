@@ -1,23 +1,46 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
 import { useAuth } from "../context/AuthContext";
+import axios from "../api/axios";
 
 const SystemSettings = () => {
   const { user } = useAuth();
   
-  // Dummy state for global settings since we don't have an API for this yet
   const [settings, setSettings] = useState({
-    autoGateOpen: true,
-    allowVisitorCheckIn: true,
-    overloadAlert: true,
-    maxCapacityRatio: 90
+    max_security_accounts: 10,
+    max_resident_accounts: 500,
+    maintenance_mode: false,
+    session_timeout_minutes: 480,
+    data_retention_years: 3,
+    system_name: "39°C Management System"
   });
 
   const [message, setMessage] = useState({ type: "", text: "" });
 
-  const handleSave = () => {
-    setMessage({ type: "success", text: "Cập nhật cấu hình hệ thống thành công!" });
-    setTimeout(() => setMessage({ type: "", text: "" }), 3000);
+  useEffect(() => {
+    fetchSettings();
+  }, []);
+
+  const fetchSettings = async () => {
+    try {
+      const res = await axios.get("/settings");
+      setSettings(res.data);
+    } catch (err) {
+      console.error(err);
+      setMessage({ type: "error", text: "Không thể tải cấu hình." });
+    }
+  };
+
+  const handleSave = async () => {
+    try {
+      await axios.put("/settings", { settings });
+      setMessage({ type: "success", text: "Cập nhật cấu hình hệ thống thành công! Vui lòng tải lại trang (F5) để thấy thay đổi." });
+      window.dispatchEvent(new Event('settingsUpdated'));
+      setTimeout(() => setMessage({ type: "", text: "" }), 3000);
+    } catch (err) {
+      setMessage({ type: "error", text: "Lỗi khi lưu cấu hình." });
+      setTimeout(() => setMessage({ type: "", text: "" }), 3000);
+    }
   };
 
   return (
@@ -48,65 +71,81 @@ const SystemSettings = () => {
           </div>
 
           {message.text && (
-            <div style={{...styles.toast, backgroundColor: '#dcfce7', color: '#166534'}}>
-              ✅ {message.text}
+            <div style={{...styles.toast, backgroundColor: message.type === 'success' ? '#dcfce7' : '#fee2e2', color: message.type === 'success' ? '#166534' : '#991b1b'}}>
+              {message.type === 'success' ? '✅' : '❌'} {message.text}
             </div>
           )}
 
           <div style={styles.card}>
+            <h4 style={{marginTop: 0, color: '#0f172a'}}>Thông tin chung</h4>
             <div style={styles.settingGroup}>
               <div style={styles.settingInfo}>
-                <div style={styles.settingTitle}>Tự động mở Barrier (Auto-Gate)</div>
-                <div style={styles.settingDesc}>Hệ thống tự động nhận diện biển số và mở cổng khi xe lại gần.</div>
+                <div style={styles.settingTitle}>Tên hệ thống</div>
+                <div style={styles.settingDesc}>Tên hiển thị của hệ thống bãi đỗ xe.</div>
               </div>
-              <button 
-                onClick={() => setSettings({...settings, autoGateOpen: !settings.autoGateOpen})}
-                style={{...styles.toggleBtn, backgroundColor: settings.autoGateOpen ? '#059669' : '#cbd5e1'}}
-              >
-                <div style={{...styles.toggleCircle, transform: settings.autoGateOpen ? 'translateX(20px)' : 'translateX(0)'}} />
-              </button>
+              <input 
+                type="text" 
+                value={settings.system_name} 
+                onChange={(e) => setSettings({...settings, system_name: e.target.value})}
+                style={{...styles.input, width: 250, textAlign: 'left'}}
+              />
             </div>
 
+            <h4 style={{marginTop: 32, color: '#0f172a'}}>Giới hạn hệ thống</h4>
             <div style={styles.settingGroup}>
               <div style={styles.settingInfo}>
-                <div style={styles.settingTitle}>Cho phép Khách vãng lai gửi xe</div>
-                <div style={styles.settingDesc}>Mở chức năng ghi nhận xe không cần đăng ký trước cho Bảo vệ.</div>
-              </div>
-              <button 
-                onClick={() => setSettings({...settings, allowVisitorCheckIn: !settings.allowVisitorCheckIn})}
-                style={{...styles.toggleBtn, backgroundColor: settings.allowVisitorCheckIn ? '#059669' : '#cbd5e1'}}
-              >
-                <div style={{...styles.toggleCircle, transform: settings.allowVisitorCheckIn ? 'translateX(20px)' : 'translateX(0)'}} />
-              </button>
-            </div>
-
-            <div style={styles.settingGroup}>
-              <div style={styles.settingInfo}>
-                <div style={styles.settingTitle}>Cảnh báo quá tải (Overload Alert)</div>
-                <div style={styles.settingDesc}>Thông báo cho quản trị viên khi sức chứa bãi đỗ đạt ngưỡng tối đa.</div>
-              </div>
-              <button 
-                onClick={() => setSettings({...settings, overloadAlert: !settings.overloadAlert})}
-                style={{...styles.toggleBtn, backgroundColor: settings.overloadAlert ? '#059669' : '#cbd5e1'}}
-              >
-                <div style={{...styles.toggleCircle, transform: settings.overloadAlert ? 'translateX(20px)' : 'translateX(0)'}} />
-              </button>
-            </div>
-
-            <div style={styles.settingGroup}>
-              <div style={styles.settingInfo}>
-                <div style={styles.settingTitle}>Ngưỡng cảnh báo quá tải (%)</div>
-                <div style={styles.settingDesc}>Hệ thống sẽ cảnh báo nếu sức chứa đạt tỷ lệ này.</div>
+                <div style={styles.settingTitle}>Số lượng Bảo vệ tối đa</div>
+                <div style={styles.settingDesc}>Giới hạn số tài khoản Security mà Admin được phép tạo.</div>
               </div>
               <input 
                 type="number" 
-                value={settings.maxCapacityRatio} 
-                onChange={(e) => setSettings({...settings, maxCapacityRatio: e.target.value})}
+                value={settings.max_security_accounts} 
+                onChange={(e) => setSettings({...settings, max_security_accounts: parseInt(e.target.value)})}
                 style={styles.input}
               />
             </div>
 
-            <div style={{marginTop: 24, display: 'flex', justifyContent: 'flex-end'}}>
+            <div style={styles.settingGroup}>
+              <div style={styles.settingInfo}>
+                <div style={styles.settingTitle}>Số lượng Cư dân tối đa</div>
+                <div style={styles.settingDesc}>Giới hạn số tài khoản Resident tối đa.</div>
+              </div>
+              <input 
+                type="number" 
+                value={settings.max_resident_accounts} 
+                onChange={(e) => setSettings({...settings, max_resident_accounts: parseInt(e.target.value)})}
+                style={styles.input}
+              />
+            </div>
+
+            <h4 style={{marginTop: 32, color: '#0f172a'}}>Bảo mật & Bảo trì</h4>
+            <div style={styles.settingGroup}>
+              <div style={styles.settingInfo}>
+                <div style={styles.settingTitle}>Chế độ bảo trì (Maintenance Mode)</div>
+                <div style={styles.settingDesc}>Khi bật, hệ thống sẽ chặn tất cả yêu cầu, ngoại trừ SuperAdmin.</div>
+              </div>
+              <button 
+                onClick={() => setSettings({...settings, maintenance_mode: !settings.maintenance_mode})}
+                style={{...styles.toggleBtn, backgroundColor: settings.maintenance_mode ? '#ef4444' : '#cbd5e1'}}
+              >
+                <div style={{...styles.toggleCircle, transform: settings.maintenance_mode ? 'translateX(20px)' : 'translateX(0)'}} />
+              </button>
+            </div>
+
+            <div style={styles.settingGroup}>
+              <div style={styles.settingInfo}>
+                <div style={styles.settingTitle}>Thời gian lưu trữ dữ liệu (Năm)</div>
+                <div style={styles.settingDesc}>Số năm giữ lại lịch sử ra vào và dữ liệu cũ trước khi bị xóa dọn dẹp.</div>
+              </div>
+              <input 
+                type="number" 
+                value={settings.data_retention_years} 
+                onChange={(e) => setSettings({...settings, data_retention_years: parseInt(e.target.value)})}
+                style={styles.input}
+              />
+            </div>
+
+            <div style={{marginTop: 32, display: 'flex', justifyContent: 'flex-end'}}>
               <button onClick={handleSave} style={styles.saveBtn}>Lưu cấu hình</button>
             </div>
           </div>
@@ -123,7 +162,7 @@ const styles = {
   headerLeft: { display: "flex", alignItems: "center", gap: 24 },
   headerRight: { display: "flex", alignItems: "center" },
   avatar: { width: 40, height: 40, backgroundColor: "#f1f5f9", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, marginLeft: 12 },
-  contentBody: { flex: 1, padding: 30, overflowY: "auto", display: "flex", flexDirection: "column" },
+  contentBody: { flex: 1, padding: 30, overflowY: "auto" },
   
   toast: { padding: "12px 20px", borderRadius: 8, marginBottom: 20, fontWeight: "600", display: "flex", alignItems: "center", gap: 10 },
   
@@ -137,7 +176,7 @@ const styles = {
   toggleCircle: { width: 20, height: 20, borderRadius: '50%', backgroundColor: '#fff', position: 'absolute', top: 2, left: 2, transition: 'transform 0.3s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' },
   
   input: { padding: '8px 16px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 15, width: 100, textAlign: 'center', outline: 'none' },
-  saveBtn: { backgroundColor: '#3b82f6', color: '#fff', border: 'none', padding: '12px 24px', borderRadius: 8, fontSize: 15, fontWeight: '600', cursor: 'pointer' }
+  saveBtn: { backgroundColor: '#3b82f6', color: '#fff', border: 'none', padding: '12px 24px', borderRadius: 8, fontSize: 15, fontWeight: '600', cursor: 'pointer', transition: 'background-color 0.2s' }
 };
 
 export default SystemSettings;

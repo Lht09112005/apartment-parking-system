@@ -1,5 +1,6 @@
 const bcrypt = require("bcrypt");
 const db = require("../config/db");
+const { logAudit } = require("../utils/auditLogger");
 
 const getAllUsers = async (req, res) => {
   try {
@@ -51,6 +52,18 @@ const createUser = async (req, res) => {
     if (role_id === 3) {
       await db.query(`INSERT INTO security (user_id, name, phone) VALUES (?, ?, ?)`, [result.insertId, name || username, phone || null]);
     }
+
+    await logAudit(
+      req.user.user_id, 
+      req.user.username, 
+      "CREATE", 
+      "user", 
+      result.insertId, 
+      null, 
+      { username, role_id, status: "active" }, 
+      `Tạo tài khoản ${role_id === 2 ? 'Admin' : 'Security'}: ${username}`, 
+      req.ip
+    );
 
     res.status(201).json({ message: "Tạo tài khoản thành công", user_id: result.insertId });
   } catch (err) {
@@ -122,6 +135,18 @@ const updateUser = async (req, res) => {
       }
     }
 
+    await logAudit(
+      req.user.user_id, 
+      req.user.username, 
+      "UPDATE", 
+      "user", 
+      id, 
+      null, 
+      { status, role_id, username, password_changed: !!password }, 
+      `Cập nhật tài khoản user_id ${id}`, 
+      req.ip
+    );
+
     res.json({ message: "Cập nhật tài khoản thành công" });
   } catch (err) {
     if (err.code === "ER_DUP_ENTRY") {
@@ -158,6 +183,19 @@ const resetPassword = async (req, res) => {
       hashed,
       id,
     ]);
+    
+    await logAudit(
+      req.user.user_id, 
+      req.user.username, 
+      "RESET_PASSWORD", 
+      "user", 
+      id, 
+      null, 
+      null, 
+      `Reset mật khẩu cho user_id ${id}`, 
+      req.ip
+    );
+
     res.json({ message: "Đặt lại mật khẩu thành công" });
   } catch (err) {
     console.error(err);

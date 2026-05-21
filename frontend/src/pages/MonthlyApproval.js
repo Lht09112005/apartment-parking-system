@@ -259,7 +259,7 @@ const styles = {
   onlineDot: { width: 8, height: 8, backgroundColor: "#059669", borderRadius: "50%" },
   headerRight: { display: "flex", alignItems: "center" },
   avatar: { width: 40, height: 40, backgroundColor: "#f1f5f9", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, marginLeft: 12 },
-  contentBody: { flex: 1, padding: 30, overflowY: "auto", display: "flex", flexDirection: "column" },
+  contentBody: { flex: 1, padding: 30, overflowY: "auto" },
 
   summaryRow: { display: 'flex', gap: 16, marginBottom: 24 },
   summaryCard: { flex: 1, backgroundColor: '#fff', borderRadius: 12, padding: '16px 20px', border: '1px solid #e2e8f0', borderLeftWidth: 4, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' },

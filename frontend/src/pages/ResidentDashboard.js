@@ -13,16 +13,20 @@ const ResidentDashboard = () => {
   const [history, setHistory] = useState([]);
   const [feesData, setFeesData] = useState({ feeConfig: [], monthlyRegistrations: [] });
   const [msg, setMsg] = useState({ type: "", text: "" });
+  const [isEditingVehicle, setIsEditingVehicle] = useState(false);
   const [newVehicle, setNewVehicle] = useState({ plate_number: "", type_id: 1, color: "" });
   const [editProfile, setEditProfile] = useState(null);
   const [showVehicleForm, setShowVehicleForm] = useState(false);
+  const [hoveredIndex, setHoveredIndex] = useState(null);
 
-  useEffect(() => { fetchProfile(); fetchVehicleTypes(); }, []);
+  useEffect(() => { fetchData(); }, []);
   useEffect(() => {
     if (view === "vehicles") fetchVehicles();
     if (view === "history") fetchHistory();
     if (view === "fees") fetchFees();
   }, [view]);
+
+  const fetchData = () => { fetchProfile(); fetchVehicleTypes(); fetchVehicles(); };
 
   const fetchProfile = async () => {
     try { const r = await axios.get("/resident/profile"); setProfile(r.data); } catch (e) { console.error(e); }
@@ -43,12 +47,43 @@ const ResidentDashboard = () => {
   const showMsg = (type, text) => { setMsg({ type, text }); setTimeout(() => setMsg({ type: "", text: "" }), 4000); };
 
   const handleRegisterVehicle = async () => {
-    if (!newVehicle.plate_number.trim()) return showMsg("error", "Vui lòng nhập biển số xe");
     try {
-      const r = await axios.post("/resident/vehicles", newVehicle);
-      showMsg("success", r.data.message); setShowVehicleForm(false);
-      setNewVehicle({ plate_number: "", type_id: vehicleTypes[0]?.type_id || 1, color: "" }); fetchVehicles();
-    } catch (e) { showMsg("error", e.response?.data?.message || "Lỗi đăng ký xe"); }
+      if (isEditingVehicle) {
+        await axios.put(`/resident/vehicles/${newVehicle.old_plate_number}`, {
+          new_plate_number: newVehicle.plate_number,
+          type_id: newVehicle.type_id,
+          color: newVehicle.color
+        });
+        showMsg("success", "Cập nhật thành công, đang chờ duyệt lại");
+      } else {
+        await axios.post("/resident/vehicles", newVehicle);
+        showMsg("success", "Đăng ký xe thành công");
+      }
+      setShowVehicleForm(false);
+      setIsEditingVehicle(false);
+      setNewVehicle({ plate_number: '', type_id: vehicleTypes[0]?.type_id || 1, color: '' });
+      fetchData();
+    } catch (err) {
+      showMsg("error", err.response?.data?.message || "Lỗi");
+    }
+  };
+
+  const handleDeleteVehicle = async (plate) => {
+    if (!window.confirm(`Bạn có chắc muốn xóa xe ${plate}?`)) return;
+    try {
+      await axios.delete(`/resident/vehicles/${plate}`);
+      showMsg("success", "Xóa xe thành công");
+      fetchData();
+    } catch (err) {
+      showMsg("error", err.response?.data?.message || "Lỗi xóa xe");
+    }
+  };
+
+  const openEditForm = (v) => {
+    setNewVehicle({ old_plate_number: v.plate_number, plate_number: v.plate_number, type_id: v.type_id, color: v.color || '' });
+    setIsEditingVehicle(true);
+    setShowVehicleForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleRegisterMonthly = async (plate) => {
@@ -74,52 +109,87 @@ const ResidentDashboard = () => {
   };
 
   const menuItems = [
-    { key: "vehicles", label: "Xe của tôi", icon: "🏍️" },
-    { key: "monthly", label: "Vé tháng", icon: "📋" },
-    { key: "history", label: "Lịch sử gửi xe", icon: "📜" },
-    { key: "fees", label: "Phí & Hóa đơn", icon: "💰" },
-    { key: "profile", label: "Thông tin cá nhân", icon: "👤" },
+    { key: "vehicles", label: "Xe của tôi", icon: "directions_car" },
+    { key: "monthly", label: "Vé tháng", icon: "receipt_long" },
+    { key: "history", label: "Lịch sử gửi xe", icon: "history" },
+    { key: "fees", label: "Phí & Hóa đơn", icon: "payments" },
+    { key: "profile", label: "Thông tin cá nhân", icon: "person" },
   ];
 
+  const userInitial = (profile?.name || user?.username || "?").charAt(0).toUpperCase();
+
   return (
-    <div style={S.container}>
-      {/* Sidebar */}
-      <div style={S.sidebar}>
+    <>
+      <link href="https://fonts.googleapis.com/icon?family=Material+Symbols+Rounded" rel="stylesheet" />
+      <style>{`
+        .material-symbols-rounded {
+          font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+      `}</style>
+      <div style={S.container}>
+        {/* Sidebar */}
+        <div style={S.sidebar}>
         <div style={S.sidebarHeader}>
-          <h2 style={{margin:0,fontSize:22,fontWeight:'bold',color:'#34d399'}}>39°C</h2>
-          <p style={{margin:'4px 0 0',fontSize:13,color:'#94a3b8'}}>Cổng Cư Dân</p>
+          <div style={{display:'flex',alignItems:'center',gap:12}}>
+            <div style={S.logoIcon}>P</div>
+            <div>
+              <div style={{fontSize:16,fontWeight:'700',color:'#202124'}}>ParkingMS</div>
+              <div style={{fontSize:12,color:'#5f6368',marginTop:2}}>Cư dân</div>
+            </div>
+          </div>
         </div>
         <div style={{padding:'20px 0',flex:1}}>
-          {menuItems.map(m=>(
-            <div key={m.key} onClick={()=>setView(m.key)}
-              style={{...S.menuItem,...(view===m.key?S.menuActive:{})}}>
-              <span style={{marginRight:10}}>{m.icon}</span>{m.label}
-            </div>
-          ))}
+          <div style={S.menuLabel}>MENU</div>
+          {menuItems.map((m,idx)=>{
+            const isActive = view === m.key;
+            const isHovered = hoveredIndex === idx;
+            return (
+              <div key={m.key} onClick={()=>setView(m.key)}
+                onMouseEnter={()=>setHoveredIndex(idx)}
+                onMouseLeave={()=>setHoveredIndex(null)}
+                style={{
+                  ...S.menuItem,
+                  ...(isActive ? S.menuActive : {}),
+                  ...(!isActive && isHovered ? S.menuHover : {}),
+                  display: 'flex', alignItems: 'center'
+                }}>
+                <span className="material-symbols-rounded" style={{ fontSize: 20, color: isActive ? '#1a73e8' : '#5f6368', marginRight: 12 }}>
+                  {m.icon}
+                </span>
+                <span style={{ fontWeight: isActive ? '600' : '400', color: isActive ? '#1a73e8' : '#3c4043' }}>
+                  {m.label}
+                </span>
+              </div>
+            );
+          })}
         </div>
         <div style={S.sidebarFooter}>
-          <div style={{color:'#94a3b8',fontSize:13,marginBottom:8}}>
-            👤 {profile?.name || user?.username}
+          <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:16}}>
+            <div style={S.sidebarAvatar}>{userInitial}</div>
+            <div>
+              <div style={{fontSize:14,fontWeight:'600',color:'#202124'}}>{profile?.name || user?.username}</div>
+              <div style={{fontSize:12,color:'#5f6368'}}>Căn hộ: {profile?.apartment_number || "---"}</div>
+            </div>
           </div>
-          <div style={{color:'#64748b',fontSize:12,marginBottom:16}}>
-            Căn hộ: {profile?.apartment_number || "---"}
+          <div style={{...S.logoutBtn, display: 'flex', alignItems: 'center', gap: 8}} onClick={handleLogout}>
+            <span className="material-symbols-rounded" style={{ fontSize: 18, color: '#c5221f' }}>logout</span>
+            <span style={{ color: '#c5221f' }}>Đăng xuất</span>
           </div>
-          <div style={{color:'#94a3b8',fontSize:14,cursor:'pointer'}} onClick={handleLogout}>🚪 Đăng xuất</div>
         </div>
       </div>
 
       {/* Main */}
       <div style={S.main}>
         <div style={S.topHeader}>
-          <h2 style={{margin:0,fontSize:20,color:'#1e293b'}}>
-            {menuItems.find(m=>m.key===view)?.icon} {menuItems.find(m=>m.key===view)?.label}
+          <h2 style={{margin:0,fontSize:18,fontWeight:'600',color:'#202124'}}>
+            {menuItems.find(m=>m.key===view)?.label}
           </h2>
           <div style={{display:'flex',alignItems:'center',gap:12}}>
             <div style={{textAlign:'right'}}>
-              <div style={{fontSize:14,fontWeight:'600',color:'#1e293b'}}>{profile?.name || user?.username}</div>
-              <div style={{fontSize:12,color:'#64748b'}}>{profile?.apartment_number || "Cư dân"}</div>
+              <div style={{fontSize:14,fontWeight:'600',color:'#202124'}}>{profile?.name || user?.username}</div>
+              <div style={{fontSize:12,color:'#5f6368'}}>{profile?.apartment_number || "Cư dân"}</div>
             </div>
-            <div style={S.avatar}>🏠</div>
+            <div style={S.avatar}>{userInitial}</div>
           </div>
         </div>
 
@@ -136,7 +206,7 @@ const ResidentDashboard = () => {
             <div>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
                 <h3 style={{margin:0,color:'#0f172a'}}>Danh sách xe đã đăng ký</h3>
-                <button onClick={()=>setShowVehicleForm(!showVehicleForm)} style={S.primaryBtn}>
+                <button onClick={()=>{setIsEditingVehicle(false); setNewVehicle({ plate_number: '', type_id: 1, color: '' }); setShowVehicleForm(!showVehicleForm)}} style={S.primaryBtn}>
                   + Đăng ký xe mới
                 </button>
               </div>
@@ -157,7 +227,7 @@ const ResidentDashboard = () => {
                     <div style={S.formGroup}>
                       <label style={S.label}>Biển số xe *</label>
                       <input style={S.input} value={newVehicle.plate_number} placeholder="VD: 29A-12345"
-                        onChange={e=>setNewVehicle({...newVehicle,plate_number:e.target.value.toUpperCase()})}/>
+                        onChange={e=>setNewVehicle({...newVehicle,plate_number:e.target.value.toUpperCase()})} />
                     </div>
                     <div style={S.formGroup}>
                       <label style={S.label}>Loại xe *</label>
@@ -173,8 +243,8 @@ const ResidentDashboard = () => {
                     </div>
                   </div>
                   <div style={{display:'flex',gap:10,marginTop:16}}>
-                    <button onClick={handleRegisterVehicle} style={S.primaryBtn}>Đăng ký</button>
-                    <button onClick={()=>setShowVehicleForm(false)} style={S.cancelBtn}>Hủy</button>
+                    <button onClick={handleRegisterVehicle} style={S.primaryBtn}>{isEditingVehicle ? "Cập nhật" : "Đăng ký"}</button>
+                    <button onClick={()=>{setShowVehicleForm(false); setIsEditingVehicle(false);}} style={S.cancelBtn}>Hủy</button>
                   </div>
                 </div>
               )}
@@ -206,7 +276,7 @@ const ResidentDashboard = () => {
                           :v.monthly_status==='pending'?<span style={{...S.badge,background:'#fef3c7',color:'#92400e'}}>Chờ duyệt</span>
                           :<span style={{...S.badge,background:'#f1f5f9',color:'#64748b'}}>Chưa đăng ký</span>}
                       </div>
-                      <div style={S.tCell}>
+                      <div style={{...S.tCell, display: 'flex', gap: 8, flexWrap: 'wrap'}}>
                         {!v.monthly_status || v.monthly_status==='expired' ? (
                           <button 
                             onClick={()=>handleRegisterMonthly(v.plate_number)} 
@@ -221,6 +291,8 @@ const ResidentDashboard = () => {
                             Đăng ký vé tháng
                           </button>
                         ) : null}
+                        <button onClick={()=>openEditForm(v)} style={{...S.smallBtn, background: '#e2e8f0', color: '#1e293b'}}>Sửa</button>
+                        <button onClick={()=>handleDeleteVehicle(v.plate_number)} style={{...S.smallBtn, background: '#fee2e2', color: '#ef4444'}}>Xóa</button>
                       </div>
                     </div>
                   ))}
@@ -234,7 +306,7 @@ const ResidentDashboard = () => {
             <div>
               <h3 style={{margin:'0 0 20px',color:'#0f172a'}}>Đăng ký gửi xe theo tháng</h3>
               <div style={S.infoBox}>
-                <p style={{margin:0,color:'#475569'}}>💡 Chọn một xe chưa đăng ký vé tháng để đăng ký. Sau khi đăng ký, Admin sẽ duyệt và bạn sẽ được miễn phí gửi xe hàng ngày.</p>
+                <p style={{margin:0,color:'#475569'}}>Chọn một xe chưa đăng ký vé tháng để đăng ký. Sau khi đăng ký, Admin sẽ duyệt và bạn sẽ được miễn phí gửi xe hàng ngày.</p>
               </div>
               {vehicles.length===0 ? (
                 <div style={S.empty}>Bạn chưa có xe nào. Hãy đăng ký xe trước.</div>
@@ -299,7 +371,7 @@ const ResidentDashboard = () => {
             <div>
               <h3 style={{margin:'0 0 20px',color:'#0f172a'}}>Tra cứu phí & hóa đơn</h3>
               <div style={S.formCard}>
-                <h4 style={{margin:'0 0 16px',color:'#0f172a'}}>📋 Bảng giá gửi xe</h4>
+                <h4 style={{margin:'0 0 16px',color:'#0f172a'}}>Bảng giá gửi xe</h4>
                 <div style={S.tableWrap}>
                   <div style={S.tHeader}><div style={S.tCell}>Loại xe</div><div style={S.tCell}>Giá/giờ</div><div style={S.tCell}>Vé tháng</div></div>
                   {feesData.feeConfig.map(f=>(
@@ -312,7 +384,7 @@ const ResidentDashboard = () => {
                 </div>
               </div>
               <div style={{...S.formCard,marginTop:20}}>
-                <h4 style={{margin:'0 0 16px',color:'#0f172a'}}>🎫 Vé tháng của bạn</h4>
+                <h4 style={{margin:'0 0 16px',color:'#0f172a'}}>Vé tháng của bạn</h4>
                 {feesData.monthlyRegistrations.length===0 ? (
                   <div style={S.empty}>Chưa có vé tháng nào</div>
                 ) : (
@@ -367,7 +439,7 @@ const ResidentDashboard = () => {
                     <div><div style={S.label}>Tài khoản</div><div style={{fontSize:16,fontWeight:'600',color:'#0f172a'}}>{profile.username}</div></div>
                     <div><div style={S.label}>Trạng thái</div><div style={{fontSize:16,fontWeight:'600',color:'#059669'}}>✅ {profile.status}</div></div>
                   </div>
-                  <button onClick={()=>setEditProfile({name:profile.name,phone:profile.phone||'',email:profile.email||''})} style={{...S.primaryBtn,marginTop:24}}>✏️ Chỉnh sửa thông tin</button>
+                  <button onClick={()=>setEditProfile({name:profile.name,phone:profile.phone||'',email:profile.email||''})} style={{...S.primaryBtn,marginTop:24}}>Chỉnh sửa thông tin</button>
                 </div>
               )}
             </div>
@@ -375,19 +447,25 @@ const ResidentDashboard = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 
 const S = {
-  container:{display:'flex',minHeight:'100vh',fontFamily:'sans-serif',backgroundColor:'#f1f5f9'},
-  sidebar:{width:260,backgroundColor:'#0f172a',color:'#fff',display:'flex',flexDirection:'column',flexShrink:0},
-  sidebarHeader:{padding:'30px 24px',borderBottom:'1px solid #1e293b'},
-  menuItem:{padding:'14px 24px',color:'#cbd5e1',cursor:'pointer',fontSize:15,fontWeight:'500',transition:'0.2s'},
-  menuActive:{backgroundColor:'#059669',color:'#fff',borderLeft:'4px solid #34d399'},
-  sidebarFooter:{padding:24,borderTop:'1px solid #1e293b'},
+  container:{display:'flex',minHeight:'100vh',fontFamily:"'Segoe UI', -apple-system, sans-serif",backgroundColor:'#f8f9fa'},
+  sidebar:{width:256,backgroundColor:'#fff',borderRight:'1px solid #e0e0e0',display:'flex',flexDirection:'column',flexShrink:0},
+  sidebarHeader:{padding:'24px 20px',borderBottom:'1px solid #e0e0e0'},
+  logoIcon:{width:36,height:36,backgroundColor:'#1a73e8',borderRadius:8,display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:18,fontWeight:'700'},
+  menuLabel:{padding:'4px 20px 8px',fontSize:11,fontWeight:'700',color:'#5f6368',letterSpacing:'0.5px',textTransform:'uppercase'},
+  menuItem:{padding:'10px 20px',color:'#3c4043',cursor:'pointer',fontSize:14,fontWeight:'500',borderRadius:0,transition:'background 0.15s'},
+  menuActive:{backgroundColor:'#e8f0fe',color:'#1a73e8',fontWeight:'600'},
+  menuHover:{backgroundColor:'#f5f5f5'},
+  sidebarFooter:{padding:'16px 20px',borderTop:'1px solid #e0e0e0'},
+  sidebarAvatar:{width:36,height:36,backgroundColor:'#e8f0fe',color:'#1a73e8',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:15,fontWeight:'700',flexShrink:0},
+  logoutBtn:{fontSize:13,color:'#d93025',cursor:'pointer',fontWeight:'500',paddingTop:4},
   main:{flex:1,display:'flex',flexDirection:'column',overflow:'auto'},
-  topHeader:{height:70,backgroundColor:'#fff',borderBottom:'1px solid #e2e8f0',display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 30px',flexShrink:0},
-  avatar:{width:40,height:40,backgroundColor:'#e2e8f0',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20},
+  topHeader:{height:56,backgroundColor:'#fff',borderBottom:'1px solid #e0e0e0',display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 24px',flexShrink:0},
+  avatar:{width:36,height:36,backgroundColor:'#e8f0fe',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:15,fontWeight:'700',color:'#1a73e8'},
   content:{flex:1,padding:24},
   toast:{padding:'12px 20px',borderRadius:8,margin:'0 24px',fontWeight:'600',display:'flex',alignItems:'center',gap:10},
   formCard:{backgroundColor:'#fff',borderRadius:12,padding:24,border:'1px solid #e2e8f0',boxShadow:'0 1px 3px rgba(0,0,0,0.05)'},
@@ -395,9 +473,9 @@ const S = {
   formGroup:{flex:1,minWidth:200},
   label:{display:'block',fontSize:13,fontWeight:'600',color:'#64748b',marginBottom:8,textTransform:'uppercase',letterSpacing:'0.5px'},
   input:{width:'100%',padding:'12px 14px',border:'2px solid #e2e8f0',borderRadius:8,fontSize:14,boxSizing:'border-box',outline:'none',backgroundColor:'#f8fafc'},
-  primaryBtn:{padding:'10px 20px',backgroundColor:'#0f172a',color:'#fff',border:'none',borderRadius:8,fontSize:14,fontWeight:'600',cursor:'pointer'},
+  primaryBtn:{padding:'10px 20px',backgroundColor:'#1a73e8',color:'#fff',border:'none',borderRadius:8,fontSize:14,fontWeight:'600',cursor:'pointer'},
   cancelBtn:{padding:'10px 20px',backgroundColor:'#f1f5f9',color:'#64748b',border:'1px solid #e2e8f0',borderRadius:8,fontSize:14,fontWeight:'600',cursor:'pointer'},
-  smallBtn:{padding:'6px 12px',backgroundColor:'#059669',color:'#fff',border:'none',borderRadius:6,fontSize:12,fontWeight:'600',cursor:'pointer'},
+  smallBtn:{padding:'6px 12px',backgroundColor:'#1a73e8',color:'#fff',border:'none',borderRadius:6,fontSize:12,fontWeight:'600',cursor:'pointer'},
   tableWrap:{borderRadius:12,overflow:'hidden',border:'1px solid #e2e8f0'},
   tHeader:{display:'flex',backgroundColor:'#0f172a',color:'#fff',padding:'14px 16px',fontSize:13,fontWeight:'700'},
   tRow:{display:'flex',padding:'14px 16px',borderBottom:'1px solid #e2e8f0',fontSize:14,color:'#0f172a',backgroundColor:'#fff'},
