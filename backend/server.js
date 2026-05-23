@@ -13,11 +13,17 @@ const settingsRoutes = require("./routes/settings.routes");
 const auditRoutes = require("./routes/audit.routes");
 const backupRoutes = require("./routes/backup.routes");
 const { checkMaintenanceMode } = require("./middleware/maintenance.middleware");
-const { verifyToken } = require("./middleware/auth.middleware");
 const app = express();
+const realtimeRoutes = require("./routes/realtime.routes");
+const { notifyDataChanges } = require("./middleware/realtime.middleware");
+const { JWT_SECRET } = require("./config/auth");
 
 app.use(cors());
 app.use(express.json());
+// Thông báo realtime cho frontend khi dữ liệu thay đổi qua API
+app.use(notifyDataChanges);
+
+app.use("/api/realtime", realtimeRoutes);
 
 // Maintenance mode check (must verify token first to skip admins)
 // For routes that need it, we can apply it. But to keep it simple, we'll apply it globally after parsing body, but we need user info.
@@ -28,11 +34,11 @@ app.use(express.json());
 app.use(async (req, res, next) => {
   if (req.path.startsWith('/api/auth')) return next();
   // We need to verify token softly to see if user is superadmin
-  const token = req.headers.authorization?.split(" ")[1];
+  const token = req.headers.authorization?.split(" ")[1] || req.query.token;
   if (token) {
     const jwt = require("jsonwebtoken");
     try {
-      req.user = jwt.verify(token, process.env.JWT_SECRET || "parking_super_secret_key_2024");
+      req.user = jwt.verify(token, JWT_SECRET);
     } catch (e) {}
   }
   next();

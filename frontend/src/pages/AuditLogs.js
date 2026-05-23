@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
+import { useRealtimeRefresh } from "../hooks/useRealtimeRefresh";
 import axios from "../api/axios";
 import Sidebar from "../components/Sidebar";
 
@@ -7,7 +8,7 @@ const AuditLogs = () => {
   const [loading, setLoading] = useState(true);
   const [filterAction, setFilterAction] = useState("");
 
-  const fetchLogs = async () => {
+  const fetchLogs = useCallback(async () => {
     try {
       setLoading(true);
       const res = await axios.get(`/audit/logs${filterAction ? `?action=${filterAction}` : ""}`);
@@ -17,11 +18,15 @@ const AuditLogs = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filterAction]);
 
   useEffect(() => {
     fetchLogs();
-  }, [filterAction]);
+  }, [fetchLogs]);
+
+  useRealtimeRefresh(fetchLogs, ["audit"], {
+    intervalMs: 15000,
+  });
 
   return (
     <div style={styles.container}>

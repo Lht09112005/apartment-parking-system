@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useState, useEffect } from "react";
+import { useRealtimeRefresh } from "../hooks/useRealtimeRefresh";
 import Sidebar from "../components/Sidebar";
 import { useAuth } from "../context/AuthContext";
 import axios from "../api/axios";
@@ -17,11 +18,7 @@ const SystemSettings = () => {
 
   const [message, setMessage] = useState({ type: "", text: "" });
 
-  useEffect(() => {
-    fetchSettings();
-  }, []);
-
-  const fetchSettings = async () => {
+  const fetchSettings = useCallback(async () => {
     try {
       const res = await axios.get("/settings");
       setSettings(res.data);
@@ -29,7 +26,15 @@ const SystemSettings = () => {
       console.error(err);
       setMessage({ type: "error", text: "Không thể tải cấu hình." });
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchSettings();
+  }, [fetchSettings]);
+
+  useRealtimeRefresh(fetchSettings, ["settings"], {
+    intervalMs: 15000,
+  });
 
   const handleSave = async () => {
     try {

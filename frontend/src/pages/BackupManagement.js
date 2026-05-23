@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useRealtimeRefresh } from "../hooks/useRealtimeRefresh";
 import axios from "../api/axios";
 import Sidebar from "../components/Sidebar";
 
@@ -23,6 +24,10 @@ const BackupManagement = () => {
   useEffect(() => {
     fetchBackups();
   }, []);
+
+  useRealtimeRefresh(fetchBackups, ["backups"], {
+    intervalMs: 15000,
+  });
 
   const handleCreateBackup = async () => {
     try {

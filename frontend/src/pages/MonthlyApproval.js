@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
+import { useRealtimeRefresh } from "../hooks/useRealtimeRefresh";
 import axios from "../api/axios";
 import { useAuth } from "../context/AuthContext";
-import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 
 const MonthlyApproval = () => {
@@ -10,9 +10,9 @@ const MonthlyApproval = () => {
   const [message, setMessage] = useState({ type: "", text: "" });
   const [detail, setDetail] = useState(null);
   const [filterStatus, setFilterStatus] = useState("all");
+  const [sortConfig, setSortConfig] = useState({ key: 'resident_name', direction: 'asc' });
 
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
+  const { user } = useAuth();
 
   const fetchData = async () => {
     try {
@@ -26,6 +26,10 @@ const MonthlyApproval = () => {
   };
 
   useEffect(() => { fetchData(); }, []);
+
+  useRealtimeRefresh(fetchData, ["monthly", "residentVehicles", "residentFees"], {
+    intervalMs: 10000,
+  });
 
   const handleUpdateStatus = async (monthly_id, status) => {
     const confirmMsg = status === 'active' ? "Xác nhận DUYỆT vé tháng này?" : "Xác nhận TỪ CHỐI vé tháng này?";
@@ -42,9 +46,19 @@ const MonthlyApproval = () => {
     }
   };
 
-  const handleLogout = () => { logout(); navigate("/login"); };
-
-  const filtered = filterStatus === "all" ? registrations : registrations.filter(r => r.status === filterStatus);
+  const filtered = React.useMemo(() => {
+    let result = filterStatus === "all" ? registrations : registrations.filter(r => r.status === filterStatus);
+    if (sortConfig.key) {
+      result = [...result].sort((a, b) => {
+        const valA = a[sortConfig.key] || '';
+        const valB = b[sortConfig.key] || '';
+        if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+    return result;
+  }, [registrations, filterStatus, sortConfig]);
   const pendingCount = registrations.filter(r => r.status === 'pending').length;
   const activeCount = registrations.filter(r => r.status === 'active').length;
 
@@ -84,19 +98,48 @@ const MonthlyApproval = () => {
             </div>
           </div>
 
-          {/* Filter + Title */}
-          <div style={styles.titleRow}>
+          {/* Title */}
+          <div style={{ ...styles.titleRow, marginBottom: 16 }}>
             <div>
               <h3 style={{ margin: 0, fontSize: 20, color: '#0f172a' }}>Danh sách đăng ký</h3>
               <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 14 }}>Nhấn "Chi tiết" để xem đầy đủ thông tin trước khi duyệt.</p>
             </div>
-            <div style={{display:'flex',gap:8}}>
-              {["all","pending","active","canceled"].map(s=>(
-                <button key={s} onClick={()=>setFilterStatus(s)}
-                  style={{...styles.filterBtn,...(filterStatus===s?styles.filterActive:{})}}>
-                  {s==='all'?'Tất cả':s==='pending'?'Chờ duyệt':s==='active'?'Đã duyệt':'Đã hủy'}
-                </button>
-              ))}
+          </div>
+
+          <div style={{ padding: '16px', backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '24px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {/* Filters */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+                <strong style={{ fontSize: 14, color: '#0f172a' }}>🎯 Trạng thái:</strong>
+                <div style={{display:'flex',gap:8}}>
+                  {["all","pending","active","canceled"].map(s=>(
+                    <button key={s} onClick={()=>setFilterStatus(s)}
+                      style={{...styles.filterBtn,...(filterStatus===s?styles.filterActive:{})}}>
+                      {s==='all'?'Tất cả':s==='pending'?'Chờ duyệt':s==='active'?'Đã duyệt':'Đã hủy'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              <div style={{ height: '1px', backgroundColor: '#e2e8f0' }}></div>
+
+              {/* Sort */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+                <strong style={{ fontSize: 14, color: '#0f172a' }}>📶 Sắp xếp:</strong>
+                <select
+                  style={{ ...styles.select, width: '240px' }}
+                  value={`${sortConfig.key}_${sortConfig.direction}`}
+                  onChange={(e) => {
+                    const [key, direction] = e.target.value.split('_');
+                    setSortConfig({ key, direction });
+                  }}
+                >
+                  <option value="resident_name_asc">Chủ xe (A-Z)</option>
+                  <option value="resident_name_desc">Chủ xe (Z-A)</option>
+                  <option value="start_date_asc">Ngày bắt đầu (Cũ - Mới)</option>
+                  <option value="start_date_desc">Ngày bắt đầu (Mới - Cũ)</option>
+                </select>
+              </div>
             </div>
           </div>
 
@@ -269,6 +312,7 @@ const styles = {
   titleRow: { display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 20 },
   filterBtn: { padding: '8px 16px', borderRadius: 8, border: '1px solid #e2e8f0', backgroundColor: '#fff', fontSize: 13, fontWeight: '600', color: '#64748b', cursor: 'pointer' },
   filterActive: { backgroundColor: '#0f172a', color: '#fff', borderColor: '#0f172a' },
+  select: { padding: "8px 16px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: 13, outline: "none", backgroundColor: "#fff", cursor: "pointer", color: "#475569" },
 
   toast: { padding: "12px 20px", borderRadius: 8, marginBottom: 20, fontWeight: "600", display: "flex", alignItems: "center", gap: 10 },
   tableCard: { background: "#fff", borderRadius: "12px", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)", border: "1px solid #e2e8f0", overflow: "hidden" },

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
+import { useRealtimeRefresh } from "../hooks/useRealtimeRefresh";
 import axios from "../api/axios";
 import { useAuth } from "../context/AuthContext";
-import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 
 const ResidentManagement = () => {
@@ -9,7 +9,7 @@ const ResidentManagement = () => {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+  const [sortConfig, setSortConfig] = useState({ key: 'resident_id', direction: 'asc' });
   const [message, setMessage] = useState({ type: "", text: "" });
   const [editData, setEditData] = useState(null);
   const [form, setForm] = useState({
@@ -21,8 +21,7 @@ const ResidentManagement = () => {
     email: "",
   });
 
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
+  const { user } = useAuth();
 
   const fetchResidents = async () => {
     try {
@@ -39,10 +38,9 @@ const ResidentManagement = () => {
     fetchResidents();
   }, []);
 
-  const handleLogout = () => {
-    logout();
-    navigate("/login");
-  };
+  useRealtimeRefresh(fetchResidents, ["residents", "users"], {
+    intervalMs: 12000,
+  });
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -76,14 +74,6 @@ const ResidentManagement = () => {
     } catch (err) {
       setMessage({ type: "error", text: "Lỗi cập nhật" });
     }
-  };
-
-  const handleSort = (key) => {
-    let direction = 'asc';
-    if (sortConfig.key === key && sortConfig.direction === 'asc') {
-      direction = 'desc';
-    }
-    setSortConfig({ key, direction });
   };
 
   const filteredAndSortedResidents = React.useMemo(() => {
@@ -148,15 +138,43 @@ const ResidentManagement = () => {
             </button>
           </div>
 
-          <div style={{ display: 'flex', marginBottom: '24px', gap: '12px' }}>
-            <div style={{ position: 'relative', flex: 1, maxWidth: '500px' }}>
-               <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}>🔍</span>
-               <input 
-                style={{ ...styles.input, paddingLeft: 40 }} 
-                placeholder="Tìm kiếm cư dân..." 
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+          <div style={{ padding: '16px', backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '24px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {/* Filters */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+                <strong style={{ fontSize: 14, color: '#0f172a', whiteSpace: 'nowrap' }}>🎯 Tìm kiếm:</strong>
+                <div style={{ position: 'relative', flex: 1, minWidth: '250px', maxWidth: '500px' }}>
+                   <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}>🔍</span>
+                   <input 
+                    style={{ ...styles.input, paddingLeft: 40 }} 
+                    placeholder="Nhập tên, căn hộ, SĐT..." 
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div style={{ height: '1px', backgroundColor: '#e2e8f0' }}></div>
+
+              {/* Sort */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+                <strong style={{ fontSize: 14, color: '#0f172a', whiteSpace: 'nowrap' }}>📶 Sắp xếp:</strong>
+                <select
+                  style={{ ...styles.select, width: '240px' }}
+                  value={`${sortConfig.key}_${sortConfig.direction}`}
+                  onChange={(e) => {
+                    const [key, direction] = e.target.value.split('_');
+                    setSortConfig({ key, direction });
+                  }}
+                >
+                  <option value="resident_id_asc">ID (Tăng dần)</option>
+                  <option value="resident_id_desc">ID (Giảm dần)</option>
+                  <option value="name_asc">Tên (A-Z)</option>
+                  <option value="name_desc">Tên (Z-A)</option>
+                  <option value="apartment_number_asc">Căn hộ (A-Z)</option>
+                  <option value="apartment_number_desc">Căn hộ (Z-A)</option>
+                </select>
+              </div>
             </div>
           </div>
 
@@ -278,13 +296,9 @@ const ResidentManagement = () => {
                 <thead>
                   <tr style={styles.thead}>
                     <th style={styles.th}>ID</th>
-                    <th style={{...styles.th, cursor: 'pointer'}} onClick={() => handleSort('name')}>
-                      Họ tên {sortConfig.key === 'name' ? (sortConfig.direction === 'asc' ? '▲' : '▼') : ''}
-                    </th>
+                    <th style={styles.th}>Họ tên</th>
                     <th style={styles.th}>Tài khoản</th>
-                    <th style={{...styles.th, cursor: 'pointer'}} onClick={() => handleSort('apartment_number')}>
-                      Căn hộ {sortConfig.key === 'apartment_number' ? (sortConfig.direction === 'asc' ? '▲' : '▼') : ''}
-                    </th>
+                    <th style={styles.th}>Căn hộ</th>
                     <th style={styles.th}>Điện thoại</th>
                     <th style={styles.th}>Trạng thái</th>
                     <th style={{...styles.th, textAlign: 'right'}}>Hành động</th>
@@ -369,6 +383,7 @@ const styles = {
   formGroup: { flex: 1, minWidth: 200 },
   label: { display: "block", marginBottom: 8, fontWeight: "600", fontSize: 13, color: "#475569" },
   input: { width: "100%", padding: "12px 16px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: 14, boxSizing: "border-box", outline: "none" },
+  select: { padding: "12px 16px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: 14, outline: "none", backgroundColor: "#fff", cursor: "pointer", color: "#475569" },
   
   submitBtn: { backgroundColor: "#3b82f6", color: "#fff", border: "none", padding: "12px 24px", borderRadius: "8px", cursor: "pointer", fontWeight: "bold", fontSize: 14 },
   cancelBtn: { backgroundColor: "#f1f5f9", color: "#475569", border: "none", padding: "12px 24px", borderRadius: "8px", cursor: "pointer", fontWeight: "bold", fontSize: 14, marginLeft: 12 },

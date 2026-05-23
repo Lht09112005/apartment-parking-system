@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
+import { useRealtimeRefresh } from "../hooks/useRealtimeRefresh";
 import axios from "../api/axios";
 import { useAuth } from "../context/AuthContext";
-import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 
 const FeeManagement = () => {
@@ -10,8 +10,7 @@ const FeeManagement = () => {
   const [message, setMessage] = useState({ type: "", text: "" });
   const [editData, setEditData] = useState(null);
   
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
+  const { user } = useAuth();
 
   const fetchData = async () => {
     try {
@@ -28,6 +27,10 @@ const FeeManagement = () => {
     fetchData();
   }, []);
 
+  useRealtimeRefresh(fetchData, ["fees", "residentFees"], {
+    intervalMs: 12000,
+  });
+
   const handleUpdate = async (e) => {
     e.preventDefault();
     try {
@@ -39,11 +42,6 @@ const FeeManagement = () => {
     } catch (err) {
       setMessage({ type: "error", text: "Lỗi cập nhật bảng giá" });
     }
-  };
-
-  const handleLogout = () => {
-    logout();
-    navigate("/login");
   };
 
   return (
