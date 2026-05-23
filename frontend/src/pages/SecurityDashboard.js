@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useRealtimeRefresh } from "../hooks/useRealtimeRefresh";
 import axios from "../api/axios";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -8,11 +9,11 @@ const SecurityDashboard = () => {
   const navigate = useNavigate();
 
   // Mode: "IN" or "OUT"
-  const [mode, setMode] = useState("IN"); 
+  const [mode, setMode] = useState("IN");
 
   const [plate, setPlate] = useState("");
   const [typeId, setTypeId] = useState(1);
-  const [areaId, setAreaId] = useState("A"); // Mocking area A or B
+  const [areaId, setAreaId] = useState("A");
 
   const [vehicleTypes, setVehicleTypes] = useState([]);
   const [vehicles, setVehicles] = useState([]);
@@ -21,20 +22,72 @@ const SecurityDashboard = () => {
   const [searchPlate, setSearchPlate] = useState("");
   const [searchResult, setSearchResult] = useState(null);
   const [searchDone, setSearchDone] = useState(false);
-  
+
   const [message, setMessage] = useState({ type: "", text: "" });
   const [ticketInfo, setTicketInfo] = useState(null);
 
-  // Fetch initial data
-  useEffect(() => {
+  const fetchVehicleTypes = async () => {
+    try {
+      const res = await axios.get("/vehicles/types");
+
+      const filteredTypes = res.data.filter(
+        (t) => t.type_name.toLowerCase() !== "xe điện"
+      );
+
+      setVehicleTypes(filteredTypes);
+
+      if (filteredTypes.length > 0) {
+        setTypeId((prevTypeId) => prevTypeId || filteredTypes[0].type_id);
+      }
+    } catch (err) {
+      console.error("Lỗi tải loại phương tiện:", err);
+    }
+  };
+
+  const fetchVehicles = async () => {
+    try {
+      const res = await axios.get("/vehicles");
+      setVehicles(res.data);
+    } catch (err) {
+      console.error("Lỗi tải danh sách xe:", err);
+    }
+  };
+
+  const fetchVehicleLogs = async () => {
+    try {
+      const res = await axios.get("/parking/sessions");
+      setVehicleLogs(res.data);
+    } catch (err) {
+      console.error("Lỗi tải lịch sử gửi xe:", err);
+    }
+  };
+
+  const refreshSecurityData = () => {
     fetchVehicleTypes();
     fetchVehicles();
+    fetchVehicleLogs();
+  };
+
+  // Fetch dữ liệu lần đầu khi mở trang
+  useEffect(() => {
+    refreshSecurityData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Realtime: khi backend có thay đổi xe / phiên gửi xe / phí thì tự cập nhật lại
+  useRealtimeRefresh(
+    refreshSecurityData,
+    ["vehicles", "parkingSessions", "fees"],
+    {
+      intervalMs: 7000,
+    }
+  );
 
   useEffect(() => {
     if (viewMode === "logs") {
       fetchVehicleLogs();
     }
+
     if (viewMode === "search") {
       setSearchResult(null);
       setSearchDone(false);
@@ -44,8 +97,10 @@ const SecurityDashboard = () => {
 
   useEffect(() => {
     const selectedType = vehicleTypes.find((vt) => vt.type_id === typeId);
+
     if (selectedType) {
       const normalized = selectedType.type_name.toLowerCase();
+
       if (normalized.includes("xe máy") || normalized.includes("xe điện")) {
         setAreaId("A");
       } else {
@@ -54,70 +109,111 @@ const SecurityDashboard = () => {
     }
   }, [typeId, vehicleTypes]);
 
-  const fetchVehicleTypes = async () => {
-    try {
-      const res = await axios.get("/vehicles/types");
-      const filteredTypes = res.data.filter(t => t.type_name.toLowerCase() !== 'xe điện');
-      setVehicleTypes(filteredTypes);
-      if (filteredTypes.length > 0) setTypeId(filteredTypes[0].type_id);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const fetchVehicles = async () => {
-    try {
-      const res = await axios.get("/vehicles");
-      setVehicles(res.data);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const fetchVehicleLogs = async () => {
-    try {
-      const res = await axios.get("/parking/sessions");
-      setVehicleLogs(res.data);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const normalizePlate = (p) => (p || "").replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+  const normalizePlate = (p) =>
+    (p || "").replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
 
   const handleSearch = async (overridePlate) => {
-    const query = typeof overridePlate === 'string' ? overridePlate : searchPlate;
+    const query =
+      typeof overridePlate === "string" ? overridePlate : searchPlate;
+
     if (!query.trim()) return;
+
     setSearchDone(false);
     setSearchResult(null);
+
     try {
       const res = await axios.get("/vehicles");
-      const found = res.data.find(v => normalizePlate(v.plate_number) === normalizePlate(query));
+
+      const found = res.data.find(
+        (v) => normalizePlate(v.plate_number) === normalizePlate(query)
+      );
+
+      const sessions = await axios.get("/parking/sessions");
+
+      const history = sessions.data.filter(
+        (s) =>
+          (s.plate_number &&
+            normalizePlate(s.plate_number) === normalizePlate(query)) ||
+          (s.guest_plate &&
+            normalizePlate(s.guest_plate) === normalizePlate(query))
+      );
+
+      const recentHistory = history.slice(0, 10);
+      const latestSession = recentHistory[0] || null;
+
       if (found) {
-        // Also get parking history for this plate
-        const sessions = await axios.get("/parking/sessions");
-        const history = sessions.data.filter(s => normalizePlate(s.plate_number) === normalizePlate(query) || normalizePlate(s.guest_plate) === normalizePlate(query));
-        setSearchResult({ vehicle: found, history: history.slice(0, 10) });
+        setSearchResult({
+          vehicle: found,
+          history: recentHistory,
+          latestSession,
+        });
+      } else if (history.length > 0) {
+        setSearchResult({
+          vehicle: {
+            plate_number: history[0].plate_number || history[0].guest_plate,
+            resident_name: "Khách vãng lai",
+            apartment_number: "---",
+            type_name: "Chưa rõ",
+            color: "---",
+          },
+          history: recentHistory,
+          latestSession,
+        });
       }
+
       setSearchDone(true);
       setSearchPlate(query);
     } catch (err) {
-      console.error(err);
+      console.error("Lỗi tìm kiếm xe:", err);
       setSearchDone(true);
     }
   };
 
   const getSuggestions = () => {
     if (!searchPlate.trim()) return [];
+
     const term = normalizePlate(searchPlate);
-    const matches = vehicles.filter(v => normalizePlate(v.plate_number).includes(term));
-    return matches.slice(0, 5); // limit 5
+
+    const matches = vehicles
+      .filter((v) => normalizePlate(v.plate_number).includes(term))
+      .map((v) => ({
+        plate: v.plate_number,
+        name: v.resident_name,
+      }));
+
+    const guestMatches = vehicleLogs
+      .filter(
+        (l) =>
+          (l.plate_number &&
+            normalizePlate(l.plate_number).includes(term)) ||
+          (l.guest_plate && normalizePlate(l.guest_plate).includes(term))
+      )
+      .map((l) => ({
+        plate: l.plate_number || l.guest_plate,
+        name: "Khách vãng lai",
+      }));
+
+    const combined = [...matches, ...guestMatches];
+    const unique = [];
+    const seen = new Set();
+
+    for (let item of combined) {
+      const p = normalizePlate(item.plate);
+
+      if (!seen.has(p)) {
+        seen.add(p);
+        unique.push(item);
+      }
+    }
+
+    return unique.slice(0, 5);
   };
 
-
-
-  // Find if plate is resident
-  const currentVehicle = plate.trim() ? vehicles.find(v => normalizePlate(v.plate_number) === normalizePlate(plate)) : null;
+  const currentVehicle = plate.trim()
+    ? vehicles.find(
+        (v) => normalizePlate(v.plate_number) === normalizePlate(plate)
+      )
+    : null;
 
   useEffect(() => {
     if (currentVehicle) {
@@ -127,36 +223,74 @@ const SecurityDashboard = () => {
 
   const getActualPlate = () => {
     if (currentVehicle) return currentVehicle.plate_number;
+
     if (mode === "OUT") {
-      const activeSession = vehicleLogs.find(v => v.status === 'parking' && (normalizePlate(v.plate_number) === normalizePlate(plate) || normalizePlate(v.guest_plate) === normalizePlate(plate)));
-      if (activeSession) return activeSession.plate_number || activeSession.guest_plate;
+      const activeSession = vehicleLogs.find(
+        (v) =>
+          v.status === "parking" &&
+          (normalizePlate(v.plate_number) === normalizePlate(plate) ||
+            normalizePlate(v.guest_plate) === normalizePlate(plate))
+      );
+
+      if (activeSession) {
+        return activeSession.plate_number || activeSession.guest_plate;
+      }
     }
+
     return plate.trim().toUpperCase();
   };
 
   const handleAction = async () => {
     setMessage({ type: "", text: "" });
     setTicketInfo(null);
+
     const actualPlate = getActualPlate();
-    
+
+    if (!actualPlate) {
+      setMessage({
+        type: "error",
+        text: "Vui lòng nhập biển số xe",
+      });
+      return;
+    }
+
     if (mode === "IN") {
       try {
         const res = await axios.post("/parking/check-in", {
           plate_number: actualPlate,
           type_id: currentVehicle ? currentVehicle.type_id : typeId,
         });
-        setMessage({ type: "success", text: res.data.message });
-        // Clear after a few seconds
-        setTimeout(() => { setPlate(""); setMessage({ type: "", text: "" }) }, 3000);
+
+        setMessage({
+          type: "success",
+          text: res.data.message,
+        });
+
+        refreshSecurityData();
+
+        setTimeout(() => {
+          setPlate("");
+          setMessage({ type: "", text: "" });
+        }, 3000);
       } catch (err) {
-        setMessage({ type: "error", text: err.response?.data?.message || "Lỗi check-in" });
+        setMessage({
+          type: "error",
+          text: err.response?.data?.message || "Lỗi check-in",
+        });
       }
     } else {
       try {
         const res = await axios.post("/parking/check-out", {
           plate_number: actualPlate,
         });
-        setMessage({ type: "success", text: res.data.message });
+
+        setMessage({
+          type: "success",
+          text: res.data.message,
+        });
+
+        refreshSecurityData();
+
         setTicketInfo({
           fee: res.data.fee,
           duration: res.data.duration_hours,
@@ -165,10 +299,16 @@ const SecurityDashboard = () => {
           is_resident: res.data.is_resident,
           is_monthly: res.data.is_monthly,
         });
-        // Clear after a few seconds
-        setTimeout(() => { setPlate(""); setMessage({ type: "", text: "" }) }, 8000);
+
+        setTimeout(() => {
+          setPlate("");
+          setMessage({ type: "", text: "" });
+        }, 8000);
       } catch (err) {
-        setMessage({ type: "error", text: err.response?.data?.message || "Lỗi check-out" });
+        setMessage({
+          type: "error",
+          text: err.response?.data?.message || "Lỗi check-out",
+        });
       }
     }
   };
@@ -180,476 +320,1106 @@ const SecurityDashboard = () => {
     }
   };
 
-  const userName = user?.name || user?.username || '';
-  const userInitial = userName ? userName.charAt(0).toUpperCase() : 'B';
+  const userName = user?.name || user?.username || "";
+  const userInitial = userName ? userName.charAt(0).toUpperCase() : "B";
 
   const menuItems = [
-    { key: 'gate', label: 'Ghi nhận xe', icon: 'directions_car' },
-    { key: 'logs', label: 'Lịch sử gửi xe', icon: 'history' },
-    { key: 'search', label: 'Tìm kiếm xe', icon: 'search' },
+    { key: "gate", label: "Ghi nhận xe", icon: "directions_car" },
+    { key: "logs", label: "Lịch sử gửi xe", icon: "history" },
+    { key: "search", label: "Tìm kiếm xe", icon: "search" },
   ];
 
   const getPageTitle = () => {
     switch (viewMode) {
-      case 'gate': return 'Ghi nhận xe';
-      case 'logs': return 'Lịch sử gửi xe';
-      case 'search': return 'Tìm kiếm xe';
-      default: return 'Ghi nhận xe';
+      case "gate":
+        return "Ghi nhận xe";
+      case "logs":
+        return "Lịch sử gửi xe";
+      case "search":
+        return "Tìm kiếm xe";
+      default:
+        return "Ghi nhận xe";
     }
   };
 
-  // ----- RENDER -----
+  const activeMotos = vehicleLogs.filter(
+    (s) => s.status === "parking" && Number(s.type_id) === 1
+  ).length;
+
+  const activeCars = vehicleLogs.filter(
+    (s) => s.status === "parking" && Number(s.type_id) === 2
+  ).length;
+
+  const totalActive = activeMotos + activeCars;
+
   return (
     <>
-      <link href="https://fonts.googleapis.com/icon?family=Material+Symbols+Rounded" rel="stylesheet" />
+      <link
+        href="https://fonts.googleapis.com/icon?family=Material+Symbols+Rounded"
+        rel="stylesheet"
+      />
+
       <style>{`
         .material-symbols-rounded {
           font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
         }
       `}</style>
+
       <div style={styles.container}>
-        {/* Sidebar */}
         <div style={styles.sidebar}>
-        {/* Logo Area */}
-        <div style={styles.sidebarHeader}>
-          <div style={styles.logoRow}>
-            <div style={styles.logoIcon}>P</div>
-            <div>
-              <div style={styles.logoText}>Parking</div>
-              <div style={styles.logoSubText}>Bảo vệ</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Menu */}
-        <div style={styles.menuSection}>
-          <div style={styles.menuLabel}>MENU</div>
-          <div style={styles.menuItems}>
-            {menuItems.map((item) => (
-              <div
-                key={item.key}
-                style={{
-                  ...styles.menuItem,
-                  ...(viewMode === item.key ? styles.menuItemActive : {}),
-                }}
-                onClick={() => setViewMode(item.key)}
-                onMouseEnter={(e) => {
-                  if (viewMode !== item.key) {
-                    e.currentTarget.style.backgroundColor = '#f5f5f5';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (viewMode !== item.key) {
-                    e.currentTarget.style.backgroundColor = 'transparent';
-                  }
-                }}
-              >
-                <span className="material-symbols-rounded" style={{ fontSize: 20, color: viewMode === item.key ? '#1a73e8' : '#5f6368', marginRight: 12 }}>
-                  {item.icon}
-                </span>
-                <span style={{ fontWeight: viewMode === item.key ? '600' : '400', color: viewMode === item.key ? '#1a73e8' : '#3c4043' }}>
-                  {item.label}
-                </span>
+          <div style={styles.sidebarHeader}>
+            <div style={styles.logoRow}>
+              <div style={styles.logoIcon}>P</div>
+              <div>
+                <div style={styles.logoText}>Parking</div>
+                <div style={styles.logoSubText}>Bảo vệ</div>
               </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div style={styles.sidebarFooter}>
-          <div style={styles.footerUserRow}>
-            <div style={styles.footerAvatar}>{userInitial}</div>
-            <div style={styles.footerUserInfo}>
-              <div style={styles.footerUserName}>{userName}</div>
-              <div style={styles.footerUserRole}>Bảo vệ</div>
-            </div>
-          </div>
-          <div style={{...styles.logoutBtn, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8}} onClick={handleLogout}>
-            <span className="material-symbols-rounded" style={{ fontSize: 18, color: '#c5221f' }}>logout</span>
-            <span style={{ color: '#c5221f' }}>Đăng xuất</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div style={styles.main}>
-        {/* Top Header */}
-        <div style={styles.topHeader}>
-          <div style={styles.headerLeft}>
-            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: '#202124' }}>{getPageTitle()}</h2>
-          </div>
-          <div style={styles.headerRight}>
-            <div style={{ textAlign: 'right', marginRight: 12 }}>
-              <div style={{ fontSize: 14, fontWeight: '600', color: '#202124' }}>{userName}</div>
-              <div style={{ fontSize: 12, color: '#5f6368' }}>Bảo vệ</div>
-            </div>
-            <div style={styles.avatar}>{userInitial}</div>
-          </div>
-        </div>
-
-        {/* Content Body */}
-        <div style={styles.contentBody}>
-          
-          {/* Capacity Cards */}
-          <div style={styles.capacityRow}>
-            <div style={{...styles.capacityCard, borderColor: '#86efac'}}>
-              <div style={{flex: 1}}>
-                <div style={styles.cardLabel}>KHU A - XE MÁY</div>
-                <div style={styles.cardNumber}>890/1200</div>
-              </div>
-              <div style={{...styles.cardIcon, background: '#dcfce7', color: '#10b981'}}>🏍️</div>
-            </div>
-            <div style={{...styles.capacityCard, borderColor: '#fca5a5'}}>
-              <div style={{flex: 1}}>
-                <div style={styles.cardLabel}>KHU B - Ô TÔ</div>
-                <div style={styles.cardNumber}>142/150</div>
-              </div>
-              <div style={{...styles.cardIcon, background: '#fee2e2', color: '#ef4444'}}>🚗</div>
-            </div>
-            <div style={{...styles.capacityCard, borderColor: '#7dd3fc'}}>
-              <div style={{flex: 1}}>
-                <div style={styles.cardLabel}>TỔNG BÃI</div>
-                <div style={styles.cardNumber}>1032/1350</div>
-              </div>
-              <div style={{...styles.cardIcon, background: '#dbeafe', color: '#0c4a6e'}}>📊</div>
             </div>
           </div>
 
-          {/* Main Interaction Area */}
-          {viewMode === "gate" ? (
-            <div style={styles.mainPanelRow}>
-              {/* Left Box */}
-              <div style={styles.leftPanel}>
-                
-                {/* Mode Toggle */}
-                <div style={styles.modeToggle}>
-                  <button 
-                    onClick={() => {setMode("IN"); setMessage({type: "", text: ""}); setTicketInfo(null)}} 
-                    style={{...styles.modeBtn, ...(mode === "IN" ? styles.modeActiveIn : {})}}
-                  >
-                    XẾ VÀO (CHECK-IN)
-                  </button>
-                  <button 
-                    onClick={() => {setMode("OUT"); setMessage({type: "", text: ""}); setTicketInfo(null)}} 
-                    style={{...styles.modeBtn, ...(mode === "OUT" ? styles.modeActiveOut : {})}}
-                  >
-                    XE RA (CHECK-OUT)
-                  </button>
-                </div>
+          <div style={styles.menuSection}>
+            <div style={styles.menuLabel}>MENU</div>
 
-                {/* Big Input */}
-                <div style={styles.inputContainer}>
-                  <div style={styles.inputLabel}>NHẬP BIỂN SỐ XE / QUÉT THẺ</div>
-                  <input 
-                    autoFocus
-                    value={plate}
-                    onChange={(e) => setPlate(e.target.value.toUpperCase())}
-                    style={styles.bigInput}
-                    placeholder="--- ---"
-                  />
-                  <div style={styles.inputUnderline}></div>
-                </div>
-
-                {/* Selectors */}
-                <div style={styles.selectorsRow}>
-                  <div style={styles.selectorGroup}>
-                    <div style={styles.selectorTitle}>Loại Phương Tiện</div>
-                    <div style={styles.cardsWrap}>
-                      {vehicleTypes.map(vt => (
-                        <div 
-                          key={vt.type_id}
-                          onClick={() => !currentVehicle && setTypeId(vt.type_id)}
-                          style={{
-                            ...styles.selectCard,
-                            backgroundColor: (currentVehicle ? currentVehicle.type_id === vt.type_id : typeId === vt.type_id) ? '#0f172a' : '#fff',
-                            color: (currentVehicle ? currentVehicle.type_id === vt.type_id : typeId === vt.type_id) ? '#fff' : '#64748b',
-                            cursor: currentVehicle ? 'not-allowed' : 'pointer',
-                            opacity: currentVehicle && currentVehicle.type_id !== vt.type_id ? 0.5 : 1
-                          }}
-                        >
-                          <div style={{fontSize: 24, marginBottom: 4}}>{vt.type_name === 'Ô tô' ? '🚘' : '🏍️'}</div>
-                          <div>{vt.type_name}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div style={styles.selectorGroup}>
-                    <div style={styles.selectorTitle}>Khu Vực Đỗ</div>
-                    <div style={styles.cardsWrap}>
-                      <div 
-                        style={{...styles.selectCard, backgroundColor: areaId === "A" ? '#0f172a' : '#f8fafc', border: areaId === "A" ? '2px solid #0f172a' : '1px solid #e2e8f0', color: areaId === "A" ? '#fff' : '#0f172a'}}
-                      >
-                        <div style={{fontSize: 20}}>A</div>
-                        <div>XE MÁY</div>
-                      </div>
-                      <div 
-                        style={{...styles.selectCard, backgroundColor: areaId === "B" ? '#0f172a' : '#f8fafc', border: areaId === "B" ? '2px solid #0f172a' : '1px solid #e2e8f0', color: areaId === "B" ? '#fff' : '#0f172a'}}
-                      >
-                        <div style={{fontSize: 20}}>B</div>
-                        <div>Ô TÔ</div>
-                      </div>
-                    </div>
-                    <div style={styles.areaHint}>Khu A dành cho xe máy, khu B dành cho ô tô. Chức năng được chọn tự động theo loại phương tiện.</div>
-                  </div>
-                </div>
-
-                {/* Toast Message inside Left Panel */}
-                {message.text && (
-                   <div style={{...styles.toast, backgroundColor: message.type === 'success' ? '#dcfce7' : '#fee2e2', color: message.type === 'success' ? '#166534' : '#991b1b'}}>
-                      {message.type === 'success' ? '✅' : '❌'} {message.text}
-                   </div>
-                )}
-
-                {/* Bottom Actions */}
-                <div style={styles.actionsRow}>
-                  <button style={{...styles.actionBtn, backgroundColor: '#fee2e2', color: '#ef4444', marginRight: 20, fontSize: 18, padding: '0 40px'}} onClick={() => {setPlate(""); setTicketInfo(null)}}>
-                    ⊗ Hủy Bỏ
-                  </button>
-                  <button 
-                    onClick={handleAction}
+            <div style={styles.menuItems}>
+              {menuItems.map((item) => (
+                <div
+                  key={item.key}
+                  style={{
+                    ...styles.menuItem,
+                    ...(viewMode === item.key ? styles.menuItemActive : {}),
+                  }}
+                  onClick={() => setViewMode(item.key)}
+                  onMouseEnter={(e) => {
+                    if (viewMode !== item.key) {
+                      e.currentTarget.style.backgroundColor = "#f5f5f5";
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (viewMode !== item.key) {
+                      e.currentTarget.style.backgroundColor = "transparent";
+                    }
+                  }}
+                >
+                  <span
+                    className="material-symbols-rounded"
                     style={{
-                      ...styles.actionBtn, 
-                      backgroundColor: mode === "IN" ? '#047857' : '#be123c', 
-                      color: '#fff', 
-                      fontSize: 24, 
-                      fontWeight: 'bold', 
-                      padding: '0 60px',
-                      minWidth: '40%',
-                      letterSpacing: 1
+                      fontSize: 20,
+                      color: viewMode === item.key ? "#1a73e8" : "#5f6368",
+                      marginRight: 12,
                     }}
                   >
-                    {mode === "IN" ? '⨀ CHO VÀO (ENTER)' : '⨀ CHO RA (EXIT)'}
-                  </button>
+                    {item.icon}
+                  </span>
+
+                  <span
+                    style={{
+                      fontWeight: viewMode === item.key ? "600" : "400",
+                      color: viewMode === item.key ? "#1a73e8" : "#3c4043",
+                    }}
+                  >
+                    {item.label}
+                  </span>
                 </div>
+              ))}
+            </div>
+          </div>
 
-              </div>
+          <div style={styles.sidebarFooter}>
+            <div style={styles.footerUserRow}>
+              <div style={styles.footerAvatar}>{userInitial}</div>
 
-              {/* Right Panel */}
-              <div style={styles.rightPanel}>
-                {currentVehicle ? (
-                  <>
-                    <div style={styles.ticketValidHeader}>VÉ THÁNG - HỢP LỆ ✓</div>
-                    <div style={styles.userInfo}>
-                      <div style={styles.userPhotoPlaceholder}>👤</div>
-                      <div style={styles.userName}>{currentVehicle.resident_name || "Cư dân nội khu"}</div>
-                      <div style={styles.userApt}>Căn hộ: {currentVehicle.apartment_number || "---"}</div>
-                    </div>
-                    <div style={styles.ticketDetails}>
-                      <div style={styles.tdRow}><span>Đăng ký:</span> <strong>{currentVehicle.type_name} ({currentVehicle.color})</strong></div>
-                      <div style={styles.tdRow}><span>Biển số ĐK:</span> <strong>{currentVehicle.plate_number}</strong></div>
-                      <div style={styles.tdRow}><span>Hạn dùng:</span> <strong style={{color: '#047857'}}>Còn hạn</strong></div>
-                    </div>
-                  </>
-                ) : plate.trim() ? (
-                  <>
-                     <div style={{...styles.ticketValidHeader, backgroundColor: '#f59e0b', color: '#fff'}}>KHÁCH VÃNG LAI</div>
-                     <div style={{textAlign: 'center', marginTop: 40, color: '#64748b'}}>
-                       Xe này không có trong danh sách vé tháng. Tính phí theo giờ (Vé lượt).
-                     </div>
-                  </>
-                ) : (
-                  <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#94a3b8'}}>
-                    Chưa có thông tin xe
-                  </div>
-                )}
-
-                {ticketInfo && mode === "OUT" && (
-                  <div style={styles.parkingInfoBox}>
-                    <div style={{textAlign: 'center', fontWeight: 'bold', marginBottom: 12, color: '#1e293b'}}>HÓA ĐƠN CHECK-OUT</div>
-                    <div style={styles.piRow}>
-                      <div style={styles.piCol}>
-                        <div style={styles.piLabel}>GIỜ VÀO</div>
-                        <div style={styles.piValue}>{ticketInfo.time_in.split(' ')[1]}</div>
-                      </div>
-                      <div style={styles.piCol}>
-                        <div style={styles.piLabel}>GIỜ RA</div>
-                        <div style={styles.piValue}>{ticketInfo.time_out.split(' ')[1]}</div>
-                      </div>
-                    </div>
-                    <div style={{textAlign: 'center', marginTop: 16}}>
-                      <div style={styles.piLabel}>TỔNG TIỀN ({ticketInfo.duration} giờ)</div>
-                      <div style={{fontSize: 24, fontWeight: 'bold', color: '#be123c'}}>{ticketInfo.fee.toLocaleString()} VNĐ</div>
-                    </div>
-                  </div>
-                )}
-
-                {!ticketInfo && (
-                  <div style={{...styles.parkingInfoBox, marginTop: 'auto'}}>
-                    <div style={{textAlign: 'center', fontWeight: 'bold', marginBottom: 12, color: '#1e293b'}}>THÔNG TIN BÃI ĐỖ</div>
-                    <div style={styles.piRow}>
-                      <div style={styles.piCol}>
-                        <div style={styles.piLabel}>LƯỢT VÀO</div>
-                        <div style={styles.piValue}>--:--</div>
-                      </div>
-                      <div style={styles.piCol}>
-                        <div style={styles.piLabel}>NGÀY</div>
-                        <div style={styles.piValue}>--/--</div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
+              <div style={styles.footerUserInfo}>
+                <div style={styles.footerUserName}>{userName}</div>
+                <div style={styles.footerUserRole}>Bảo vệ</div>
               </div>
             </div>
-          ) : (
-            <div style={styles.mainPanelRow}>
-              <div style={styles.dashboardPanel}>
-                <div style={styles.sectionHeader}>
-                  {viewMode === 'logs' ? 'Lịch sử gửi xe' : 'Tìm kiếm thông tin xe'}
+
+            <div
+              style={{
+                ...styles.logoutBtn,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+              }}
+              onClick={handleLogout}
+            >
+              <span
+                className="material-symbols-rounded"
+                style={{ fontSize: 18, color: "#c5221f" }}
+              >
+                logout
+              </span>
+              <span style={{ color: "#c5221f" }}>Đăng xuất</span>
+            </div>
+          </div>
+        </div>
+
+        <div style={styles.main}>
+          <div style={styles.topHeader}>
+            <div style={styles.headerLeft}>
+              <h2
+                style={{
+                  margin: 0,
+                  fontSize: 18,
+                  fontWeight: 600,
+                  color: "#202124",
+                }}
+              >
+                {getPageTitle()}
+              </h2>
+            </div>
+
+            <div style={styles.headerRight}>
+              <div style={{ textAlign: "right", marginRight: 12 }}>
+                <div
+                  style={{
+                    fontSize: 14,
+                    fontWeight: "600",
+                    color: "#202124",
+                  }}
+                >
+                  {userName}
+                </div>
+                <div style={{ fontSize: 12, color: "#5f6368" }}>Bảo vệ</div>
+              </div>
+
+              <div style={styles.avatar}>{userInitial}</div>
+            </div>
+          </div>
+
+          <div style={styles.contentBody}>
+            <div style={styles.capacityRow}>
+              <div style={{ ...styles.capacityCard, borderColor: "#86efac" }}>
+                <div style={{ flex: 1 }}>
+                  <div style={styles.cardLabel}>KHU A - XE MÁY</div>
+                  <div style={styles.cardNumber}>{activeMotos}/1200</div>
                 </div>
 
-                {viewMode === 'logs' && (
-                  <>
-                    <div style={styles.sectionSummaryRow}>
-                      <div style={styles.summaryCard}>
-                        <div style={styles.summaryLabel}>Phiên gửi gần nhất</div>
-                        <div style={styles.summaryValue}>{vehicleLogs.length}</div>
-                      </div>
-                      <div style={styles.summaryCard}>
-                        <div style={styles.summaryLabel}>Xe đang gửi</div>
-                        <div style={styles.summaryValue}>{vehicleLogs.filter((item) => item.status === 'parking').length}</div>
-                      </div>
-                      <div style={styles.summaryCard}>
-                        <div style={styles.summaryLabel}>Xe đã ra</div>
-                        <div style={styles.summaryValue}>{vehicleLogs.filter((item) => item.status === 'completed').length}</div>
-                      </div>
-                    </div>
-                    <div style={styles.logsTable}>
-                      <div style={styles.tableRowHeader}>
-                        <div style={styles.tableCell}>Biển số</div>
-                        <div style={styles.tableCell}>Trạng thái</div>
-                        <div style={styles.tableCell}>Vào</div>
-                        <div style={styles.tableCell}>Ra</div>
-                        <div style={styles.tableCell}>Nhân viên</div>
-                      </div>
-                      {vehicleLogs.length === 0 ? (
-                        <div style={styles.emptyState}>Chưa có bản ghi nào</div>
-                      ) : vehicleLogs.map((log) => (
-                        <div key={log.session_id} style={styles.tableRow}>
-                          <div style={styles.tableCell}>{log.plate_number || log.guest_plate}</div>
-                          <div style={styles.tableCell}>{log.status === 'parking' ? 'Đang gửi' : 'Đã ra'}</div>
-                          <div style={styles.tableCell}>{log.time_in ? new Date(log.time_in).toLocaleString() : '-'}</div>
-                          <div style={styles.tableCell}>{log.time_out ? new Date(log.time_out).toLocaleString() : '-'}</div>
-                          <div style={styles.tableCell}>{log.security_name || 'N/A'}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                )}
+                <div
+                  style={{
+                    ...styles.cardIcon,
+                    background: "#dcfce7",
+                    color: "#10b981",
+                  }}
+                >
+                  🏍️
+                </div>
+              </div>
 
-                {viewMode === 'search' && (
-                  <>
-                    <div style={{display:'flex',gap:12,marginBottom:24, position: 'relative'}}>
-                      <div style={{ flex: 1, position: 'relative' }}>
-                        <input
-                          value={searchPlate}
-                          onChange={(e) => {
-                            setSearchPlate(e.target.value.toUpperCase());
-                            setSearchDone(false);
-                            setSearchResult(null);
-                          }}
-                          onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                          placeholder="Nhập biển số xe cần tìm..."
-                          style={{width: '100%', padding:'14px 18px',border:'2px solid #e2e8f0',borderRadius:10,fontSize:16,outline:'none',backgroundColor:'#f8fafc',boxSizing: 'border-box'}}
-                        />
-                        {searchPlate.trim() && !searchDone && getSuggestions().length > 0 && (
-                          <div style={{position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, marginTop: 4, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', zIndex: 10, overflow: 'hidden'}}>
-                            {getSuggestions().map(v => (
-                              <div
-                                key={v.plate_number}
-                                onClick={() => handleSearch(v.plate_number)}
-                                style={{padding: '12px 18px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', fontWeight: '600', color: '#0f172a'}}
-                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
-                                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                              >
-                                {v.plate_number} <span style={{fontSize: 12, color: '#64748b', fontWeight: '400', marginLeft: 8}}>{v.resident_name}</span>
-                              </div>
-                            ))}
+              <div style={{ ...styles.capacityCard, borderColor: "#fca5a5" }}>
+                <div style={{ flex: 1 }}>
+                  <div style={styles.cardLabel}>KHU B - Ô TÔ</div>
+                  <div style={styles.cardNumber}>{activeCars}/150</div>
+                </div>
+
+                <div
+                  style={{
+                    ...styles.cardIcon,
+                    background: "#fee2e2",
+                    color: "#ef4444",
+                  }}
+                >
+                  🚗
+                </div>
+              </div>
+
+              <div style={{ ...styles.capacityCard, borderColor: "#7dd3fc" }}>
+                <div style={{ flex: 1 }}>
+                  <div style={styles.cardLabel}>TỔNG BÃI</div>
+                  <div style={styles.cardNumber}>{totalActive}/1350</div>
+                </div>
+
+                <div
+                  style={{
+                    ...styles.cardIcon,
+                    background: "#dbeafe",
+                    color: "#0c4a6e",
+                  }}
+                >
+                  📊
+                </div>
+              </div>
+            </div>
+
+            {viewMode === "gate" ? (
+              <div style={styles.mainPanelRow}>
+                <div style={styles.leftPanel}>
+                  <div style={styles.modeToggle}>
+                    <button
+                      onClick={() => {
+                        setMode("IN");
+                        setMessage({ type: "", text: "" });
+                        setTicketInfo(null);
+                      }}
+                      style={{
+                        ...styles.modeBtn,
+                        ...(mode === "IN" ? styles.modeActiveIn : {}),
+                      }}
+                    >
+                      XE VÀO (CHECK-IN)
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setMode("OUT");
+                        setMessage({ type: "", text: "" });
+                        setTicketInfo(null);
+                      }}
+                      style={{
+                        ...styles.modeBtn,
+                        ...(mode === "OUT" ? styles.modeActiveOut : {}),
+                      }}
+                    >
+                      XE RA (CHECK-OUT)
+                    </button>
+                  </div>
+
+                  <div style={styles.inputContainer}>
+                    <div style={styles.inputLabel}>
+                      NHẬP BIỂN SỐ XE / QUÉT THẺ
+                    </div>
+
+                    <input
+                      autoFocus
+                      value={plate}
+                      onChange={(e) => setPlate(e.target.value.toUpperCase())}
+                      style={styles.bigInput}
+                      placeholder="--- ---"
+                    />
+
+                    <div style={styles.inputUnderline}></div>
+                  </div>
+
+                  <div style={styles.selectorsRow}>
+                    <div style={styles.selectorGroup}>
+                      <div style={styles.selectorTitle}>Loại Phương Tiện</div>
+
+                      <div style={styles.cardsWrap}>
+                        {vehicleTypes.map((vt) => (
+                          <div
+                            key={vt.type_id}
+                            onClick={() =>
+                              !currentVehicle && setTypeId(vt.type_id)
+                            }
+                            style={{
+                              ...styles.selectCard,
+                              backgroundColor: (
+                                currentVehicle
+                                  ? currentVehicle.type_id === vt.type_id
+                                  : typeId === vt.type_id
+                              )
+                                ? "#0f172a"
+                                : "#fff",
+                              color: (
+                                currentVehicle
+                                  ? currentVehicle.type_id === vt.type_id
+                                  : typeId === vt.type_id
+                              )
+                                ? "#fff"
+                                : "#64748b",
+                              cursor: currentVehicle ? "not-allowed" : "pointer",
+                              opacity:
+                                currentVehicle &&
+                                currentVehicle.type_id !== vt.type_id
+                                  ? 0.5
+                                  : 1,
+                            }}
+                          >
+                            <div style={{ fontSize: 24, marginBottom: 4 }}>
+                              {vt.type_name === "Ô tô" ? "🚘" : "🏍️"}
+                            </div>
+                            <div>{vt.type_name}</div>
                           </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div style={styles.selectorGroup}>
+                      <div style={styles.selectorTitle}>Khu Vực Đỗ</div>
+
+                      <div style={styles.cardsWrap}>
+                        <div
+                          style={{
+                            ...styles.selectCard,
+                            backgroundColor:
+                              areaId === "A" ? "#0f172a" : "#f8fafc",
+                            border:
+                              areaId === "A"
+                                ? "2px solid #0f172a"
+                                : "1px solid #e2e8f0",
+                            color: areaId === "A" ? "#fff" : "#0f172a",
+                          }}
+                        >
+                          <div style={{ fontSize: 20 }}>A</div>
+                          <div>XE MÁY</div>
+                        </div>
+
+                        <div
+                          style={{
+                            ...styles.selectCard,
+                            backgroundColor:
+                              areaId === "B" ? "#0f172a" : "#f8fafc",
+                            border:
+                              areaId === "B"
+                                ? "2px solid #0f172a"
+                                : "1px solid #e2e8f0",
+                            color: areaId === "B" ? "#fff" : "#0f172a",
+                          }}
+                        >
+                          <div style={{ fontSize: 20 }}>B</div>
+                          <div>Ô TÔ</div>
+                        </div>
+                      </div>
+
+                      <div style={styles.areaHint}>
+                        Khu A dành cho xe máy, khu B dành cho ô tô. Chức năng
+                        được chọn tự động theo loại phương tiện.
+                      </div>
+                    </div>
+                  </div>
+
+                  {message.text && (
+                    <div
+                      style={{
+                        ...styles.toast,
+                        backgroundColor:
+                          message.type === "success" ? "#dcfce7" : "#fee2e2",
+                        color:
+                          message.type === "success" ? "#166534" : "#991b1b",
+                      }}
+                    >
+                      {message.type === "success" ? "✅" : "❌"} {message.text}
+                    </div>
+                  )}
+
+                  <div style={styles.actionsRow}>
+                    <button
+                      style={{
+                        ...styles.actionBtn,
+                        backgroundColor: "#fee2e2",
+                        color: "#ef4444",
+                        marginRight: 20,
+                        fontSize: 18,
+                        padding: "0 40px",
+                      }}
+                      onClick={() => {
+                        setPlate("");
+                        setTicketInfo(null);
+                      }}
+                    >
+                      ⊗ Hủy Bỏ
+                    </button>
+
+                    <button
+                      onClick={handleAction}
+                      style={{
+                        ...styles.actionBtn,
+                        backgroundColor: mode === "IN" ? "#047857" : "#be123c",
+                        color: "#fff",
+                        fontSize: 24,
+                        fontWeight: "bold",
+                        padding: "0 60px",
+                        minWidth: "40%",
+                        letterSpacing: 1,
+                      }}
+                    >
+                      {mode === "IN"
+                        ? "⨀ CHO VÀO (ENTER)"
+                        : "⨀ CHO RA (EXIT)"}
+                    </button>
+                  </div>
+                </div>
+
+                <div style={styles.rightPanel}>
+                  {currentVehicle ? (
+                    <>
+                      <div style={styles.ticketValidHeader}>
+                        VÉ THÁNG - HỢP LỆ ✓
+                      </div>
+
+                      <div style={styles.userInfo}>
+                        <div style={styles.userPhotoPlaceholder}>👤</div>
+                        <div style={styles.userName}>
+                          {currentVehicle.resident_name || "Cư dân nội khu"}
+                        </div>
+                        <div style={styles.userApt}>
+                          Căn hộ: {currentVehicle.apartment_number || "---"}
+                        </div>
+                      </div>
+
+                      <div style={styles.ticketDetails}>
+                        <div style={styles.tdRow}>
+                          <span>Đăng ký:</span>
+                          <strong>
+                            {currentVehicle.type_name} ({currentVehicle.color})
+                          </strong>
+                        </div>
+
+                        <div style={styles.tdRow}>
+                          <span>Biển số ĐK:</span>
+                          <strong>{currentVehicle.plate_number}</strong>
+                        </div>
+
+                        <div style={styles.tdRow}>
+                          <span>Hạn dùng:</span>
+                          <strong style={{ color: "#047857" }}>Còn hạn</strong>
+                        </div>
+                      </div>
+                    </>
+                  ) : plate.trim() ? (
+                    <>
+                      <div
+                        style={{
+                          ...styles.ticketValidHeader,
+                          backgroundColor: "#f59e0b",
+                          color: "#fff",
+                        }}
+                      >
+                        KHÁCH VÃNG LAI
+                      </div>
+
+                      <div
+                        style={{
+                          textAlign: "center",
+                          marginTop: 40,
+                          color: "#64748b",
+                        }}
+                      >
+                        Xe này không có trong danh sách vé tháng. Tính phí theo
+                        giờ (Vé lượt).
+                      </div>
+                    </>
+                  ) : (
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        height: "100%",
+                        color: "#94a3b8",
+                      }}
+                    >
+                      Chưa có thông tin xe
+                    </div>
+                  )}
+
+                  {ticketInfo && mode === "OUT" && (
+                    <div style={styles.parkingInfoBox}>
+                      <div
+                        style={{
+                          textAlign: "center",
+                          fontWeight: "bold",
+                          marginBottom: 12,
+                          color: "#1e293b",
+                        }}
+                      >
+                        HÓA ĐƠN CHECK-OUT
+                      </div>
+
+                      <div style={styles.piRow}>
+                        <div style={styles.piCol}>
+                          <div style={styles.piLabel}>GIỜ VÀO</div>
+                          <div style={styles.piValue}>
+                            {ticketInfo.time_in.split(" ")[1]}
+                          </div>
+                        </div>
+
+                        <div style={styles.piCol}>
+                          <div style={styles.piLabel}>GIỜ RA</div>
+                          <div style={styles.piValue}>
+                            {ticketInfo.time_out.split(" ")[1]}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div style={{ textAlign: "center", marginTop: 16 }}>
+                        <div style={styles.piLabel}>
+                          TỔNG TIỀN ({ticketInfo.duration} giờ)
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 24,
+                            fontWeight: "bold",
+                            color: "#be123c",
+                          }}
+                        >
+                          {ticketInfo.fee.toLocaleString()} VNĐ
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {!ticketInfo && (
+                    <div style={{ ...styles.parkingInfoBox, marginTop: "auto" }}>
+                      <div
+                        style={{
+                          textAlign: "center",
+                          fontWeight: "bold",
+                          marginBottom: 12,
+                          color: "#1e293b",
+                        }}
+                      >
+                        THÔNG TIN BÃI ĐỖ
+                      </div>
+
+                      <div style={styles.piRow}>
+                        <div style={styles.piCol}>
+                          <div style={styles.piLabel}>LƯỢT VÀO</div>
+                          <div style={styles.piValue}>--:--</div>
+                        </div>
+
+                        <div style={styles.piCol}>
+                          <div style={styles.piLabel}>NGÀY</div>
+                          <div style={styles.piValue}>--/--</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div style={styles.mainPanelRow}>
+                <div style={styles.dashboardPanel}>
+                  <div style={styles.sectionHeader}>
+                    {viewMode === "logs"
+                      ? "Lịch sử gửi xe"
+                      : "Tìm kiếm thông tin xe"}
+                  </div>
+
+                  {viewMode === "logs" && (
+                    <>
+                      <div style={styles.sectionSummaryRow}>
+                        <div style={styles.summaryCard}>
+                          <div style={styles.summaryLabel}>
+                            Phiên gửi gần nhất
+                          </div>
+                          <div style={styles.summaryValue}>
+                            {vehicleLogs.length}
+                          </div>
+                        </div>
+
+                        <div style={styles.summaryCard}>
+                          <div style={styles.summaryLabel}>Xe đang gửi</div>
+                          <div style={styles.summaryValue}>
+                            {
+                              vehicleLogs.filter(
+                                (item) => item.status === "parking"
+                              ).length
+                            }
+                          </div>
+                        </div>
+
+                        <div style={styles.summaryCard}>
+                          <div style={styles.summaryLabel}>Xe đã ra</div>
+                          <div style={styles.summaryValue}>
+                            {
+                              vehicleLogs.filter(
+                                (item) => item.status === "completed"
+                              ).length
+                            }
+                          </div>
+                        </div>
+                      </div>
+
+                      <div style={styles.logsTable}>
+                        <div style={styles.tableRowHeader}>
+                          <div style={styles.tableCell}>Biển số</div>
+                          <div style={styles.tableCell}>Trạng thái</div>
+                          <div style={styles.tableCell}>Vào</div>
+                          <div style={styles.tableCell}>Ra</div>
+                          <div style={styles.tableCell}>Nhân viên</div>
+                        </div>
+
+                        {vehicleLogs.length === 0 ? (
+                          <div style={styles.emptyState}>
+                            Chưa có bản ghi nào
+                          </div>
+                        ) : (
+                          vehicleLogs.map((log) => (
+                            <div key={log.session_id} style={styles.tableRow}>
+                              <div style={styles.tableCell}>
+                                {log.plate_number || log.guest_plate}
+                              </div>
+                              <div style={styles.tableCell}>
+                                {log.status === "parking"
+                                  ? "Đang gửi"
+                                  : "Đã ra"}
+                              </div>
+                              <div style={styles.tableCell}>
+                                {log.time_in
+                                  ? new Date(log.time_in).toLocaleString()
+                                  : "-"}
+                              </div>
+                              <div style={styles.tableCell}>
+                                {log.time_out
+                                  ? new Date(log.time_out).toLocaleString()
+                                  : "-"}
+                              </div>
+                              <div style={styles.tableCell}>
+                                {log.security_name || "N/A"}
+                              </div>
+                            </div>
+                          ))
                         )}
                       </div>
-                      <button onClick={handleSearch} style={{padding:'14px 28px',backgroundColor:'#0f172a',color:'#fff',border:'none',borderRadius:10,fontSize:15,fontWeight:'700',cursor:'pointer'}}>
-                        Tìm kiếm
-                      </button>
-                    </div>
+                    </>
+                  )}
 
-                    {searchDone && !searchResult && (
-                      <div style={styles.emptyState}>Không tìm thấy xe với biển số "{searchPlate}". Xe này có thể là khách vãng lai.</div>
-                    )}
+                  {viewMode === "search" && (
+                    <>
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: 12,
+                          marginBottom: 24,
+                          position: "relative",
+                        }}
+                      >
+                        <div style={{ flex: 1, position: "relative" }}>
+                          <input
+                            value={searchPlate}
+                            onChange={(e) => {
+                              setSearchPlate(e.target.value.toUpperCase());
+                              setSearchDone(false);
+                              setSearchResult(null);
+                            }}
+                            onKeyDown={(e) =>
+                              e.key === "Enter" && handleSearch()
+                            }
+                            placeholder="Nhập biển số xe cần tìm..."
+                            style={{
+                              width: "100%",
+                              padding: "14px 18px",
+                              border: "2px solid #e2e8f0",
+                              borderRadius: 10,
+                              fontSize: 16,
+                              outline: "none",
+                              backgroundColor: "#f8fafc",
+                              boxSizing: "border-box",
+                            }}
+                          />
 
-                    {searchResult && (
-                      <>
-                        <div style={{backgroundColor:'#f8fafc',borderRadius:14,padding:24,border:'1px solid #e2e8f0',marginBottom:20}}>
-                          <div style={{fontSize:14,fontWeight:'700',color:'#64748b',marginBottom:16,textTransform:'uppercase',letterSpacing:1}}>Thông tin xe</div>
-                          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:16}}>
-                            <div>
-                              <div style={{fontSize:12,color:'#94a3b8',fontWeight:'600'}}>BIỂN SỐ</div>
-                              <div style={{fontSize:20,fontWeight:'900',color:'#0f172a',marginTop:4}}>{searchResult.vehicle.plate_number}</div>
-                            </div>
-                            <div>
-                              <div style={{fontSize:12,color:'#94a3b8',fontWeight:'600'}}>CHỦ XE</div>
-                              <div style={{fontSize:16,fontWeight:'600',color:'#0f172a',marginTop:4}}>{searchResult.vehicle.resident_name || 'Chưa rõ'}</div>
-                            </div>
-                            <div>
-                              <div style={{fontSize:12,color:'#94a3b8',fontWeight:'600'}}>CĂN HỘ</div>
-                              <div style={{fontSize:16,fontWeight:'600',color:'#0f172a',marginTop:4}}>{searchResult.vehicle.apartment_number || '---'}</div>
-                            </div>
-                            <div>
-                              <div style={{fontSize:12,color:'#94a3b8',fontWeight:'600'}}>LOẠI XE</div>
-                              <div style={{fontSize:16,fontWeight:'600',color:'#0f172a',marginTop:4}}>{searchResult.vehicle.type_name}</div>
-                            </div>
-                            <div>
-                              <div style={{fontSize:12,color:'#94a3b8',fontWeight:'600'}}>MÀU XE</div>
-                              <div style={{fontSize:16,fontWeight:'600',color:'#0f172a',marginTop:4}}>{searchResult.vehicle.color || '---'}</div>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div style={{fontSize:14,fontWeight:'700',color:'#64748b',marginBottom:12,textTransform:'uppercase',letterSpacing:1}}>Lịch sử gửi xe gần nhất</div>
-                        <div style={styles.logsTable}>
-                          <div style={styles.tableRowHeader}>
-                            <div style={styles.tableCell}>Giờ vào</div>
-                            <div style={styles.tableCell}>Giờ ra</div>
-                            <div style={styles.tableCell}>Trạng thái</div>
-                            <div style={styles.tableCell}>Nhân viên</div>
-                          </div>
-                          {searchResult.history.length === 0 ? (
-                            <div style={styles.emptyState}>Chưa có lịch sử gửi xe</div>
-                          ) : searchResult.history.map((h) => (
-                            <div key={h.session_id} style={styles.tableRow}>
-                              <div style={styles.tableCell}>{h.time_in ? new Date(h.time_in).toLocaleString('vi-VN') : '-'}</div>
-                              <div style={styles.tableCell}>{h.time_out ? new Date(h.time_out).toLocaleString('vi-VN') : '-'}</div>
-                              <div style={styles.tableCell}>
-                                <span style={{padding:'4px 10px',borderRadius:999,fontSize:12,fontWeight:'600',
-                                  backgroundColor: h.status==='parking'?'#dbeafe':'#dcfce7',
-                                  color: h.status==='parking'?'#1e40af':'#166534'}}>
-                                  {h.status === 'parking' ? 'Đang gửi' : 'Đã ra'}
-                                </span>
+                          {searchPlate.trim() &&
+                            !searchDone &&
+                            getSuggestions().length > 0 && (
+                              <div
+                                style={{
+                                  position: "absolute",
+                                  top: "100%",
+                                  left: 0,
+                                  right: 0,
+                                  backgroundColor: "#fff",
+                                  border: "1px solid #e2e8f0",
+                                  borderRadius: 8,
+                                  marginTop: 4,
+                                  boxShadow:
+                                    "0 4px 6px -1px rgba(0,0,0,0.1)",
+                                  zIndex: 10,
+                                  overflow: "hidden",
+                                }}
+                              >
+                                {getSuggestions().map((v) => (
+                                  <div
+                                    key={v.plate}
+                                    onClick={() => handleSearch(v.plate)}
+                                    style={{
+                                      padding: "12px 18px",
+                                      cursor: "pointer",
+                                      borderBottom: "1px solid #f1f5f9",
+                                      fontWeight: "600",
+                                      color: "#0f172a",
+                                    }}
+                                    onMouseEnter={(e) =>
+                                      (e.currentTarget.style.backgroundColor =
+                                        "#f8fafc")
+                                    }
+                                    onMouseLeave={(e) =>
+                                      (e.currentTarget.style.backgroundColor =
+                                        "transparent")
+                                    }
+                                  >
+                                    {v.plate}
+                                    <span
+                                      style={{
+                                        fontSize: 12,
+                                        color: "#64748b",
+                                        fontWeight: "400",
+                                        marginLeft: 8,
+                                      }}
+                                    >
+                                      {v.name}
+                                    </span>
+                                  </div>
+                                ))}
                               </div>
-                              <div style={styles.tableCell}>{h.security_name || 'N/A'}</div>
-                            </div>
-                          ))}
+                            )}
                         </div>
-                      </>
-                    )}
-                  </>
-                )}
-              </div>
-            </div>
-          )}
 
+                        <button
+                          onClick={handleSearch}
+                          style={{
+                            padding: "14px 28px",
+                            backgroundColor: "#0f172a",
+                            color: "#fff",
+                            border: "none",
+                            borderRadius: 10,
+                            fontSize: 15,
+                            fontWeight: "700",
+                            cursor: "pointer",
+                          }}
+                        >
+                          Tìm kiếm
+                        </button>
+                      </div>
+
+                      {searchDone && !searchResult && (
+                        <div style={styles.emptyState}>
+                          Không tìm thấy xe với biển số "{searchPlate}". Xe này
+                          có thể là khách vãng lai.
+                        </div>
+                      )}
+
+                      {searchResult && (
+                        <>
+                          <div
+                            style={{
+                              backgroundColor: "#f8fafc",
+                              borderRadius: 14,
+                              padding: 24,
+                              border: "1px solid #e2e8f0",
+                              marginBottom: 20,
+                            }}
+                          >
+                            <div
+                              style={{
+                                fontSize: 14,
+                                fontWeight: "700",
+                                color: "#64748b",
+                                marginBottom: 16,
+                                textTransform: "uppercase",
+                                letterSpacing: 1,
+                              }}
+                            >
+                              Thông tin xe
+                            </div>
+
+                            <div
+                              style={{
+                                display: "grid",
+                                gridTemplateColumns:
+                                  "repeat(auto-fit, minmax(180px, 1fr))",
+                                gap: 16,
+                              }}
+                            >
+                              <div>
+                                <div
+                                  style={{
+                                    fontSize: 12,
+                                    color: "#94a3b8",
+                                    fontWeight: "600",
+                                  }}
+                                >
+                                  BIỂN SỐ
+                                </div>
+                                <div
+                                  style={{
+                                    fontSize: 20,
+                                    fontWeight: "900",
+                                    color: "#0f172a",
+                                    marginTop: 4,
+                                  }}
+                                >
+                                  {searchResult.vehicle.plate_number}
+                                </div>
+                              </div>
+
+                              <div>
+                                <div
+                                  style={{
+                                    fontSize: 12,
+                                    color: "#94a3b8",
+                                    fontWeight: "600",
+                                  }}
+                                >
+                                  TRẠNG THÁI
+                                </div>
+                                <div
+                                  style={{
+                                    fontSize: 16,
+                                    fontWeight: "600",
+                                    color: "#0f172a",
+                                    marginTop: 4,
+                                  }}
+                                >
+                                  {searchResult.latestSession ? (
+                                    <span
+                                      style={{
+                                        padding: "4px 10px",
+                                        borderRadius: 999,
+                                        fontSize: 12,
+                                        fontWeight: "700",
+                                        backgroundColor:
+                                          searchResult.latestSession.status ===
+                                          "parking"
+                                            ? "#dbeafe"
+                                            : "#dcfce7",
+                                        color:
+                                          searchResult.latestSession.status ===
+                                          "parking"
+                                            ? "#1e40af"
+                                            : "#166534",
+                                      }}
+                                    >
+                                      {searchResult.latestSession.status ===
+                                      "parking"
+                                        ? "Đang gửi"
+                                        : "Đã ra"}
+                                    </span>
+                                  ) : (
+                                    <span>Chưa có lịch sử</span>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div>
+                                <div
+                                  style={{
+                                    fontSize: 12,
+                                    color: "#94a3b8",
+                                    fontWeight: "600",
+                                  }}
+                                >
+                                  GIỜ VÀO
+                                </div>
+                                <div
+                                  style={{
+                                    fontSize: 16,
+                                    fontWeight: "600",
+                                    color: "#0f172a",
+                                    marginTop: 4,
+                                  }}
+                                >
+                                  {searchResult.latestSession?.time_in
+                                    ? new Date(
+                                        searchResult.latestSession.time_in
+                                      ).toLocaleString("vi-VN")
+                                    : "---"}
+                                </div>
+                              </div>
+
+                              <div>
+                                <div
+                                  style={{
+                                    fontSize: 12,
+                                    color: "#94a3b8",
+                                    fontWeight: "600",
+                                  }}
+                                >
+                                  NHÂN VIÊN
+                                </div>
+                                <div
+                                  style={{
+                                    fontSize: 16,
+                                    fontWeight: "600",
+                                    color: "#0f172a",
+                                    marginTop: 4,
+                                  }}
+                                >
+                                  {searchResult.latestSession?.security_name ||
+                                    "N/A"}
+                                </div>
+                              </div>
+
+                              <div>
+                                <div
+                                  style={{
+                                    fontSize: 12,
+                                    color: "#94a3b8",
+                                    fontWeight: "600",
+                                  }}
+                                >
+                                  CHỦ XE
+                                </div>
+                                <div
+                                  style={{
+                                    fontSize: 16,
+                                    fontWeight: "600",
+                                    color: "#0f172a",
+                                    marginTop: 4,
+                                  }}
+                                >
+                                  {searchResult.vehicle.resident_name ||
+                                    "Chưa rõ"}
+                                </div>
+                              </div>
+
+                              <div>
+                                <div
+                                  style={{
+                                    fontSize: 12,
+                                    color: "#94a3b8",
+                                    fontWeight: "600",
+                                  }}
+                                >
+                                  CĂN HỘ
+                                </div>
+                                <div
+                                  style={{
+                                    fontSize: 16,
+                                    fontWeight: "600",
+                                    color: "#0f172a",
+                                    marginTop: 4,
+                                  }}
+                                >
+                                  {searchResult.vehicle.apartment_number ||
+                                    "---"}
+                                </div>
+                              </div>
+
+                              <div>
+                                <div
+                                  style={{
+                                    fontSize: 12,
+                                    color: "#94a3b8",
+                                    fontWeight: "600",
+                                  }}
+                                >
+                                  LOẠI XE
+                                </div>
+                                <div
+                                  style={{
+                                    fontSize: 16,
+                                    fontWeight: "600",
+                                    color: "#0f172a",
+                                    marginTop: 4,
+                                  }}
+                                >
+                                  {searchResult.vehicle.type_name}
+                                </div>
+                              </div>
+
+                              <div>
+                                <div
+                                  style={{
+                                    fontSize: 12,
+                                    color: "#94a3b8",
+                                    fontWeight: "600",
+                                  }}
+                                >
+                                  MÀU XE
+                                </div>
+                                <div
+                                  style={{
+                                    fontSize: 16,
+                                    fontWeight: "600",
+                                    color: "#0f172a",
+                                    marginTop: 4,
+                                  }}
+                                >
+                                  {searchResult.vehicle.color || "---"}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div
+                            style={{
+                              fontSize: 14,
+                              fontWeight: "700",
+                              color: "#64748b",
+                              marginBottom: 12,
+                              textTransform: "uppercase",
+                              letterSpacing: 1,
+                            }}
+                          >
+                            Lịch sử gửi xe gần nhất
+                          </div>
+
+                          <div style={styles.logsTable}>
+                            <div style={styles.tableRowHeader4}>
+                              <div style={styles.tableCell}>Biển số</div>
+                              <div style={styles.tableCell}>Trạng thái</div>
+                              <div style={styles.tableCell}>Giờ vào</div>
+                              <div style={styles.tableCell}>Nhân viên</div>
+                            </div>
+
+                            {searchResult.history.length === 0 ? (
+                              <div style={styles.emptyState}>
+                                Chưa có lịch sử gửi xe
+                              </div>
+                            ) : (
+                              searchResult.history.map((h) => (
+                                <div key={h.session_id} style={styles.tableRow4}>
+                                  <div style={styles.tableCell}>
+                                    <strong style={{ color: "#0f172a" }}>
+                                      {h.plate_number ||
+                                        h.guest_plate ||
+                                        searchResult.vehicle.plate_number}
+                                    </strong>
+                                  </div>
+
+                                  <div style={styles.tableCell}>
+                                    <span
+                                      style={{
+                                        padding: "4px 10px",
+                                        borderRadius: 999,
+                                        fontSize: 12,
+                                        fontWeight: "600",
+                                        backgroundColor:
+                                          h.status === "parking"
+                                            ? "#dbeafe"
+                                            : "#dcfce7",
+                                        color:
+                                          h.status === "parking"
+                                            ? "#1e40af"
+                                            : "#166534",
+                                      }}
+                                    >
+                                      {h.status === "parking"
+                                        ? "Đang gửi"
+                                        : "Đã ra"}
+                                    </span>
+                                  </div>
+
+                                  <div style={styles.tableCell}>
+                                    {h.time_in
+                                      ? new Date(h.time_in).toLocaleString(
+                                          "vi-VN"
+                                        )
+                                      : "-"}
+                                  </div>
+
+                                  <div style={styles.tableCell}>
+                                    {h.security_name || "N/A"}
+                                  </div>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </div>
     </>
   );
 };
 
 const styles = {
-  container: { display: "flex", height: "100vh", backgroundColor: "#f8f9fa", fontFamily: "'Segoe UI', -apple-system, sans-serif", overflow: "hidden" },
+  container: {
+    display: "flex",
+    height: "100vh",
+    backgroundColor: "#f8f9fa",
+    fontFamily: "'Segoe UI', -apple-system, sans-serif",
+    overflow: "hidden",
+  },
 
-  // ── Sidebar ──
   sidebar: {
     width: 256,
     backgroundColor: "#fff",
@@ -721,8 +1491,6 @@ const styles = {
     color: "#1a73e8",
     fontWeight: 600,
   },
-
-  // ── Sidebar Footer ──
   sidebarFooter: {
     padding: "16px 20px",
     borderTop: "1px solid #e0e0e0",
@@ -774,9 +1542,12 @@ const styles = {
     cursor: "pointer",
     textAlign: "center",
   },
-
-  // ── Header ──
-  main: { flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" },
+  main: {
+    flex: 1,
+    display: "flex",
+    flexDirection: "column",
+    overflow: "hidden",
+  },
   topHeader: {
     height: 56,
     backgroundColor: "#fff",
@@ -787,8 +1558,14 @@ const styles = {
     padding: "0 24px",
     flexShrink: 0,
   },
-  headerLeft: { display: "flex", alignItems: "center" },
-  headerRight: { display: "flex", alignItems: "center" },
+  headerLeft: {
+    display: "flex",
+    alignItems: "center",
+  },
+  headerRight: {
+    display: "flex",
+    alignItems: "center",
+  },
   avatar: {
     width: 36,
     height: 36,
@@ -801,77 +1578,382 @@ const styles = {
     fontSize: 15,
     fontWeight: 700,
   },
-
-  // ── Content (unchanged) ──
-  contentBody: { flex: 1, padding: "16px 24px", overflow: "hidden", display: "flex", flexDirection: "column" },
-  capacityRow: { display: "flex", gap: 20, marginBottom: 16, flexShrink: 0 },
-  capacityCard: { flex: 1, backgroundColor: "#fff", borderRadius: 10, padding: 16, display: "flex", alignItems: "center", border: "1px solid #e2e8f0", borderLeftWidth: 4, boxShadow: "0 1px 3px rgba(0,0,0,0.05)" },
-  cardLabel: { fontSize: 13, fontWeight: "600", color: "#64748b", marginBottom: 4 },
-  cardNumber: { fontSize: 24, fontWeight: "bold", color: "#0f172a" },
-  cardIcon: { width: 48, height: 48, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 },
-  
-  mainPanelRow: { display: "flex", gap: 24, flex: 1, minHeight: 0 },
-  leftPanel: { flex: 2, backgroundColor: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", display: "flex", flexDirection: "column", padding: "16px 24px", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)", overflow: "hidden" },
-  
-  modeToggle: { display: "flex", backgroundColor: "#f1f5f9", borderRadius: 8, padding: 4, marginBottom: 8, alignSelf: "center", flexShrink: 0 },
-  modeBtn: { padding: "10px 30px", borderRadius: 6, border: "none", backgroundColor: "transparent", fontWeight: "bold", fontSize: 14, color: "#64748b", cursor: "pointer", transition: "0.2s" },
-  modeActiveIn: { backgroundColor: "#fff", color: "#059669", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" },
-  modeActiveOut: { backgroundColor: "#fff", color: "#dc2626", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" },
-
-  inputContainer: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 0 },
-  inputLabel: { fontSize: 13, fontWeight: "600", color: "#64748b", marginBottom: 8, letterSpacing: 1 },
-  bigInput: { fontSize: 56, fontWeight: "900", color: "#0f172a", textAlign: "center", border: "none", outline: "none", width: "100%", background: "transparent" },
-  inputUnderline: { height: 4, width: 250, backgroundColor: "#cbd5e1", marginTop: 6 },
-  
-  selectorsRow: { display: "flex", gap: 20, marginBottom: 12, borderTop: "1px solid #f1f5f9", paddingTop: 12, flexShrink: 0 },
-  selectorGroup: { flex: 1, backgroundColor: "#f8fafc", padding: "12px 16px", borderRadius: 10 },
-  selectorTitle: { fontSize: 13, fontWeight: "600", color: "#64748b", marginBottom: 10 },
-  cardsWrap: { display: "flex", gap: 12 },
-  selectCard: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "10px 0", borderRadius: 12, fontWeight: "700", fontSize: 14, transition: "0.2s", border: "1px solid #e2e8f0", minHeight: 80 },
-  areaHint: { marginTop: 10, color: "#475569", fontSize: 12, lineHeight: 1.5, backgroundColor: "#e2e8f0", borderRadius: 8, padding: "8px 12px", border: "1px solid #cbd5e1" },
-  
-  actionsRow: { display: "flex", alignItems: "stretch", height: 60, borderTop: "1px solid #f1f5f9", paddingTop: 12, flexShrink: 0 },
-  actionBtn: { border: "none", borderRadius: 10, padding: "0 20px", fontWeight: "600", cursor: "pointer" },
-  
-  toast: { padding: "12px 20px", borderRadius: 8, marginBottom: 20, fontWeight: "600", display: "flex", alignItems: "center", gap: 10, position: "absolute", top: 120, right: 40, zIndex: 100, boxShadow: "0 4px 12px rgba(0,0,0,0.15)" },
-
-  dashboardPanel: { flex: 1, backgroundColor: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: 24, boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)", overflowY: "auto" },
-  sectionHeader: { fontSize: 22, fontWeight: "bold", marginBottom: 20, color: "#0f172a" },
-  sectionSummaryRow: { display: "flex", gap: 16, marginBottom: 24, flexWrap: "wrap" },
-  summaryCard: { flex: 1, minWidth: 180, backgroundColor: "#f8fafc", borderRadius: 14, padding: 18, border: "1px solid #e2e8f0", boxShadow: "0 1px 2px rgba(15,23,42,0.05)" },
-  summaryLabel: { fontSize: 12, fontWeight: "600", color: "#64748b", marginBottom: 8, textTransform: "uppercase", letterSpacing: 1 },
-  summaryValue: { fontSize: 28, fontWeight: "bold", color: "#0f172a" },
-  logsTable: { borderRadius: 14, overflow: "hidden", border: "1px solid #e2e8f0" },
-  tableRowHeader: { display: "grid", gridTemplateColumns: "1.2fr 1fr 1.5fr 1.5fr 1fr", backgroundColor: "#0f172a", color: "#fff", padding: "14px 16px", fontSize: 13, fontWeight: "700" },
-  tableRow: { display: "grid", gridTemplateColumns: "1.2fr 1fr 1.5fr 1.5fr 1fr", padding: "14px 16px", borderBottom: "1px solid #e2e8f0", fontSize: 14, color: "#0f172a" },
-  tableCell: { wordBreak: "break-word" },
-  emptyState: { padding: 48, textAlign: "center", color: "#64748b", fontSize: 14 },
-  reportCard: { flex: 1, minWidth: 180, backgroundColor: "#f8fafc", borderRadius: 14, padding: 20, border: "1px solid #e2e8f0", display: "flex", flexDirection: "column", justifyContent: "space-between" },
-  reportLabel: { fontSize: 13, fontWeight: "600", color: "#64748b", marginBottom: 10, textTransform: "uppercase", letterSpacing: 1 },
-  reportValue: { fontSize: 28, fontWeight: "bold", color: "#0f172a" },
-  reportNote: { backgroundColor: "#eef2ff", padding: 18, borderRadius: 12, color: "#334155", border: "1px solid #c7d2fe" },
-  settingsBlock: { marginBottom: 24, backgroundColor: "#f8fafc", borderRadius: 14, padding: 20, border: "1px solid #e2e8f0" },
-  settingTitle: { fontSize: 16, fontWeight: "700", color: "#0f172a", marginBottom: 16 },
-  settingRow: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 0", borderTop: "1px solid #e2e8f0" },
-  settingLabel: { fontSize: 14, fontWeight: "700", color: "#0f172a" },
-  settingHint: { fontSize: 13, color: "#64748b", marginTop: 4 },
-  settingBadge: { backgroundColor: "#0f172a", color: "#fff", borderRadius: 999, padding: "8px 14px", fontSize: 12, fontWeight: "700" },
-  toggleRow: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 0", borderTop: "1px solid #e2e8f0" },
-  toggleBtn: { border: "none", borderRadius: 999, padding: "10px 18px", backgroundColor: "#0f172a", color: "#fff", cursor: "pointer", fontWeight: "700" },
-
-  rightPanel: { flex: 1, backgroundColor: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: 0, display: "flex", flexDirection: "column", overflowY: "auto", overflowX: "hidden", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" },
-  ticketValidHeader: { backgroundColor: "#34d399", color: "#fff", padding: "16px", textAlign: "center", fontWeight: "bold", fontSize: 16, letterSpacing: 1 },
-  userInfo: { display: "flex", flexDirection: "column", alignItems: "center", padding: "30px 20px" },
-  userPhotoPlaceholder: { width: 100, height: 100, backgroundColor: "#e2e8f0", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 50, color: "#94a3b8", marginBottom: 16 },
-  userName: { fontSize: 18, fontWeight: "bold", color: "#0f172a", marginBottom: 6 },
-  userApt: { fontSize: 14, color: "#64748b" },
-  ticketDetails: { padding: "0 24px", marginTop: 10 },
-  tdRow: { display: "flex", justifyContent: "space-between", padding: "12px 0", borderBottom: "1px solid #f1f5f9", fontSize: 14 },
-  parkingInfoBox: { backgroundColor: "#f8fafc", margin: 24, padding: 20, borderRadius: 10, border: "1px solid #e2e8f0" },
-  piRow: { display: "flex" },
-  piCol: { flex: 1, textAlign: "center", borderRight: "1px solid #e2e8f0" },
-  piLabel: { fontSize: 11, fontWeight: "bold", color: "#94a3b8", marginBottom: 4 },
-  piValue: { fontSize: 18, fontWeight: "bold", color: "#0f172a" },
+  contentBody: {
+    flex: 1,
+    padding: "16px 24px",
+    overflow: "hidden",
+    display: "flex",
+    flexDirection: "column",
+  },
+  capacityRow: {
+    display: "flex",
+    gap: 20,
+    marginBottom: 16,
+    flexShrink: 0,
+  },
+  capacityCard: {
+    flex: 1,
+    backgroundColor: "#fff",
+    borderRadius: 10,
+    padding: 16,
+    display: "flex",
+    alignItems: "center",
+    border: "1px solid #e2e8f0",
+    borderLeftWidth: 4,
+    boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+  },
+  cardLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#64748b",
+    marginBottom: 4,
+  },
+  cardNumber: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#0f172a",
+  },
+  cardIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 24,
+  },
+  mainPanelRow: {
+    display: "flex",
+    gap: 24,
+    flex: 1,
+    minHeight: 0,
+  },
+  leftPanel: {
+    flex: 2,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    border: "1px solid #e2e8f0",
+    display: "flex",
+    flexDirection: "column",
+    padding: "16px 24px",
+    boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)",
+    overflow: "hidden",
+  },
+  modeToggle: {
+    display: "flex",
+    backgroundColor: "#f1f5f9",
+    borderRadius: 8,
+    padding: 4,
+    marginBottom: 8,
+    alignSelf: "center",
+    flexShrink: 0,
+  },
+  modeBtn: {
+    padding: "10px 30px",
+    borderRadius: 6,
+    border: "none",
+    backgroundColor: "transparent",
+    fontWeight: "bold",
+    fontSize: 14,
+    color: "#64748b",
+    cursor: "pointer",
+    transition: "0.2s",
+  },
+  modeActiveIn: {
+    backgroundColor: "#fff",
+    color: "#059669",
+    boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+  },
+  modeActiveOut: {
+    backgroundColor: "#fff",
+    color: "#dc2626",
+    boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+  },
+  inputContainer: {
+    flex: 1,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 0,
+  },
+  inputLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#64748b",
+    marginBottom: 8,
+    letterSpacing: 1,
+  },
+  bigInput: {
+    fontSize: 56,
+    fontWeight: "900",
+    color: "#0f172a",
+    textAlign: "center",
+    border: "none",
+    outline: "none",
+    width: "100%",
+    background: "transparent",
+  },
+  inputUnderline: {
+    height: 4,
+    width: 250,
+    backgroundColor: "#cbd5e1",
+    marginTop: 6,
+  },
+  selectorsRow: {
+    display: "flex",
+    gap: 20,
+    marginBottom: 12,
+    borderTop: "1px solid #f1f5f9",
+    paddingTop: 12,
+    flexShrink: 0,
+  },
+  selectorGroup: {
+    flex: 1,
+    backgroundColor: "#f8fafc",
+    padding: "12px 16px",
+    borderRadius: 10,
+  },
+  selectorTitle: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#64748b",
+    marginBottom: 10,
+  },
+  cardsWrap: {
+    display: "flex",
+    gap: 12,
+  },
+  selectCard: {
+    flex: 1,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "10px 0",
+    borderRadius: 12,
+    fontWeight: "700",
+    fontSize: 14,
+    transition: "0.2s",
+    border: "1px solid #e2e8f0",
+    minHeight: 80,
+  },
+  areaHint: {
+    marginTop: 10,
+    color: "#475569",
+    fontSize: 12,
+    lineHeight: 1.5,
+    backgroundColor: "#e2e8f0",
+    borderRadius: 8,
+    padding: "8px 12px",
+    border: "1px solid #cbd5e1",
+  },
+  actionsRow: {
+    display: "flex",
+    alignItems: "stretch",
+    height: 60,
+    borderTop: "1px solid #f1f5f9",
+    paddingTop: 12,
+    flexShrink: 0,
+  },
+  actionBtn: {
+    border: "none",
+    borderRadius: 10,
+    padding: "0 20px",
+    fontWeight: "600",
+    cursor: "pointer",
+  },
+  toast: {
+    padding: "12px 20px",
+    borderRadius: 8,
+    marginBottom: 20,
+    fontWeight: "600",
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    position: "absolute",
+    top: 120,
+    right: 40,
+    zIndex: 100,
+    boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+  },
+  dashboardPanel: {
+    flex: 1,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    border: "1px solid #e2e8f0",
+    padding: 24,
+    boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)",
+    overflowY: "auto",
+  },
+  sectionHeader: {
+    fontSize: 22,
+    fontWeight: "bold",
+    marginBottom: 20,
+    color: "#0f172a",
+  },
+  sectionSummaryRow: {
+    display: "flex",
+    gap: 16,
+    marginBottom: 24,
+    flexWrap: "wrap",
+  },
+  summaryCard: {
+    flex: 1,
+    minWidth: 180,
+    backgroundColor: "#f8fafc",
+    borderRadius: 14,
+    padding: 18,
+    border: "1px solid #e2e8f0",
+    boxShadow: "0 1px 2px rgba(15,23,42,0.05)",
+  },
+  summaryLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#64748b",
+    marginBottom: 8,
+    textTransform: "uppercase",
+    letterSpacing: 1,
+  },
+  summaryValue: {
+    fontSize: 28,
+    fontWeight: "bold",
+    color: "#0f172a",
+  },
+  logsTable: {
+    borderRadius: 14,
+    overflow: "hidden",
+    border: "1px solid #e2e8f0",
+  },
+  tableRowHeader: {
+    display: "grid",
+    gridTemplateColumns: "1.2fr 1fr 1.5fr 1.5fr 1fr",
+    backgroundColor: "#0f172a",
+    color: "#fff",
+    padding: "14px 16px",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  tableRow: {
+    display: "grid",
+    gridTemplateColumns: "1.2fr 1fr 1.5fr 1.5fr 1fr",
+    padding: "14px 16px",
+    borderBottom: "1px solid #e2e8f0",
+    fontSize: 14,
+    color: "#0f172a",
+  },
+  tableRowHeader4: {
+    display: "grid",
+    gridTemplateColumns: "1.5fr 1fr 1.5fr 1.5fr",
+    backgroundColor: "#0f172a",
+    color: "#fff",
+    padding: "14px 16px",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  tableRow4: {
+    display: "grid",
+    gridTemplateColumns: "1.5fr 1fr 1.5fr 1.5fr",
+    padding: "14px 16px",
+    borderBottom: "1px solid #e2e8f0",
+    fontSize: 14,
+    color: "#0f172a",
+  },
+  tableCell: {
+    wordBreak: "break-word",
+  },
+  emptyState: {
+    padding: 48,
+    textAlign: "center",
+    color: "#64748b",
+    fontSize: 14,
+  },
+  rightPanel: {
+    flex: 1,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    border: "1px solid #e2e8f0",
+    padding: 0,
+    display: "flex",
+    flexDirection: "column",
+    overflowY: "auto",
+    overflowX: "hidden",
+    boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)",
+  },
+  ticketValidHeader: {
+    backgroundColor: "#34d399",
+    color: "#fff",
+    padding: "16px",
+    textAlign: "center",
+    fontWeight: "bold",
+    fontSize: 16,
+    letterSpacing: 1,
+  },
+  userInfo: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    padding: "30px 20px",
+  },
+  userPhotoPlaceholder: {
+    width: 100,
+    height: 100,
+    backgroundColor: "#e2e8f0",
+    borderRadius: 8,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 50,
+    color: "#94a3b8",
+    marginBottom: 16,
+  },
+  userName: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#0f172a",
+    marginBottom: 6,
+  },
+  userApt: {
+    fontSize: 14,
+    color: "#64748b",
+  },
+  ticketDetails: {
+    padding: "0 24px",
+    marginTop: 10,
+  },
+  tdRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    padding: "12px 0",
+    borderBottom: "1px solid #f1f5f9",
+    fontSize: 14,
+  },
+  parkingInfoBox: {
+    backgroundColor: "#f8fafc",
+    margin: 24,
+    padding: 20,
+    borderRadius: 10,
+    border: "1px solid #e2e8f0",
+  },
+  piRow: {
+    display: "flex",
+  },
+  piCol: {
+    flex: 1,
+    textAlign: "center",
+    borderRight: "1px solid #e2e8f0",
+  },
+  piLabel: {
+    fontSize: 11,
+    fontWeight: "bold",
+    color: "#94a3b8",
+    marginBottom: 4,
+  },
+  piValue: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#0f172a",
+  },
 };
 
 export default SecurityDashboard;

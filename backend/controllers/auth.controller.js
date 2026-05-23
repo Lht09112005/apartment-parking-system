@@ -1,6 +1,7 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const db = require("../config/db");
+const { JWT_SECRET, JWT_EXPIRES_IN } = require("../config/auth");
 const fs = require("fs").promises;
 const path = require("path");
 
@@ -69,8 +70,8 @@ const login = async (req, res) => {
         role_id: user.role_id,
         role_name: user.role_name,
       },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN },
     );
 
     res.json({

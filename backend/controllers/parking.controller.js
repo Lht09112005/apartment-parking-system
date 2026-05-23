@@ -136,7 +136,7 @@ const checkOut = async (req, res) => {
 const getAllSessions = async (req, res) => {
     try {
         const [rows] = await db.query(
-          `SELECT s.session_id, IFNULL(s.plate_number, s.guest_plate) as plate_number, s.time_in, s.time_out, s.status, sec.name as security_name
+          `SELECT s.session_id, IFNULL(s.plate_number, s.guest_plate) as plate_number, s.time_in, s.time_out, s.status, s.type_id, sec.name as security_name
            FROM parking_session s
            LEFT JOIN security sec ON s.staff_id = sec.staff_id
            ORDER BY s.time_in DESC`

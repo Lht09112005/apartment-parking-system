@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
+import { useRealtimeRefresh } from "../hooks/useRealtimeRefresh";
 import axios from "../api/axios";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -7,21 +8,34 @@ import Sidebar from "../components/Sidebar";
 const Dashboard = () => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    axios
-      .get("/dashboard/stats")
-      .then((res) => setStats(res.data))
-      .catch((err) => console.error(err))
-      .finally(() => setLoading(false));
+  const fetchStats = useCallback(async () => {
+    try {
+      const res = await axios.get("/dashboard/stats");
+      setStats(res.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const handleLogout = () => {
-    logout();
-    navigate("/login");
-  };
+  useEffect(() => {
+    // axios
+    //   .get("/dashboard/stats")
+    //   .then((res) => setStats(res.data))
+    //   .catch((err) => console.error(err))
+    //   .finally(() => setLoading(false));
+    fetchStats();
+  }, [fetchStats]);
+
+  useRealtimeRefresh(
+    fetchStats,
+    ["dashboard", "residents", "vehicles", "parkingSessions", "monthly"],
+    { intervalMs: 10000 }
+  );
 
   const cards = stats
     ? [
@@ -29,29 +43,25 @@ const Dashboard = () => {
           label: "Tổng cư dân",
           value: stats.totalResidents,
           color: "#3b82f6",
-          icon: "👥",
-          trend: "+2% so với tháng trước"
+          icon: "👥"
         },
         {
           label: "Tổng xe đăng ký",
           value: stats.totalVehicles,
           color: "#10b981",
-          icon: "🚗",
-          trend: "+5% so với tháng trước"
+          icon: "🚗"
         },
         {
           label: "Xe đang trong bãi",
           value: stats.activeSessions,
           color: "#f59e0b",
-          icon: "🅿️",
-          trend: "85% công suất"
+          icon: "🅿️"
         },
         {
           label: "Gói tháng còn hạn",
           value: stats.monthlyActive,
           color: "#8b5cf6",
-          icon: "📅",
-          trend: "Ổn định"
+          icon: "📅"
         },
       ]
     : [];
@@ -100,7 +110,6 @@ const Dashboard = () => {
                     <div style={{ ...styles.iconContainer, backgroundColor: `${card.color}12`, color: card.color }}>
                       {card.icon}
                     </div>
-                    <div style={styles.trendTag}>{card.trend}</div>
                   </div>
                   <div>
                     <div style={styles.cardLabel}>{card.label}</div>
@@ -115,14 +124,23 @@ const Dashboard = () => {
 
           <div style={{ marginTop: 32 }}>
             <h4 style={{ color: '#202124', marginBottom: 16, fontSize: 15, fontWeight: '600' }}>Lối tắt</h4>
-            <div style={{ display: 'flex', gap: 12 }}>
-              {user?.role_id !== 1 && (
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+              {user?.role_id === 1 ? (
                 <>
-                  <button style={styles.quickActionBtn} onClick={() => navigate("/admin/residents")}>+ Thêm cư dân</button>
-                  <button style={styles.quickActionBtn} onClick={() => navigate("/admin/vehicles")}>+ Đăng ký xe</button>
+                  <button style={styles.quickActionBtn} onClick={() => navigate("/admin/users")}>Quản lý Admin</button>
+                  <button style={styles.quickActionBtn} onClick={() => navigate("/admin/backup")}>Quản lý Dữ liệu</button>
+                  <button style={styles.quickActionBtn} onClick={() => navigate("/admin/audit")}>Nhật ký kiểm toán</button>
+                  <button style={styles.quickActionBtn} onClick={() => navigate("/admin/settings")}>Cấu hình hệ thống</button>
+                </>
+              ) : (
+                <>
+                  <button style={styles.quickActionBtn} onClick={() => navigate("/admin/residents")}>Quản lý Cư dân</button>
+                  <button style={styles.quickActionBtn} onClick={() => navigate("/admin/vehicles")}>Quản lý Xe cộ</button>
+                  <button style={styles.quickActionBtn} onClick={() => navigate("/admin/users")}>Quản lý Bảo vệ</button>
+                  <button style={styles.quickActionBtn} onClick={() => navigate("/admin/monthly")}>Duyệt vé tháng</button>
+                  <button style={styles.quickActionBtn} onClick={() => navigate("/admin/fees")}>Phí gửi xe</button>
                 </>
               )}
-              <button style={{...styles.quickActionBtn, backgroundColor: '#fff', color: '#3c4043', border: '1px solid #dadce0'}}>Xuất báo cáo</button>
             </div>
           </div>
         </div>
@@ -174,7 +192,6 @@ const styles = {
   },
   cardHeader: { display: "flex", justifyContent: "space-between", alignItems: "flex-start" },
   iconContainer: { width: 40, height: 40, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 },
-  trendTag: { fontSize: 11, color: "#5f6368", backgroundColor: "#f1f3f4", padding: "3px 8px", borderRadius: 4 },
   cardLabel: { fontSize: 13, color: "#5f6368", fontWeight: "500", marginBottom: 4 },
   cardValue: { fontSize: 28, fontWeight: "600", color: "#202124" },
 

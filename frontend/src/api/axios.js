@@ -1,19 +1,22 @@
 import axios from "axios";
 
+export const API_BASE_URL =
+  process.env.REACT_APP_API_URL || "http://localhost:5000/api";
+
 const instance = axios.create({
-  baseURL: "http://localhost:5000/api",
+  baseURL: API_BASE_URL,
 });
 
-// Tự động đính token vào mỗi request
 instance.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
+
   if (token) {
     config.headers["Authorization"] = `Bearer ${token}`;
   }
+
   return config;
 });
 
-// Bắt lỗi 503 (Bảo trì) trên toàn cục
 instance.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -22,6 +25,7 @@ instance.interceptors.response.use(
       localStorage.removeItem("token");
       window.location.href = "/login";
     }
+
     return Promise.reject(error);
   }
 );

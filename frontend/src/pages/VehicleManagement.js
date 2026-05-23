@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "../api/axios";
+import { useRealtimeRefresh } from "../hooks/useRealtimeRefresh";
 import { useAuth } from "../context/AuthContext";
-import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 
 const VehicleManagement = () => {
@@ -15,7 +15,7 @@ const VehicleManagement = () => {
   const [filterVehicleType, setFilterVehicleType] = useState("");
   const [filterApartment, setFilterApartment] = useState("");
   const [filterPlate, setFilterPlate] = useState("");
-  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+  const [sortConfig, setSortConfig] = useState({ key: 'plate_number', direction: 'asc' });
   const [activeTab, setActiveTab] = useState("active");
   const [form, setForm] = useState({
     plate_number: "",
@@ -24,8 +24,7 @@ const VehicleManagement = () => {
     color: "",
   });
 
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
+  const { user } = useAuth();
 
   const fetchData = async () => {
     try {
@@ -48,10 +47,9 @@ const VehicleManagement = () => {
     fetchData();
   }, []);
 
-  const handleLogout = () => {
-    logout();
-    navigate("/login");
-  };
+  useRealtimeRefresh(fetchData, ["vehicles", "residents", "monthly"], {
+    intervalMs: 10000,
+  });
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -134,14 +132,6 @@ const VehicleManagement = () => {
         setMessage({ type: "error", text: "Lỗi khi xóa xe" });
       }
     }
-  };
-
-  const handleSort = (key) => {
-    let direction = 'asc';
-    if (sortConfig.key === key && sortConfig.direction === 'asc') {
-      direction = 'desc';
-    }
-    setSortConfig({ key, direction });
   };
 
   const filteredAndSortedVehicles = React.useMemo(() => {
@@ -245,39 +235,53 @@ const VehicleManagement = () => {
             </button>
           </div>
           
-          <div style={{ display: 'flex', gap: '20px', marginBottom: '24px', flexWrap: 'wrap' }}>
-            <div style={{ flex: '0 1 240px' }}>
-              <label style={styles.filterLabel}>Tìm theo biển số</label>
-              <input 
-                style={styles.input}
-                type="text"
-                placeholder="Nhập biển số..."
-                value={filterPlate}
-                onChange={(e) => setFilterPlate(e.target.value)}
-              />
-            </div>
-            <div style={{ flex: '0 1 240px' }}>
-              <label style={styles.filterLabel}>Tìm theo căn hộ</label>
-              <input 
-                style={styles.input}
-                type="text"
-                placeholder="Số căn hộ..."
-                value={filterApartment}
-                onChange={(e) => setFilterApartment(e.target.value)}
-              />
-            </div>
-            <div style={{ flex: '0 1 240px' }}>
-              <label style={styles.filterLabel}>Loại xe</label>
-              <select 
-                style={styles.input}
-                value={filterVehicleType}
-                onChange={(e) => setFilterVehicleType(e.target.value)}
-              >
-                <option value="">Tất cả loại xe</option>
-                {vehicleTypes.map((vt) => (
-                  <option key={vt.type_id} value={vt.type_id}>{vt.type_name}</option>
-                ))}
-              </select>
+          <div style={{ padding: '16px', backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '24px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {/* Filters Section */}
+              <div>
+                <strong style={{ fontSize: 14, color: '#0f172a', display: 'block', marginBottom: '12px' }}>🎯 Bộ lọc tìm kiếm:</strong>
+                <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
+                  <div style={{ flex: '1 1 200px' }}>
+                    <label style={styles.filterLabel}>Biển số</label>
+                    <input style={styles.input} type="text" placeholder="Nhập biển số..." value={filterPlate} onChange={(e) => setFilterPlate(e.target.value)} />
+                  </div>
+                  <div style={{ flex: '1 1 200px' }}>
+                    <label style={styles.filterLabel}>Căn hộ</label>
+                    <input style={styles.input} type="text" placeholder="Số căn hộ..." value={filterApartment} onChange={(e) => setFilterApartment(e.target.value)} />
+                  </div>
+                  <div style={{ flex: '1 1 200px' }}>
+                    <label style={styles.filterLabel}>Loại xe</label>
+                    <select style={styles.input} value={filterVehicleType} onChange={(e) => setFilterVehicleType(e.target.value)}>
+                      <option value="">Tất cả loại xe</option>
+                      {vehicleTypes.map((vt) => <option key={vt.type_id} value={vt.type_id}>{vt.type_name}</option>)}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ height: '1px', backgroundColor: '#e2e8f0' }}></div>
+
+              {/* Sorting Section */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <strong style={{ fontSize: 14, color: '#0f172a', whiteSpace: 'nowrap' }}>📶 Sắp xếp:</strong>
+                <div style={{ width: '240px' }}>
+                  <select
+                    style={styles.select}
+                    value={`${sortConfig.key}_${sortConfig.direction}`}
+                    onChange={(e) => {
+                      const [key, direction] = e.target.value.split('_');
+                      setSortConfig({ key, direction });
+                    }}
+                  >
+                    <option value="plate_number_asc">Biển số (A-Z)</option>
+                    <option value="plate_number_desc">Biển số (Z-A)</option>
+                    <option value="resident_name_asc">Chủ xe (A-Z)</option>
+                    <option value="resident_name_desc">Chủ xe (Z-A)</option>
+                    <option value="apartment_number_asc">Căn hộ (A-Z)</option>
+                    <option value="apartment_number_desc">Căn hộ (Z-A)</option>
+                  </select>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -382,18 +386,10 @@ const VehicleManagement = () => {
               <table style={styles.table}>
                 <thead>
                   <tr style={styles.thead}>
-                    <th style={{...styles.th, cursor: 'pointer'}} onClick={() => handleSort('plate_number')}>
-                      Biển số {sortConfig.key === 'plate_number' ? (sortConfig.direction === 'asc' ? '▲' : '▼') : ''}
-                    </th>
-                    <th style={{...styles.th, cursor: 'pointer'}} onClick={() => handleSort('resident_name')}>
-                      Chủ xe {sortConfig.key === 'resident_name' ? (sortConfig.direction === 'asc' ? '▲' : '▼') : ''}
-                    </th>
-                    <th style={{...styles.th, cursor: 'pointer'}} onClick={() => handleSort('apartment_number')}>
-                      Căn hộ {sortConfig.key === 'apartment_number' ? (sortConfig.direction === 'asc' ? '▲' : '▼') : ''}
-                    </th>
-                    <th style={{...styles.th, cursor: 'pointer'}} onClick={() => handleSort('type_name')}>
-                      Loại xe {sortConfig.key === 'type_name' ? (sortConfig.direction === 'asc' ? '▲' : '▼') : ''}
-                    </th>
+                    <th style={styles.th}>Biển số</th>
+                    <th style={styles.th}>Chủ xe</th>
+                    <th style={styles.th}>Căn hộ</th>
+                    <th style={styles.th}>Loại xe</th>
                     <th style={styles.th}>Màu sắc</th>
                     <th style={{...styles.th, textAlign: 'right'}}>Hành động</th>
                   </tr>
@@ -500,6 +496,7 @@ const styles = {
   formGroup: { flex: 1, minWidth: 200 },
   label: { display: "block", marginBottom: 8, fontWeight: "600", fontSize: 13, color: "#475569" },
   input: { width: "100%", padding: "12px 16px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: 14, boxSizing: "border-box", outline: "none" },
+  select: { width: "100%", padding: "12px 16px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: 14, outline: "none", backgroundColor: "#fff", cursor: "pointer", color: "#475569" },
   
   submitBtn: { backgroundColor: "#3b82f6", color: "#fff", border: "none", padding: "12px 24px", borderRadius: "8px", cursor: "pointer", fontWeight: "bold", fontSize: 14 },
   cancelBtn: { backgroundColor: "#f1f5f9", color: "#475569", border: "none", padding: "12px 24px", borderRadius: "8px", cursor: "pointer", fontWeight: "bold", fontSize: 14, marginLeft: 12 },

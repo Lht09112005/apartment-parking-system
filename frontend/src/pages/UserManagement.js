@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "../api/axios";
+import { useRealtimeRefresh } from "../hooks/useRealtimeRefresh";
 import { useAuth } from "../context/AuthContext";
-import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 
 const UserManagement = () => {
@@ -11,9 +11,9 @@ const UserManagement = () => {
   const [form, setForm] = useState({ username: "", password: "", role_id: 2, name: "", phone: "" });
   const [editingUser, setEditingUser] = useState(null);
   const [message, setMessage] = useState({ type: "", text: "" });
+  const [sortConfig, setSortConfig] = useState({ key: 'user_id', direction: 'asc' });
   
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
+  const { user } = useAuth();
 
   const fetchUsers = async () => {
     try {
@@ -29,6 +29,10 @@ const UserManagement = () => {
   useEffect(() => {
     fetchUsers();
   }, []);
+
+  useRealtimeRefresh(fetchUsers, ["users", "audit"], {
+    intervalMs: 12000,
+  });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -83,17 +87,19 @@ const UserManagement = () => {
     }
   };
 
-  const handleLogout = () => {
-    logout();
-    navigate("/login");
-  };
-
-  const roleColors = {
-    "Super Admin": "#7c3aed",
-    Admin: "#1a73e8",
-    Security: "#f59e0b",
-    Resident: "#10b981",
-  };
+  const sortedUsers = React.useMemo(() => {
+    let result = [...users];
+    if (sortConfig.key) {
+      result.sort((a, b) => {
+        const valA = a[sortConfig.key] || '';
+        const valB = b[sortConfig.key] || '';
+        if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+    return result;
+  }, [users, sortConfig]);
 
   return (
     <div style={styles.container}>
@@ -145,6 +151,33 @@ const UserManagement = () => {
             >
               + {user?.role_id === 1 ? "Tạo Admin mới" : "Thêm Bảo vệ mới"}
             </button>
+          </div>
+
+          <div style={{ padding: '16px', backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+              <strong style={{ fontSize: 14, color: '#0f172a', whiteSpace: 'nowrap' }}>📶 Sắp xếp danh sách:</strong>
+              <div style={{ width: '280px' }}>
+                <select
+                  style={styles.select}
+                  value={`${sortConfig.key}_${sortConfig.direction}`}
+                  onChange={(e) => {
+                    const [key, direction] = e.target.value.split('_');
+                    setSortConfig({ key, direction });
+                  }}
+                >
+                  <option value="user_id_asc">ID (Tăng dần)</option>
+                  <option value="user_id_desc">ID (Giảm dần)</option>
+                  <option value="username_asc">Tên đăng nhập (A-Z)</option>
+                  <option value="username_desc">Tên đăng nhập (Z-A)</option>
+                  {user?.role_id === 2 && (
+                    <>
+                      <option value="staff_name_asc">Họ tên (A-Z)</option>
+                      <option value="staff_name_desc">Họ tên (Z-A)</option>
+                    </>
+                  )}
+                </select>
+              </div>
+            </div>
           </div>
 
           {message.text && (
@@ -255,7 +288,7 @@ const UserManagement = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {users.map((u) => (
+                  {sortedUsers.map((u) => (
                     <tr key={u.user_id} style={styles.tr}>
                       <td style={styles.td}>#{u.user_id}</td>
                       <td style={styles.td}>
@@ -355,6 +388,7 @@ const styles = {
   formGroup: { flex: 1, minWidth: 200 },
   label: { display: "block", marginBottom: 8, fontWeight: "600", fontSize: 13, color: "#475569" },
   input: { width: "100%", padding: "12px 16px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: 14, boxSizing: "border-box", outline: "none" },
+  select: { width: "100%", padding: "12px 16px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: 14, outline: "none", backgroundColor: "#fff", cursor: "pointer", color: "#475569" },
   
   submitBtn: { backgroundColor: "#3b82f6", color: "#fff", border: "none", padding: "12px 24px", borderRadius: "8px", cursor: "pointer", fontWeight: "bold", fontSize: 14 },
   cancelBtn: { backgroundColor: "#f1f5f9", color: "#475569", border: "none", padding: "12px 24px", borderRadius: "8px", cursor: "pointer", fontWeight: "bold", fontSize: 14 },
