@@ -8,6 +8,7 @@ const getAllVehicles = async (req, res) => {
        FROM vehicles v
        LEFT JOIN residents r ON v.resident_id = r.resident_id
        LEFT JOIN vehicle_types vt ON v.type_id = vt.type_id
+       WHERE v.status != 'deleted'
        ORDER BY v.plate_number ASC`
     );
     res.json(rows);
@@ -59,7 +60,7 @@ const updateVehicle = async (req, res) => {
 const deleteVehicle = async (req, res) => {
   const { plate_number } = req.params;
   try {
-    await db.query(`DELETE FROM vehicles WHERE plate_number=?`, [plate_number]);
+    await db.query(`UPDATE vehicles SET status = 'deleted' WHERE plate_number=?`, [plate_number]);
     res.json({ message: "Xóa xe thành công" });
   } catch (err) {
     console.error(err);
@@ -115,7 +116,7 @@ const approveVehicle = async (req, res) => {
 const rejectVehicle = async (req, res) => {
   const { plate_number } = req.params;
   try {
-    const [rows] = await db.query(`DELETE FROM vehicles WHERE plate_number = ? AND status = 'pending'`, [plate_number]);
+    const [rows] = await db.query(`UPDATE vehicles SET status = 'deleted' WHERE plate_number = ? AND status = 'pending'`, [plate_number]);
     if (rows.affectedRows === 0) {
       return res.status(404).json({ message: "Không tìm thấy xe hoặc xe không ở trạng thái chờ duyệt" });
     }

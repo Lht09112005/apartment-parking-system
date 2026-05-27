@@ -61,21 +61,22 @@ CREATE TABLE parking_area (
 
 CREATE TABLE parking_fee (
     type_id INT PRIMARY KEY,
-    price_per_hour DECIMAL(12, 2),
     monthly_fee DECIMAL(12, 2),
+    block_hours INT DEFAULT 4,
+    day_block_price DECIMAL(12, 2),
+    night_block_price DECIMAL(12, 2),
     FOREIGN KEY (type_id) REFERENCES vehicle_types (type_id)
 );
 
 CREATE TABLE parking_session (
     session_id INT PRIMARY KEY AUTO_INCREMENT,
-    plate_number VARCHAR(15),
+    plate_number VARCHAR(20) NOT NULL,
     staff_id INT,
     time_in TIMESTAMP NOT NULL,
     time_out TIMESTAMP,
     status VARCHAR(20) DEFAULT 'parking',
-    guest_plate VARCHAR(20),
+    fee_amount DECIMAL(12,2) DEFAULT 0,
     type_id INT,
-    FOREIGN KEY (plate_number) REFERENCES vehicles (plate_number),
     FOREIGN KEY (staff_id) REFERENCES security (staff_id),
     FOREIGN KEY (type_id) REFERENCES vehicle_types (type_id)
 );
