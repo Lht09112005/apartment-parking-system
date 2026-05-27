@@ -90,12 +90,32 @@ const FeeManagement = () => {
               <form onSubmit={handleUpdate}>
                 <div style={styles.formRow}>
                   <div style={styles.formGroup}>
-                    <label style={styles.label}>Giá theo giờ (VNĐ/giờ)</label>
+                    <label style={styles.label}>Giá ban ngày (VNĐ/{editData.block_hours}h)</label>
                     <input
                       style={styles.input}
                       type="number"
-                      value={editData.price_per_hour}
-                      onChange={(e) => setEditData({ ...editData, price_per_hour: e.target.value })}
+                      value={editData.day_block_price}
+                      onChange={(e) => setEditData({ ...editData, day_block_price: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>Giá ban đêm (VNĐ/{editData.block_hours}h)</label>
+                    <input
+                      style={styles.input}
+                      type="number"
+                      value={editData.night_block_price}
+                      onChange={(e) => setEditData({ ...editData, night_block_price: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>Số giờ mỗi Block</label>
+                    <input
+                      style={styles.input}
+                      type="number"
+                      value={editData.block_hours}
+                      onChange={(e) => setEditData({ ...editData, block_hours: e.target.value })}
                       required
                     />
                   </div>
@@ -126,8 +146,10 @@ const FeeManagement = () => {
                 <thead>
                   <tr style={styles.thead}>
                     <th style={styles.th}>Loại phương tiện</th>
-                    <th style={styles.th}>Giá theo giờ (VNĐ)</th>
-                    <th style={styles.th}>Giá vé tháng (VNĐ)</th>
+                    <th style={styles.th}>Block (Giờ)</th>
+                    <th style={styles.th}>Giá ban ngày</th>
+                    <th style={styles.th}>Giá ban đêm</th>
+                    <th style={styles.th}>Giá vé tháng</th>
                     <th style={{...styles.th, textAlign: 'right'}}>Hành động</th>
                   </tr>
                 </thead>
@@ -137,8 +159,10 @@ const FeeManagement = () => {
                       <td style={styles.td}>
                         <strong style={{ color: '#0f172a' }}>{fee.type_name}</strong>
                       </td>
-                      <td style={styles.td}>{fee.price_per_hour.toLocaleString()}</td>
-                      <td style={styles.td}>{fee.monthly_fee.toLocaleString()}</td>
+                      <td style={styles.td}>{fee.block_hours}h</td>
+                      <td style={styles.td}>{Number(fee.day_block_price).toLocaleString()}</td>
+                      <td style={styles.td}>{Number(fee.night_block_price).toLocaleString()}</td>
+                      <td style={styles.td}>{Number(fee.monthly_fee).toLocaleString()}</td>
                       <td style={{...styles.td, textAlign: 'right'}}>
                         <button
                           onClick={() => {

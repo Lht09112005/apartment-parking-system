@@ -22,6 +22,16 @@ const SecurityDashboard = () => {
   const [searchPlate, setSearchPlate] = useState("");
   const [searchResult, setSearchResult] = useState(null);
   const [searchDone, setSearchDone] = useState(false);
+  const [fees, setFees] = useState([]);
+
+  const fetchFees = async () => {
+    try {
+      const res = await axios.get("/parking/fees");
+      setFees(res.data);
+    } catch (err) {
+      console.error("Lỗi tải bảng giá:", err);
+    }
+  };
 
   const [message, setMessage] = useState({ type: "", text: "" });
   const [ticketInfo, setTicketInfo] = useState(null);
@@ -66,6 +76,7 @@ const SecurityDashboard = () => {
     fetchVehicleTypes();
     fetchVehicles();
     fetchVehicleLogs();
+    fetchFees();
   };
 
   // Fetch dữ liệu lần đầu khi mở trang
@@ -132,10 +143,8 @@ const SecurityDashboard = () => {
 
       const history = sessions.data.filter(
         (s) =>
-          (s.plate_number &&
-            normalizePlate(s.plate_number) === normalizePlate(query)) ||
-          (s.guest_plate &&
-            normalizePlate(s.guest_plate) === normalizePlate(query))
+          s.plate_number &&
+          normalizePlate(s.plate_number) === normalizePlate(query)
       );
 
       const recentHistory = history.slice(0, 10);
@@ -150,7 +159,7 @@ const SecurityDashboard = () => {
       } else if (history.length > 0) {
         setSearchResult({
           vehicle: {
-            plate_number: history[0].plate_number || history[0].guest_plate,
+            plate_number: history[0].plate_number,
             resident_name: "Khách vãng lai",
             apartment_number: "---",
             type_name: "Chưa rõ",
@@ -181,19 +190,14 @@ const SecurityDashboard = () => {
         name: v.resident_name,
       }));
 
-    const guestMatches = vehicleLogs
-      .filter(
-        (l) =>
-          (l.plate_number &&
-            normalizePlate(l.plate_number).includes(term)) ||
-          (l.guest_plate && normalizePlate(l.guest_plate).includes(term))
-      )
+    const logMatches = vehicleLogs
+      .filter((l) => l.plate_number && normalizePlate(l.plate_number).includes(term))
       .map((l) => ({
-        plate: l.plate_number || l.guest_plate,
-        name: "Khách vãng lai",
+        plate: l.plate_number,
+        name: "Khách vãng lai / Lịch sử",
       }));
 
-    const combined = [...matches, ...guestMatches];
+    const combined = [...matches, ...logMatches];
     const unique = [];
     const seen = new Set();
 
@@ -215,30 +219,82 @@ const SecurityDashboard = () => {
       )
     : null;
 
+  // Auto-switch mode based on whether the vehicle is already parking
+  useEffect(() => {
+    if (plate.trim().length > 0) {
+      const isParking = vehicleLogs.some(
+        (v) =>
+          v.status === "parking" &&
+          normalizePlate(v.plate_number) === normalizePlate(plate)
+      );
+      
+      if (isParking && mode !== "OUT") {
+        setMode("OUT");
+      } else if (!isParking && mode !== "IN") {
+        setMode("IN");
+      }
+    }
+  }, [plate, vehicleLogs, mode]);
+
+  const activeSessionForPlate = plate.trim()
+    ? vehicleLogs.find(
+        (v) =>
+          v.status === "parking" &&
+          normalizePlate(v.plate_number) === normalizePlate(plate)
+      )
+    : null;
+
   useEffect(() => {
     if (currentVehicle) {
       setTypeId(currentVehicle.type_id);
+    } else if (activeSessionForPlate) {
+      setTypeId(activeSessionForPlate.type_id);
     }
-  }, [currentVehicle]);
+  }, [currentVehicle, activeSessionForPlate]);
 
   const getActualPlate = () => {
     if (currentVehicle) return currentVehicle.plate_number;
 
-    if (mode === "OUT") {
-      const activeSession = vehicleLogs.find(
-        (v) =>
-          v.status === "parking" &&
-          (normalizePlate(v.plate_number) === normalizePlate(plate) ||
-            normalizePlate(v.guest_plate) === normalizePlate(plate))
-      );
-
-      if (activeSession) {
-        return activeSession.plate_number || activeSession.guest_plate;
-      }
+    if (mode === "OUT" && activeSessionForPlate) {
+      return activeSessionForPlate.plate_number;
     }
 
     return plate.trim().toUpperCase();
   };
+
+  let estimatedDuration = 0;
+  let estimatedFee = 0;
+  if (activeSessionForPlate && fees.length > 0) {
+    const timeIn = new Date(activeSessionForPlate.time_in);
+    const timeOut = new Date();
+    const feeConfig = fees.find(f => f.type_id === activeSessionForPlate.type_id);
+
+    if (feeConfig) {
+      let blocksCount = 0;
+      let totalFee = 0;
+      let currentTime = new Date(timeIn);
+      const day_block_price = parseFloat(feeConfig.day_block_price) || 0;
+      const night_block_price = parseFloat(feeConfig.night_block_price) || 0;
+      const block_hours = parseInt(feeConfig.block_hours) || 4;
+
+      while (currentTime < timeOut) {
+        blocksCount++;
+        const currentHour = currentTime.getHours();
+        const isDayTime = currentHour >= 6 && currentHour < 18;
+        
+        if (isDayTime) {
+          totalFee += day_block_price;
+        } else {
+          totalFee += night_block_price;
+        }
+        
+        currentTime.setHours(currentTime.getHours() + block_hours);
+      }
+      
+      estimatedFee = totalFee;
+      estimatedDuration = blocksCount * block_hours;
+    }
+  }
 
   const handleAction = async () => {
     setMessage({ type: "", text: "" });
@@ -261,10 +317,17 @@ const SecurityDashboard = () => {
           type_id: currentVehicle ? currentVehicle.type_id : typeId,
         });
 
-        setMessage({
-          type: "success",
-          text: res.data.message,
-        });
+        if (res.data.warning) {
+          setMessage({
+            type: "warning", 
+            text: `Cho vào thành công - Lưu ý: ${res.data.warning}`,
+          });
+        } else {
+          setMessage({
+            type: "success",
+            text: res.data.message,
+          });
+        }
 
         refreshSecurityData();
 
@@ -599,31 +662,17 @@ const SecurityDashboard = () => {
                         {vehicleTypes.map((vt) => (
                           <div
                             key={vt.type_id}
-                            onClick={() =>
-                              !currentVehicle && setTypeId(vt.type_id)
-                            }
+                            onClick={() => {
+                              if (!currentVehicle && mode !== "OUT") {
+                                setTypeId(vt.type_id);
+                              }
+                            }}
                             style={{
                               ...styles.selectCard,
-                              backgroundColor: (
-                                currentVehicle
-                                  ? currentVehicle.type_id === vt.type_id
-                                  : typeId === vt.type_id
-                              )
-                                ? "#0f172a"
-                                : "#fff",
-                              color: (
-                                currentVehicle
-                                  ? currentVehicle.type_id === vt.type_id
-                                  : typeId === vt.type_id
-                              )
-                                ? "#fff"
-                                : "#64748b",
-                              cursor: currentVehicle ? "not-allowed" : "pointer",
-                              opacity:
-                                currentVehicle &&
-                                currentVehicle.type_id !== vt.type_id
-                                  ? 0.5
-                                  : 1,
+                              backgroundColor: typeId === vt.type_id ? "#0f172a" : "#fff",
+                              color: typeId === vt.type_id ? "#fff" : "#64748b",
+                              cursor: (currentVehicle || mode === "OUT") ? "not-allowed" : "pointer",
+                              opacity: (currentVehicle || mode === "OUT") && typeId !== vt.type_id ? 0.5 : 1,
                             }}
                           >
                             <div style={{ fontSize: 24, marginBottom: 4 }}>
@@ -684,12 +733,12 @@ const SecurityDashboard = () => {
                       style={{
                         ...styles.toast,
                         backgroundColor:
-                          message.type === "success" ? "#dcfce7" : "#fee2e2",
+                          message.type === "success" ? "#dcfce7" : message.type === "warning" ? "#fef3c7" : "#fee2e2",
                         color:
-                          message.type === "success" ? "#166534" : "#991b1b",
+                          message.type === "success" ? "#166534" : message.type === "warning" ? "#92400e" : "#991b1b",
                       }}
                     >
-                      {message.type === "success" ? "✅" : "❌"} {message.text}
+                      {message.type === "success" ? "✅" : message.type === "warning" ? "⚠️" : "❌"} {message.text}
                     </div>
                   )}
 
@@ -734,8 +783,11 @@ const SecurityDashboard = () => {
                 <div style={styles.rightPanel}>
                   {currentVehicle ? (
                     <>
-                      <div style={styles.ticketValidHeader}>
-                        VÉ THÁNG - HỢP LỆ ✓
+                      <div style={{
+                        ...styles.ticketValidHeader,
+                        backgroundColor: currentVehicle.status === 'pending' ? "#f59e0b" : "#34d399"
+                      }}>
+                        {currentVehicle.status === 'pending' ? 'XE ĐĂNG KÝ (CHỜ DUYỆT)' : 'VÉ THÁNG - HỢP LỆ ✓'}
                       </div>
 
                       <div style={styles.userInfo}>
@@ -762,8 +814,10 @@ const SecurityDashboard = () => {
                         </div>
 
                         <div style={styles.tdRow}>
-                          <span>Hạn dùng:</span>
-                          <strong style={{ color: "#047857" }}>Còn hạn</strong>
+                          <span>Trạng thái:</span>
+                          <strong style={{ color: currentVehicle.status === 'pending' ? "#f59e0b" : "#047857" }}>
+                            {currentVehicle.status === 'pending' ? 'Chưa duyệt' : 'Đã duyệt / Hợp lệ'}
+                          </strong>
                         </div>
                       </div>
                     </>
@@ -779,16 +833,33 @@ const SecurityDashboard = () => {
                         KHÁCH VÃNG LAI
                       </div>
 
-                      <div
-                        style={{
-                          textAlign: "center",
-                          marginTop: 40,
-                          color: "#64748b",
-                        }}
-                      >
-                        Xe này không có trong danh sách vé tháng. Tính phí theo
-                        giờ (Vé lượt).
-                      </div>
+                      {activeSessionForPlate ? (
+                        <div style={{ marginTop: 20, padding: "0 24px" }}>
+                          <div style={styles.tdRow}>
+                            <span>Tình trạng:</span>
+                            <strong style={{ color: "#0f172a" }}>Đang trong bãi</strong>
+                          </div>
+                          <div style={styles.tdRow}>
+                            <span>Thời gian đã gửi:</span>
+                            <strong style={{ color: "#0f172a" }}>{estimatedDuration} giờ</strong>
+                          </div>
+                          <div style={styles.tdRow}>
+                            <span>Tạm tính (vé lượt):</span>
+                            <strong style={{ color: "#be123c", fontSize: 16 }}>{estimatedFee.toLocaleString()} VNĐ</strong>
+                          </div>
+                        </div>
+                      ) : (
+                        <div
+                          style={{
+                            textAlign: "center",
+                            marginTop: 40,
+                            color: "#64748b",
+                          }}
+                        >
+                          Xe này không có trong danh sách vé tháng. Tính phí theo
+                          giờ (Vé lượt).
+                        </div>
+                      )}
                     </>
                   ) : (
                     <div
@@ -860,18 +931,26 @@ const SecurityDashboard = () => {
                           color: "#1e293b",
                         }}
                       >
-                        THÔNG TIN BÃI ĐỖ
+                        {activeSessionForPlate ? "THÔNG TIN GỬI XE" : "THÔNG TIN BÃI ĐỖ"}
                       </div>
 
                       <div style={styles.piRow}>
                         <div style={styles.piCol}>
-                          <div style={styles.piLabel}>LƯỢT VÀO</div>
-                          <div style={styles.piValue}>--:--</div>
+                          <div style={styles.piLabel}>GIỜ VÀO</div>
+                          <div style={styles.piValue}>
+                            {activeSessionForPlate && activeSessionForPlate.time_in 
+                              ? new Date(activeSessionForPlate.time_in).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) 
+                              : "--:--"}
+                          </div>
                         </div>
 
                         <div style={styles.piCol}>
                           <div style={styles.piLabel}>NGÀY</div>
-                          <div style={styles.piValue}>--/--</div>
+                          <div style={styles.piValue}>
+                            {activeSessionForPlate && activeSessionForPlate.time_in 
+                              ? new Date(activeSessionForPlate.time_in).toLocaleDateString('vi-VN') 
+                              : "--/--"}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -939,7 +1018,7 @@ const SecurityDashboard = () => {
                           vehicleLogs.map((log) => (
                             <div key={log.session_id} style={styles.tableRow}>
                               <div style={styles.tableCell}>
-                                {log.plate_number || log.guest_plate}
+                                {log.plate_number}
                               </div>
                               <div style={styles.tableCell}>
                                 {log.status === "parking"
@@ -1354,7 +1433,6 @@ const SecurityDashboard = () => {
                                   <div style={styles.tableCell}>
                                     <strong style={{ color: "#0f172a" }}>
                                       {h.plate_number ||
-                                        h.guest_plate ||
                                         searchResult.vehicle.plate_number}
                                     </strong>
                                   </div>

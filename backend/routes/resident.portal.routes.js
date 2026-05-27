@@ -68,7 +68,7 @@ router.get("/vehicles", async (req, res) => {
        FROM vehicles v
        LEFT JOIN vehicle_types vt ON v.type_id = vt.type_id
        LEFT JOIN monthly_parking mp ON v.plate_number = mp.plate_number
-       WHERE v.resident_id = ?
+       WHERE v.resident_id = ? AND v.status != 'deleted'
        ORDER BY v.plate_number ASC`,
       [resident[0].resident_id]
     );
@@ -162,7 +162,7 @@ router.delete("/vehicles/:plate_number", async (req, res) => {
     const [vehicle] = await db.query(`SELECT plate_number FROM vehicles WHERE plate_number = ? AND resident_id = ?`, [plate_number, resident[0].resident_id]);
     if (vehicle.length === 0) return res.status(403).json({ message: "Xe không thuộc quyền sở hữu của bạn" });
 
-    await db.query(`DELETE FROM vehicles WHERE plate_number=? AND resident_id=?`, [plate_number, resident[0].resident_id]);
+    await db.query(`UPDATE vehicles SET status = 'deleted' WHERE plate_number=? AND resident_id=?`, [plate_number, resident[0].resident_id]);
     res.json({ message: "Xóa xe thành công" });
   } catch (err) {
     console.error(err);
@@ -244,7 +244,7 @@ router.get("/history", async (req, res) => {
       return res.json([]);
     }
     const [rows] = await db.query(
-      `SELECT s.session_id, IFNULL(s.plate_number, s.guest_plate) as plate_number,
+      `SELECT s.session_id, s.plate_number,
               s.time_in, s.time_out, s.status, vt.type_name
        FROM parking_session s
        LEFT JOIN vehicle_types vt ON s.type_id = vt.type_id
