@@ -23,6 +23,7 @@ const SecurityDashboard = () => {
   const [searchResult, setSearchResult] = useState(null);
   const [searchDone, setSearchDone] = useState(false);
   const [fees, setFees] = useState([]);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   const fetchFees = async () => {
     try {
@@ -104,6 +105,9 @@ const SecurityDashboard = () => {
       setSearchDone(false);
       setSearchPlate("");
     }
+    
+    // Đóng sidebar trên mobile khi chuyển view
+    setIsMobileOpen(false);
   }, [viewMode]);
 
   useEffect(() => {
@@ -426,10 +430,54 @@ const SecurityDashboard = () => {
         .material-symbols-rounded {
           font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
         }
+        @media (max-width: 768px) {
+          .mobile-hamburger { display: flex !important; }
+          .sidebar-container { 
+            position: fixed !important;
+            z-index: 1000 !important;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease-in-out;
+          }
+          .sidebar-container.open {
+            transform: translateX(0) !important;
+          }
+          .sidebar-overlay.open {
+            display: block !important;
+          }
+          .main-content > div:first-child, .top-header {
+            padding-left: 60px !important;
+          }
+        }
       `}</style>
 
+      {/* Hamburger Button */}
+      <div 
+        className="mobile-hamburger" 
+        style={{
+          display: 'none', 
+          position: 'fixed', top: 15, left: 15, zIndex: 998, 
+          background: '#fff', border: '1px solid #e0e0e0', padding: 8, 
+          borderRadius: 8, cursor: 'pointer', alignItems: 'center', justifyContent: 'center',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+        }}
+        onClick={() => setIsMobileOpen(true)}
+      >
+        <span className="material-symbols-rounded" style={{ color: '#202124' }}>menu</span>
+      </div>
+
+      {/* Overlay */}
+      <div 
+        className={`sidebar-overlay ${isMobileOpen ? 'open' : ''}`}
+        style={{
+          display: 'none',
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 999,
+        }}
+        onClick={() => setIsMobileOpen(false)}
+      />
+
       <div style={styles.container}>
-        <div style={styles.sidebar}>
+        <div className={`sidebar-container ${isMobileOpen ? 'open' : ''}`} style={styles.sidebar}>
           <div style={styles.sidebarHeader}>
             <div style={styles.logoRow}>
               <div style={styles.logoIcon}>P</div>
@@ -518,8 +566,8 @@ const SecurityDashboard = () => {
           </div>
         </div>
 
-        <div style={styles.main}>
-          <div style={styles.topHeader}>
+        <div className="main-content" style={styles.main}>
+          <div className="top-header" style={styles.topHeader}>
             <div style={styles.headerLeft}>
               <h2
                 style={{
