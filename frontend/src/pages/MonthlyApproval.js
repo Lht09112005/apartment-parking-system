@@ -69,13 +69,13 @@ const MonthlyApproval = () => {
         {/* Top Header */}
         <div style={styles.topHeader}>
           <div style={styles.headerLeft}>
-            <h2 style={{margin: 0, fontSize: 20, color: '#1e293b'}}>Duyệt đăng ký vé tháng</h2>
+            <h2 style={{ margin: 0, fontSize: 20, color: '#1e293b' }}>Duyệt đăng ký vé tháng</h2>
             <div style={styles.onlineBadge}><span style={styles.onlineDot}></span> System Online</div>
           </div>
           <div style={styles.headerRight}>
-            <div style={{textAlign: 'right', marginRight: 12}}>
-              <div style={{fontSize: 14, fontWeight: '600', color: '#1e293b'}}>Admin: {user?.username}</div>
-              <div style={{fontSize: 12, color: '#64748b'}}>XÉT DUYỆT ĐĂNG KÝ</div>
+            <div style={{ textAlign: 'right', marginRight: 12 }}>
+              <div style={{ fontSize: 14, fontWeight: '600', color: '#1e293b' }}>Admin: {user?.username}</div>
+              <div style={{ fontSize: 12, color: '#64748b' }}>XÉT DUYỆT ĐĂNG KÝ</div>
             </div>
             <div style={styles.avatar}>📑</div>
           </div>
@@ -84,17 +84,17 @@ const MonthlyApproval = () => {
         <div style={styles.contentBody}>
           {/* Summary Cards */}
           <div style={styles.summaryRow}>
-            <div style={{...styles.summaryCard, borderLeftColor: '#f59e0b'}}>
+            <div style={{ ...styles.summaryCard, borderLeftColor: '#f59e0b' }}>
               <div style={styles.summaryLabel}>Chờ duyệt</div>
-              <div style={{...styles.summaryValue, color: '#f59e0b'}}>{pendingCount}</div>
+              <div style={{ ...styles.summaryValue, color: '#f59e0b' }}>{pendingCount}</div>
             </div>
-            <div style={{...styles.summaryCard, borderLeftColor: '#059669'}}>
+            <div style={{ ...styles.summaryCard, borderLeftColor: '#059669' }}>
               <div style={styles.summaryLabel}>Đang hoạt động</div>
-              <div style={{...styles.summaryValue, color: '#059669'}}>{activeCount}</div>
+              <div style={{ ...styles.summaryValue, color: '#059669' }}>{activeCount}</div>
             </div>
-            <div style={{...styles.summaryCard, borderLeftColor: '#3b82f6'}}>
+            <div style={{ ...styles.summaryCard, borderLeftColor: '#3b82f6' }}>
               <div style={styles.summaryLabel}>Tổng đăng ký</div>
-              <div style={{...styles.summaryValue, color: '#3b82f6'}}>{registrations.length}</div>
+              <div style={{ ...styles.summaryValue, color: '#3b82f6' }}>{registrations.length}</div>
             </div>
           </div>
 
@@ -111,16 +111,16 @@ const MonthlyApproval = () => {
               {/* Filters */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
                 <strong style={{ fontSize: 14, color: '#0f172a' }}>🎯 Trạng thái:</strong>
-                <div style={{display:'flex',gap:8}}>
-                  {["all","pending","active","canceled"].map(s=>(
-                    <button key={s} onClick={()=>setFilterStatus(s)}
-                      style={{...styles.filterBtn,...(filterStatus===s?styles.filterActive:{})}}>
-                      {s==='all'?'Tất cả':s==='pending'?'Chờ duyệt':s==='active'?'Đã duyệt':'Đã hủy'}
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {["all", "pending", "active", "canceled"].map(s => (
+                    <button key={s} onClick={() => setFilterStatus(s)}
+                      style={{ ...styles.filterBtn, ...(filterStatus === s ? styles.filterActive : {}) }}>
+                      {s === 'all' ? 'Tất cả' : s === 'pending' ? 'Chờ duyệt' : s === 'active' ? 'Đã duyệt' : 'Đã hủy'}
                     </button>
                   ))}
                 </div>
               </div>
-              
+
               <div style={{ height: '1px', backgroundColor: '#e2e8f0' }}></div>
 
               {/* Sort */}
@@ -144,7 +144,7 @@ const MonthlyApproval = () => {
           </div>
 
           {message.text && (
-            <div style={{...styles.toast, backgroundColor: message.type === 'success' ? '#dcfce7' : '#fee2e2', color: message.type === 'success' ? '#166534' : '#991b1b'}}>
+            <div style={{ ...styles.toast, backgroundColor: message.type === 'success' ? '#dcfce7' : '#fee2e2', color: message.type === 'success' ? '#166534' : '#991b1b' }}>
               {message.type === 'success' ? '✅' : '❌'} {message.text}
             </div>
           )}
@@ -161,23 +161,23 @@ const MonthlyApproval = () => {
                     <th style={styles.th}>Biển số / Loại xe</th>
                     <th style={styles.th}>Thời hạn</th>
                     <th style={styles.th}>Trạng thái</th>
-                    <th style={{...styles.th, textAlign: 'right'}}>Hành động</th>
+                    <th style={{ ...styles.th, textAlign: 'right' }}>Hành động</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.map((reg) => (
                     <tr key={reg.monthly_id} style={styles.tr}>
                       <td style={styles.td}>
-                        <div style={{fontWeight: 'bold', color: '#0f172a'}}>{reg.resident_name}</div>
-                        <div style={{fontSize: 12, color: '#64748b'}}>Căn hộ: {reg.apartment_number}</div>
+                        <div style={{ fontWeight: 'bold', color: '#0f172a' }}>{reg.resident_name}</div>
+                        <div style={{ fontSize: 12, color: '#64748b' }}>Căn hộ: {reg.apartment_number}</div>
                       </td>
                       <td style={styles.td}>
-                        <div style={{fontWeight: 'bold', color: '#0f172a'}}>{reg.plate_number}</div>
-                        <div style={{fontSize: 12, color: '#64748b'}}>{reg.type_name}</div>
+                        <div style={{ fontWeight: 'bold', color: '#0f172a' }}>{reg.plate_number}</div>
+                        <div style={{ fontSize: 12, color: '#64748b' }}>{reg.type_name}</div>
                       </td>
                       <td style={styles.td}>
                         <div>{new Date(reg.start_date).toLocaleDateString('vi-VN')}</div>
-                        <div style={{fontSize: 12, color: '#64748b'}}>→ {new Date(reg.end_date).toLocaleDateString('vi-VN')}</div>
+                        <div style={{ fontSize: 12, color: '#64748b' }}>→ {new Date(reg.end_date).toLocaleDateString('vi-VN')}</div>
                       </td>
                       <td style={styles.td}>
                         <span style={{
@@ -188,12 +188,12 @@ const MonthlyApproval = () => {
                           {reg.status === 'active' ? '✅ Đã duyệt' : reg.status === 'pending' ? '⏳ Chờ duyệt' : '❌ Đã hủy'}
                         </span>
                       </td>
-                      <td style={{...styles.td, textAlign: 'right'}}>
-                        <button onClick={() => setDetail(reg)} style={{...styles.detailBtn}}>📋 Chi tiết</button>
+                      <td style={{ ...styles.td, textAlign: 'right' }}>
+                        <button onClick={() => setDetail(reg)} style={{ ...styles.detailBtn }}>📋 Chi tiết</button>
                         {reg.status === 'pending' && (
                           <>
-                            <button onClick={() => handleUpdateStatus(reg.monthly_id, 'active')} style={{...styles.actionBtn, color: '#059669', marginLeft: 8}}>Duyệt</button>
-                            <button onClick={() => handleUpdateStatus(reg.monthly_id, 'canceled')} style={{...styles.actionBtn, color: '#ef4444', marginLeft: 4}}>Từ chối</button>
+                            <button onClick={() => handleUpdateStatus(reg.monthly_id, 'active')} style={{ ...styles.actionBtn, color: '#059669', marginLeft: 8 }}>Duyệt</button>
+                            <button onClick={() => handleUpdateStatus(reg.monthly_id, 'canceled')} style={{ ...styles.actionBtn, color: '#ef4444', marginLeft: 4 }}>Từ chối</button>
                           </>
                         )}
                       </td>
@@ -214,7 +214,7 @@ const MonthlyApproval = () => {
         <div style={styles.overlay} onClick={() => setDetail(null)}>
           <div style={styles.modal} onClick={e => e.stopPropagation()}>
             <div style={styles.modalHeader}>
-              <h3 style={{margin:0,color:'#fff'}}>📋 Chi tiết đăng ký vé tháng</h3>
+              <h3 style={{ margin: 0, color: '#fff' }}>📋 Chi tiết đăng ký vé tháng</h3>
               <button onClick={() => setDetail(null)} style={styles.closeBtn}>✕</button>
             </div>
             <div style={styles.modalBody}>
@@ -232,7 +232,7 @@ const MonthlyApproval = () => {
                 </div>
                 <div style={styles.detailGroup}>
                   <div style={styles.detailLabel}>Biển số xe</div>
-                  <div style={{...styles.detailValue, fontSize: 20, fontWeight: '900', color: '#0f172a'}}>{detail.plate_number}</div>
+                  <div style={{ ...styles.detailValue, fontSize: 20, fontWeight: '900', color: '#0f172a' }}>{detail.plate_number}</div>
                 </div>
                 <div style={styles.detailGroup}>
                   <div style={styles.detailLabel}>Loại xe</div>
@@ -268,11 +268,11 @@ const MonthlyApproval = () => {
               {detail.status === 'pending' && (
                 <div style={styles.modalActions}>
                   <button onClick={() => handleUpdateStatus(detail.monthly_id, 'active')}
-                    style={{...styles.modalBtn, backgroundColor: '#059669', color: '#fff'}}>
+                    style={{ ...styles.modalBtn, backgroundColor: '#059669', color: '#fff' }}>
                     ✅ Chấp nhận duyệt
                   </button>
                   <button onClick={() => handleUpdateStatus(detail.monthly_id, 'canceled')}
-                    style={{...styles.modalBtn, backgroundColor: '#fee2e2', color: '#dc2626'}}>
+                    style={{ ...styles.modalBtn, backgroundColor: '#fee2e2', color: '#dc2626' }}>
                     ❌ Từ chối
                   </button>
                 </div>
@@ -280,7 +280,7 @@ const MonthlyApproval = () => {
               {detail.status === 'active' && (
                 <div style={styles.modalActions}>
                   <button onClick={() => handleUpdateStatus(detail.monthly_id, 'canceled')}
-                    style={{...styles.modalBtn, backgroundColor: '#fee2e2', color: '#dc2626'}}>
+                    style={{ ...styles.modalBtn, backgroundColor: '#fee2e2', color: '#dc2626' }}>
                     🔒 Hủy / Khóa vé tháng
                   </button>
                 </div>
