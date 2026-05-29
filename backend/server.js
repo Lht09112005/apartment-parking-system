@@ -55,6 +55,7 @@ app.use("/api/resident", residentPortalRoutes);
 app.use("/api/settings", settingsRoutes);
 app.use("/api/audit", auditRoutes);
 app.use("/api/backup", backupRoutes);
+app.use("/api/notifications", notificationRoutes);
 app.get("/", (req, res) => res.json({ message: "Parking API running..." }));
 
 const PORT = process.env.PORT || 5000;
