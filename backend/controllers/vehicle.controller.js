@@ -1,4 +1,5 @@
 const db = require("../config/db");
+const NotificationService = require("../services/notification.service");
 
 // GET /api/vehicles
 const getAllVehicles = async (req, res) => {
@@ -29,7 +30,18 @@ const createVehicle = async (req, res) => {
       `INSERT INTO vehicles (plate_number, resident_id, type_id, color, status) VALUES (?, ?, ?, ?, 'active')`,
       [plate_number, resident_id, type_id, color]
     );
+    // ... logic thêm xe hiện tại của bạn ...
 
+    // Gửi thông báo cho Admin (Role 1 & 2)
+    const [[resident]] = await db.query(`SELECT name, apartment_number FROM residents WHERE resident_id = ?`, [resident_id]);
+    if (resident) {
+        await NotificationService.notifyRole(
+            [1, 2], 
+            "Yêu cầu duyệt đăng ký xe mới", 
+            `Cư dân ${resident.name} (Căn hộ ${resident.apartment_number}) đã đăng ký xe mới biển số ${plate_number}. Vui lòng phê duyệt.`, 
+            "VEHICLE_APPROVAL_REQUEST"
+        );
+    }
     res.status(201).json({ message: "Thêm xe thành công" });
   } catch (err) {
     if (err.code === "ER_DUP_ENTRY") {
