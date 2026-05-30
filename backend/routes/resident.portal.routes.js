@@ -363,4 +363,151 @@ router.get("/vehicle-types", async (req, res) => {
   }
 });
 
+// POST /api/resident/monthly/renew - Gia hạn gửi xe theo tháng
+router.post("/monthly/renew", async (req, res) => {
+  const { plate_number } = req.body;
+  if (!plate_number) {
+    return res.status(400).json({ message: "Vui lòng chọn xe" });
+  }
+  try {
+    // 1. Xác định cư dân và quyền sở hữu xe
+    const [resident] = await db.query(
+      `SELECT resident_id, name, apartment_number FROM residents WHERE user_id = ?`,
+      [req.user.user_id]
+    );
+    if (resident.length === 0) {
+      return res.status(404).json({ message: "Không tìm thấy thông tin cư dân" });
+    }
+    const [vehicle] = await db.query(
+      `SELECT v.plate_number, v.type_id, v.status FROM vehicles v WHERE v.plate_number = ? AND v.resident_id = ?`,
+      [plate_number, resident[0].resident_id]
+    );
+    if (vehicle.length === 0) {
+      return res.status(403).json({ message: "Xe không thuộc quyền sở hữu của bạn" });
+    }
+    if (vehicle[0].status !== 'active') {
+      return res.status(400).json({ message: "Xe chưa được duyệt hoặc đang chờ xóa. Không thể gia hạn vé tháng." });
+    }
+
+    // 2. Kiểm tra nếu có bất kỳ vé tháng nào ĐANG CHỜ DUYỆT (pending) của xe này
+    const [pendingTickets] = await db.query(
+      `SELECT * FROM monthly_parking WHERE plate_number = ? AND status = 'pending'`,
+      [plate_number]
+    );
+    if (pendingTickets.length > 0) {
+      return res.status(400).json({ message: "Xe này đã có yêu cầu đăng ký/gia hạn vé tháng đang chờ duyệt!" });
+    }
+
+    // 3. Tìm khu vực phù hợp cho loại xe này
+    const [areas] = await db.query(
+      `SELECT area_id FROM parking_area WHERE type_id = ? LIMIT 1`,
+      [vehicle[0].type_id]
+    );
+    const area_id = areas.length > 0 ? areas[0].area_id : null;
+    if (!area_id) {
+      return res.status(400).json({ message: "Không tìm thấy khu vực phù hợp cho loại xe này" });
+    }
+
+    // 4. Lấy vé tháng ĐANG HOẠT ĐỘNG (status = 'active') gần nhất
+    const [activeTickets] = await db.query(
+      `SELECT * FROM monthly_parking WHERE plate_number = ? AND status = 'active' ORDER BY end_date DESC LIMIT 1`,
+      [plate_number]
+    );
+
+    let startDate = new Date();
+    let endDate = new Date();
+
+    if (activeTickets.length > 0) {
+      // Vé cũ đang hoạt động -> gia hạn tiếp nối ngày hết hạn cũ
+      const activeTicket = activeTickets[0];
+      startDate = new Date(activeTicket.end_date);
+      startDate.setDate(startDate.getDate() + 1); // Bắt đầu từ ngày sau ngày hết hạn cũ
+
+      endDate = new Date(startDate);
+      endDate.setMonth(endDate.getMonth() + 1);
+    } else {
+      // Không có vé đang hoạt động -> bắt đầu từ hôm nay
+      endDate.setMonth(endDate.getMonth() + 1);
+    }
+
+    // 5. Thêm bản ghi gia hạn vé tháng chờ duyệt
+    await db.query(
+      `INSERT INTO monthly_parking (plate_number, area_id, start_date, end_date, status) VALUES (?, ?, ?, ?, 'pending')`,
+      [plate_number, area_id, startDate, endDate]
+    );
+
+    // 6. Gửi thông báo cho Admin & Super Admin (Role 1 & 2)
+    try {
+      const formattedStart = startDate.toLocaleDateString("vi-VN");
+      const formattedEnd = endDate.toLocaleDateString("vi-VN");
+      const NotificationService = require("../services/notification.service");
+      await NotificationService.notifyRole(
+        [1, 2],
+        "Yêu cầu gia hạn vé tháng",
+        `Cư dân ${resident[0].name} (Căn hộ ${resident[0].apartment_number}) đã gửi yêu cầu gia hạn vé tháng cho xe biển số ${plate_number} (Thời hạn mới dự kiến: từ ${formattedStart} đến ${formattedEnd}).`,
+        "MONTHLY_RENEW_REQUEST"
+      );
+    } catch (notifErr) {
+      console.error("Lỗi gửi thông báo gia hạn vé tháng:", notifErr);
+    }
+
+    res.status(201).json({ message: "Gửi yêu cầu gia hạn vé tháng thành công, đang chờ Admin duyệt" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Lỗi server" });
+  }
+});
+
+// POST /api/resident/vehicles/:plate_number/request-delete - Yêu cầu xóa xe
+router.post("/vehicles/:plate_number/request-delete", async (req, res) => {
+  const { plate_number } = req.params;
+  try {
+    // 1. Xác định cư dân và quyền sở hữu xe
+    const [resident] = await db.query(
+      `SELECT resident_id, name, apartment_number FROM residents WHERE user_id = ?`,
+      [req.user.user_id]
+    );
+    if (resident.length === 0) {
+      return res.status(404).json({ message: "Không tìm thấy thông tin cư dân" });
+    }
+    const [vehicle] = await db.query(
+      `SELECT v.plate_number, v.status FROM vehicles v WHERE v.plate_number = ? AND v.resident_id = ?`,
+      [plate_number, resident[0].resident_id]
+    );
+    if (vehicle.length === 0) {
+      return res.status(403).json({ message: "Xe không thuộc quyền sở hữu của bạn" });
+    }
+    if (vehicle[0].status === 'deleted') {
+      return res.status(400).json({ message: "Xe này đã bị xóa rồi" });
+    }
+    if (vehicle[0].status === 'pending_delete') {
+      return res.status(400).json({ message: "Xe này đã ở trạng thái chờ xóa trước đó" });
+    }
+
+    // 2. Chuyển trạng thái xe thành 'pending_delete'
+    await db.query(
+      `UPDATE vehicles SET status = 'pending_delete' WHERE plate_number = ? AND resident_id = ?`,
+      [plate_number, resident[0].resident_id]
+    );
+
+    // 3. Gửi thông báo cho Admin & Super Admin (Role 1 & 2)
+    try {
+      const NotificationService = require("../services/notification.service");
+      await NotificationService.notifyRole(
+        [1, 2],
+        "Yêu cầu xóa xe & hủy dịch vụ",
+        `Cư dân ${resident[0].name} (Căn hộ ${resident[0].apartment_number}) yêu cầu hủy dịch vụ và xóa xe biển số ${plate_number} khỏi hệ thống. Vui lòng đối soát và xử lý.`,
+        "VEHICLE_DELETE_REQUEST"
+      );
+    } catch (notifErr) {
+      console.error("Lỗi gửi thông báo yêu cầu xóa xe:", notifErr);
+    }
+
+    res.json({ message: "Gửi yêu cầu xóa xe thành công, đang chờ Admin phê duyệt" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Lỗi server" });
+  }
+});
+
 module.exports = router;

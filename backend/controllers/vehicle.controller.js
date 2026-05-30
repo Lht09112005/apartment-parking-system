@@ -72,7 +72,26 @@ const updateVehicle = async (req, res) => {
 const deleteVehicle = async (req, res) => {
   const { plate_number } = req.params;
   try {
+    // 1. Lấy thông tin user_id của cư dân sở hữu xe trước khi xóa
+    const [[vehicleInfo]] = await db.query(
+      `SELECT r.user_id FROM vehicles v 
+       JOIN residents r ON v.resident_id = r.resident_id 
+       WHERE v.plate_number = ?`, [plate_number]
+    );
+
+    // 2. Thực hiện xóa mềm
     await db.query(`UPDATE vehicles SET status = 'deleted' WHERE plate_number=?`, [plate_number]);
+
+    // 3. Gửi thông báo cho cư dân
+    if (vehicleInfo && vehicleInfo.user_id) {
+      await NotificationService.notifyUser(
+        vehicleInfo.user_id,
+        "Thông báo xóa xe thành công",
+        `Xe biển số ${plate_number} của bạn đã được xóa khỏi hệ thống bởi Admin.`,
+        "VEHICLE_DELETED"
+      );
+    }
+
     res.json({ message: "Xóa xe thành công" });
   } catch (err) {
     console.error(err);
