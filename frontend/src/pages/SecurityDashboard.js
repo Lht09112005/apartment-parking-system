@@ -3,6 +3,7 @@ import { useRealtimeRefresh } from "../hooks/useRealtimeRefresh";
 import axios from "../api/axios";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import NotificationBell from "../components/NotificationBell";
 
 const SecurityDashboard = () => {
   const { user, logout } = useAuth();
@@ -581,8 +582,9 @@ const SecurityDashboard = () => {
               </h2>
             </div>
 
-            <div style={styles.headerRight}>
-              <div style={{ textAlign: "right", marginRight: 12 }}>
+            <div style={{ ...styles.headerRight, gap: 16 }}>
+              <NotificationBell />
+              <div style={{ textAlign: "right" }}>
                 <div
                   style={{
                     fontSize: 14,

@@ -13,6 +13,7 @@ const residentPortalRoutes = require("./routes/resident.portal.routes");
 const settingsRoutes = require("./routes/settings.routes");
 const auditRoutes = require("./routes/audit.routes");
 const backupRoutes = require("./routes/backup.routes");
+const notificationRoutes = require("./routes/notification.routes");
 const { checkMaintenanceMode } = require("./middleware/maintenance.middleware");
 const app = express();
 const realtimeRoutes = require("./routes/realtime.routes");

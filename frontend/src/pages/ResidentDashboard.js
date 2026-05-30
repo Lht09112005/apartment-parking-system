@@ -3,6 +3,7 @@ import { useRealtimeRefresh } from "../hooks/useRealtimeRefresh";
 import axios from "../api/axios";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import NotificationBell from "../components/NotificationBell";
 
 const ResidentDashboard = () => {
   const { user, logout } = useAuth();
@@ -435,7 +436,8 @@ const ResidentDashboard = () => {
               {menuItems.find((m) => m.key === view)?.label}
             </h2>
 
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+              <NotificationBell />
               <div style={{ textAlign: "right" }}>
                 <div
                   style={{
