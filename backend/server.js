@@ -19,7 +19,6 @@ const app = express();
 const realtimeRoutes = require("./routes/realtime.routes");
 const { notifyDataChanges } = require("./middleware/realtime.middleware");
 const { JWT_SECRET } = require("./config/auth");
-const notificationRoutes = require("./routes/notification.routes");
 
 app.use(cors());
 app.use(express.json());
@@ -27,7 +26,6 @@ app.use(express.json());
 app.use(notifyDataChanges);
 
 app.use("/api/realtime", realtimeRoutes);
-app.use("/api/notifications", notificationRoutes);
 
 // Maintenance mode check (must verify token first to skip admins)
 // For routes that need it, we can apply it. But to keep it simple, we'll apply it globally after parsing body, but we need user info.
