@@ -1,6 +1,7 @@
 import React from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import NotificationBell from './NotificationBell';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
@@ -58,6 +59,8 @@ const Navbar = () => {
         )}
       </div>
       <div style={styles.right}>
+        <NotificationBell />
+        
         <span style={styles.username}>{user?.username}</span>
         <span style={styles.role}>{user?.role_name}</span>
         <button onClick={handleLogout} style={styles.logoutBtn}>
