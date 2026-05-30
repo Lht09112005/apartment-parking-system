@@ -1,4 +1,5 @@
 const db = require("../config/db");
+const NotificationService = require("../services/notification.service");
 
 // GET /api/vehicles
 const getAllVehicles = async (req, res) => {
@@ -29,7 +30,18 @@ const createVehicle = async (req, res) => {
       `INSERT INTO vehicles (plate_number, resident_id, type_id, color, status) VALUES (?, ?, ?, ?, 'active')`,
       [plate_number, resident_id, type_id, color]
     );
+    // ... logic thêm xe hiện tại của bạn ...
 
+    // Gửi thông báo cho Admin (Role 1 & 2)
+    const [[resident]] = await db.query(`SELECT name, apartment_number FROM residents WHERE resident_id = ?`, [resident_id]);
+    if (resident) {
+        await NotificationService.notifyRole(
+            [1, 2], 
+            "Yêu cầu duyệt đăng ký xe mới", 
+            `Cư dân ${resident.name} (Căn hộ ${resident.apartment_number}) đã đăng ký xe mới biển số ${plate_number}. Vui lòng phê duyệt.`, 
+            "VEHICLE_APPROVAL_REQUEST"
+        );
+    }
     res.status(201).json({ message: "Thêm xe thành công" });
   } catch (err) {
     if (err.code === "ER_DUP_ENTRY") {
@@ -101,10 +113,29 @@ const getPendingVehicles = async (req, res) => {
 const approveVehicle = async (req, res) => {
   const { plate_number } = req.params;
   try {
+    // 1. Lấy thông tin user_id của chủ xe trước khi cập nhật
+    const [[vehicleInfo]] = await db.query(
+      `SELECT r.user_id FROM vehicles v 
+       JOIN residents r ON v.resident_id = r.resident_id 
+       WHERE v.plate_number = ?`, [plate_number]
+    );
+
+    // 2. Cập nhật trạng thái
     const [rows] = await db.query(`UPDATE vehicles SET status = 'active' WHERE plate_number = ?`, [plate_number]);
     if (rows.affectedRows === 0) {
       return res.status(404).json({ message: "Không tìm thấy xe" });
     }
+
+    // 3. Gửi thông báo cho cư dân
+    if (vehicleInfo && vehicleInfo.user_id) {
+      await NotificationService.notifyUser(
+        vehicleInfo.user_id,
+        "Kết quả duyệt đăng ký xe",
+        `Yêu cầu đăng ký xe biển số ${plate_number} của bạn đã được CHẤP THUẬN.`,
+        "VEHICLE_APPROVED"
+      );
+    }
+
     res.json({ message: "Duyệt đăng ký xe thành công" });
   } catch (err) {
     console.error(err);
@@ -116,10 +147,29 @@ const approveVehicle = async (req, res) => {
 const rejectVehicle = async (req, res) => {
   const { plate_number } = req.params;
   try {
+    // 1. Lấy thông tin user_id của chủ xe
+    const [[vehicleInfo]] = await db.query(
+      `SELECT r.user_id FROM vehicles v 
+       JOIN residents r ON v.resident_id = r.resident_id 
+       WHERE v.plate_number = ? AND v.status = 'pending'`, [plate_number]
+    );
+
+    // 2. Cập nhật trạng thái
     const [rows] = await db.query(`UPDATE vehicles SET status = 'deleted' WHERE plate_number = ? AND status = 'pending'`, [plate_number]);
     if (rows.affectedRows === 0) {
       return res.status(404).json({ message: "Không tìm thấy xe hoặc xe không ở trạng thái chờ duyệt" });
     }
+
+    // 3. Gửi thông báo cho cư dân
+    if (vehicleInfo && vehicleInfo.user_id) {
+      await NotificationService.notifyUser(
+        vehicleInfo.user_id,
+        "Kết quả duyệt đăng ký xe",
+        `Yêu cầu đăng ký xe biển số ${plate_number} của bạn đã bị TỪ CHỐI. Vui lòng liên hệ ban quản lý để biết thêm chi tiết.`,
+        "VEHICLE_REJECTED"
+      );
+    }
+
     res.json({ message: "Từ chối đăng ký xe thành công" });
   } catch (err) {
     console.error(err);

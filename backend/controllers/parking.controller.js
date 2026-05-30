@@ -1,5 +1,6 @@
 const db = require("../config/db");
 const { logAudit } = require("../utils/auditLogger");
+const NotificationService = require("../services/notification.service");
 
 // POST /api/parking/check-in
 const checkIn = async (req, res) => {
@@ -52,7 +53,37 @@ const checkIn = async (req, res) => {
       `INSERT INTO parking_session (plate_number, staff_id, time_in, status, type_id) VALUES (?, ?, NOW(), 'parking', ?)`,
       [plate_number, staff_id, finalTypeId]
     );
+    
+    // --- THÊM LOGIC THÔNG BÁO ---
+    // 1. Thông báo cho cư dân xe đã check-in
+    if (isResident) {
+      const [[residentInfo]] = await db.query(
+        `SELECT r.user_id FROM vehicles v 
+         JOIN residents r ON v.resident_id = r.resident_id 
+         WHERE v.plate_number = ?`, [plate_number]
+      );
+      if (residentInfo && residentInfo.user_id) {
+        const timeStr = new Date().toLocaleString("vi-VN");
+        await NotificationService.notifyUser(
+          residentInfo.user_id,
+          "Thông báo xe vào bãi",
+          `Xe biển số ${plate_number} của bạn đã được CHECK-IN lúc ${timeStr}.`,
+          "PARKING_CHECKIN"
+        );
+      }
+    }
 
+    // 2. Cảnh báo bãi đỗ đầy cho Security (Role 3)
+    const [[{ total_parking }]] = await db.query(`SELECT COUNT(*) as total_parking FROM parking_session WHERE status = 'parking'`);
+    const MAX_CAPACITY = 500; // Có thể thay đổi theo quy mô thực tế
+    if (total_parking >= MAX_CAPACITY * 0.9) {
+      await NotificationService.notifyRole(
+        [3], 
+        "Cảnh báo bãi đỗ xe sắp đầy", 
+        `Khu vực đỗ xe đã đạt ${Math.round((total_parking/MAX_CAPACITY)*100)}% sức chứa (${total_parking}/${MAX_CAPACITY}).`, 
+        "PARKING_FULL_WARNING"
+      );
+    }
     res.status(200).json({ message: "Check-in thành công", warning });
   } catch (err) {
     console.error(err);
@@ -149,7 +180,23 @@ const checkOut = async (req, res) => {
       `UPDATE parking_session SET time_out = NOW(), status = 'completed', fee_amount = ? WHERE session_id = ?`,
       [totalFee, session.session_id]
     );
-
+    if (isResident) {
+      const [[residentInfo]] = await db.query(
+        `SELECT r.user_id FROM vehicles v 
+         JOIN residents r ON v.resident_id = r.resident_id 
+         WHERE v.plate_number = ?`, [plate_number]
+      );
+      if (residentInfo && residentInfo.user_id) {
+        const timeStr = timeOut.toLocaleString("vi-VN");
+        const feeStr = totalFee.toLocaleString("vi-VN");
+        await NotificationService.notifyUser(
+          residentInfo.user_id,
+          "Thông báo xe ra bãi",
+          `Xe biển số ${plate_number} của bạn đã được CHECK-OUT lúc ${timeStr} (Phí: ${feeStr} VNĐ).`,
+          "PARKING_CHECKOUT"
+        );
+      }
+    }
     res.status(200).json({
       message: "Check-out thành công",
       fee: totalFee,
@@ -271,6 +318,31 @@ const updateMonthlyStatus = async (req, res) => {
   const { status } = req.body;
   try {
     await db.query(`UPDATE monthly_parking SET status = ? WHERE monthly_id = ?`, [status, monthly_id]);
+    
+    const [[monthlyInfo]] = await db.query(
+      `SELECT m.plate_number, m.end_date, r.user_id 
+       FROM monthly_parking m
+       JOIN vehicles v ON m.plate_number = v.plate_number
+       JOIN residents r ON v.resident_id = r.resident_id
+       WHERE m.monthly_id = ?`, [monthly_id]
+    );
+
+    if (monthlyInfo && monthlyInfo.user_id) {
+      const plateNumber = monthlyInfo.plate_number;
+      let notifContent = `Đơn đăng ký vé tháng cho xe biển số ${plateNumber} đã bị TỪ CHỐI hoặc HỦY.`;
+      
+      if (status === 'active') {
+        const endDateStr = new Date(monthlyInfo.end_date).toLocaleDateString("vi-VN");
+        notifContent = `Đơn đăng ký vé tháng cho xe biển số ${plateNumber} đã được CHẤP THUẬN (Thời hạn: ${endDateStr}).`;
+      }
+
+      await NotificationService.notifyUser(
+        monthlyInfo.user_id,
+        "Kết quả duyệt vé tháng",
+        notifContent,
+        "MONTHLY_STATUS_UPDATED"
+      );
+    }
     res.json({ message: "Cập nhật trạng thái vé tháng thành công" });
   } catch (err) {
     console.error(err);
