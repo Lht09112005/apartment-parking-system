@@ -602,6 +602,14 @@ const SecurityDashboard = () => {
           </div>
 
           <div style={styles.contentBody}>
+            {(activeMotos >= 1200 * 0.9 || activeCars >= 150 * 0.9) && (
+              <div style={{ padding: '12px 16px', backgroundColor: '#fef2f2', borderLeft: '4px solid #ef4444', color: '#991b1b', marginBottom: '20px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold' }}>
+                <span className="material-symbols-rounded" style={{ color: '#ef4444' }}>warning</span>
+                Cảnh báo bãi đỗ xe sắp đầy! 
+                {activeMotos >= 1200 * 0.9 && " Khu A (Xe máy) sắp đầy."}
+                {activeCars >= 150 * 0.9 && " Khu B (Ô tô) sắp đầy."}
+              </div>
+            )}
             <div style={styles.capacityRow}>
               <div style={{ ...styles.capacityCard, borderColor: "#86efac" }}>
                 <div style={{ flex: 1 }}>

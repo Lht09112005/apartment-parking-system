@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import axios from "../api/axios";
+import { notificationService } from "../services/notification.service";
+import { API_BASE_URL } from "../api/axios";
 
 const NotificationBell = () => {
   const [unreadCount, setUnreadCount] = useState(0);
@@ -10,10 +11,10 @@ const NotificationBell = () => {
   // Fetch notifications from API
   const fetchNotifications = async () => {
     try {
-      const res = await axios.get("/notifications");
-      if (res.data) {
-        setUnreadCount(res.data.unread_count || 0);
-        setNotifications(res.data.notifications || []);
+      const data = await notificationService.getNotifications();
+      if (data) {
+        setUnreadCount(data.unread_count || 0);
+        setNotifications(data.notifications || []);
       }
     } catch (err) {
       console.error("Lỗi lấy danh sách thông báo:", err);
@@ -22,8 +23,28 @@ const NotificationBell = () => {
 
   useEffect(() => {
     fetchNotifications();
-    // Poll every 15 seconds to check for new notifications in real-time
-    const interval = setInterval(fetchNotifications, 15000);
+
+    // Connect SSE for Real-time notification updates
+    const token = localStorage.getItem("token");
+    let eventSource = null;
+    if (token) {
+      const sseUrl = `${API_BASE_URL}/realtime/events?token=${token}`;
+      eventSource = new EventSource(sseUrl);
+
+      eventSource.addEventListener("data-changed", (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.action === "new_notification") {
+            const newNotif = data.resources[0];
+            // Add new notification at the top and increment count
+            setNotifications((prev) => [newNotif, ...prev]);
+            setUnreadCount((prev) => prev + 1);
+          }
+        } catch (err) {
+          console.error("Lỗi xử lý dữ liệu SSE:", err);
+        }
+      });
+    }
 
     // Close dropdown on click outside
     const handleClickOutside = (event) => {
@@ -34,7 +55,9 @@ const NotificationBell = () => {
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => {
-      clearInterval(interval);
+      if (eventSource) {
+        eventSource.close();
+      }
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
@@ -49,7 +72,7 @@ const NotificationBell = () => {
   const handleMarkAsRead = async (id, isRead) => {
     if (isRead) return;
     try {
-      await axios.put(`/notifications/${id}/read`);
+      await notificationService.markAsRead(id);
       // Update state locally
       setNotifications((prev) =>
         prev.map((n) => (n.notification_id === id ? { ...n, is_read: true } : n))
@@ -63,7 +86,7 @@ const NotificationBell = () => {
   const handleMarkAllAsRead = async () => {
     if (unreadCount === 0) return;
     try {
-      await axios.put("/notifications/mark-all-read");
+      await notificationService.markAllAsRead();
       setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
       setUnreadCount(0);
     } catch (err) {

@@ -128,7 +128,7 @@ const ResidentDashboard = () => {
     if (view === "profile") {
       fetchProfile();
     }
-    
+
     // Đóng sidebar trên mobile khi chuyển view
     setIsMobileOpen(false);
   }, [view]);
@@ -277,12 +277,12 @@ const ResidentDashboard = () => {
       `}</style>
 
       {/* Hamburger Button */}
-      <div 
-        className="mobile-hamburger" 
+      <div
+        className="mobile-hamburger"
         style={{
-          display: 'none', 
-          position: 'fixed', top: 15, left: 15, zIndex: 998, 
-          background: '#fff', border: '1px solid #e0e0e0', padding: 8, 
+          display: 'none',
+          position: 'fixed', top: 15, left: 15, zIndex: 998,
+          background: '#fff', border: '1px solid #e0e0e0', padding: 8,
           borderRadius: 8, cursor: 'pointer', alignItems: 'center', justifyContent: 'center',
           boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
         }}
@@ -292,7 +292,7 @@ const ResidentDashboard = () => {
       </div>
 
       {/* Overlay */}
-      <div 
+      <div
         className={`sidebar-overlay ${isMobileOpen ? 'open' : ''}`}
         style={{
           display: 'none',
@@ -692,8 +692,25 @@ const ResidentDashboard = () => {
                             flexWrap: "wrap",
                           }}
                         >
-                          {!v.monthly_status ||
-                          v.monthly_status === "expired" ? (
+                          {v.monthly_status === "active" ? (
+                            <button
+                              disabled
+                              style={{ ...S.smallBtn, background: "#94a3b8" }}
+                            >
+                              Đã đăng ký
+                            </button>
+                          ) : v.monthly_status === "pending" ? (
+                            <button
+                              disabled
+                              style={{
+                                ...S.smallBtn,
+                                background: "#fbbf24",
+                                color: "#92400e",
+                              }}
+                            >
+                              Đang chờ duyệt
+                            </button>
+                          ) : (
                             <button
                               onClick={() => handleRegisterMonthly(v.plate_number)}
                               disabled={v.status !== "active"}
@@ -713,7 +730,7 @@ const ResidentDashboard = () => {
                             >
                               Đăng ký vé tháng
                             </button>
-                          ) : null}
+                          )}
 
                           <button
                             onClick={() => openEditForm(v)}
@@ -835,26 +852,27 @@ const ResidentDashboard = () => {
                       </div>
 
                       {(!v.monthly_status ||
-                        v.monthly_status === "expired") && (
-                        <button
-                          onClick={() => handleRegisterMonthly(v.plate_number)}
-                          disabled={v.status !== "active"}
-                          style={{
-                            ...S.primaryBtn,
-                            backgroundColor:
-                              v.status !== "active" ? "#cbd5e1" : "#3b82f6",
-                            cursor:
-                              v.status !== "active" ? "not-allowed" : "pointer",
-                          }}
-                          title={
-                            v.status !== "active"
-                              ? "Cần được Admin duyệt xe trước khi đăng ký vé tháng"
-                              : ""
-                          }
-                        >
-                          Đăng ký vé tháng
-                        </button>
-                      )}
+                        v.monthly_status === "expired" ||
+                        v.monthly_status === "canceled") && (
+                          <button
+                            onClick={() => handleRegisterMonthly(v.plate_number)}
+                            disabled={v.status !== "active"}
+                            style={{
+                              ...S.primaryBtn,
+                              backgroundColor:
+                                v.status !== "active" ? "#cbd5e1" : "#3b82f6",
+                              cursor:
+                                v.status !== "active" ? "not-allowed" : "pointer",
+                            }}
+                            title={
+                              v.status !== "active"
+                                ? "Cần được Admin duyệt xe trước khi đăng ký vé tháng"
+                                : ""
+                            }
+                          >
+                            Đăng ký vé tháng
+                          </button>
+                        )}
                     </div>
                   ))
                 )}
