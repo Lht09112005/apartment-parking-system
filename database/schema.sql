@@ -91,3 +91,13 @@ CREATE TABLE monthly_parking (
     FOREIGN KEY (plate_number) REFERENCES vehicles (plate_number),
     FOREIGN KEY (area_id) REFERENCES parking_area (area_id)
 );
+CREATE TABLE notifications (
+  notification_id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  title VARCHAR(255) NOT NULL,
+  content TEXT NOT NULL,
+  type VARCHAR(50),
+  is_read BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
