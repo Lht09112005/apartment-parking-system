@@ -1,12 +1,16 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { notificationService } from "../services/notification.service";
 import { API_BASE_URL } from "../api/axios";
+import { useAuth } from "../context/AuthContext";
 
 const NotificationBell = () => {
+  const navigate = useNavigate();
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const { user: currentUser } = useAuth();
 
   // Fetch notifications from API
   const fetchNotifications = async () => {
@@ -36,9 +40,11 @@ const NotificationBell = () => {
           const data = JSON.parse(event.data);
           if (data.action === "new_notification") {
             const newNotif = data.resources[0];
-            // Add new notification at the top and increment count
-            setNotifications((prev) => [newNotif, ...prev]);
-            setUnreadCount((prev) => prev + 1);
+            // Only add the notification if it belongs to the current logged-in user
+            if (currentUser && newNotif.user_id === currentUser.user_id) {
+              setNotifications((prev) => [newNotif, ...prev]);
+              setUnreadCount((prev) => prev + 1);
+            }
           }
         } catch (err) {
           console.error("Lỗi xử lý dữ liệu SSE:", err);
@@ -60,6 +66,7 @@ const NotificationBell = () => {
       }
       document.removeEventListener("mousedown", handleClickOutside);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const toggleDropdown = () => {
@@ -69,17 +76,60 @@ const NotificationBell = () => {
     }
   };
 
-  const handleMarkAsRead = async (id, isRead) => {
-    if (isRead) return;
-    try {
-      await notificationService.markAsRead(id);
-      // Update state locally
-      setNotifications((prev) =>
-        prev.map((n) => (n.notification_id === id ? { ...n, is_read: true } : n))
-      );
-      setUnreadCount((c) => Math.max(0, c - 1));
-    } catch (err) {
-      console.error("Lỗi đánh dấu đã đọc:", err);
+  const handleNotificationClick = async (notif) => {
+    if (!notif.is_read) {
+      try {
+        await notificationService.markAsRead(notif.notification_id);
+        // Update state locally
+        setNotifications((prev) =>
+          prev.map((n) =>
+            n.notification_id === notif.notification_id ? { ...n, is_read: true } : n
+          )
+        );
+        setUnreadCount((c) => Math.max(0, c - 1));
+      } catch (err) {
+        console.error("Lỗi đánh dấu đã đọc:", err);
+      }
+    }
+
+    setIsOpen(false);
+
+    // Navigation logic based on notification type
+    switch (notif.type) {
+      // Admin roles
+      case "VEHICLE_APPROVAL_REQUEST":
+      case "VEHICLE_DELETE_REQUEST":
+        navigate("/admin/vehicles?tab=pending");
+        break;
+      case "MONTHLY_APPROVAL_REQUEST":
+      case "MONTHLY_RENEW_REQUEST":
+        navigate("/admin/monthly?status=pending");
+        break;
+
+      // Resident role
+      case "VEHICLE_APPROVED":
+      case "VEHICLE_REJECTED":
+      case "VEHICLE_DELETED":
+        navigate("/resident?view=vehicles");
+        break;
+      case "MONTHLY_STATUS_UPDATED":
+        navigate("/resident?view=fees");
+        break;
+      case "TICKET_EXPIRING_WARNING":
+        navigate("/resident?view=monthly");
+        break;
+      case "PARKING_CHECKIN":
+      case "PARKING_CHECKOUT":
+        navigate("/resident?view=history");
+        break;
+
+      // Security role
+      case "PARKING_FULL_WARNING":
+        navigate("/security");
+        break;
+
+      default:
+        break;
     }
   };
 
@@ -213,11 +263,11 @@ const NotificationBell = () => {
                   <div
                     key={notif.notification_id}
                     className="notif-item"
-                    onClick={() => handleMarkAsRead(notif.notification_id, notif.is_read)}
+                    onClick={() => handleNotificationClick(notif)}
                     style={{
                       ...styles.item,
                       backgroundColor: notif.is_read ? "#fff" : "#f0f4f9",
-                      cursor: notif.is_read ? "default" : "pointer",
+                      cursor: "pointer",
                     }}
                   >
                     {/* Circle Icon Badge */}
