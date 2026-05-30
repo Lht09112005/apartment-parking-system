@@ -1,4 +1,4 @@
-import api from './api'; // Giả định bạn đã có file cấu hình axios (api.js)
+import api from '../api/axios'; // Import custom axios instance with interceptors
 
 export const notificationService = {
   // Lấy danh sách thông báo

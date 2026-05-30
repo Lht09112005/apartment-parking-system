@@ -4,6 +4,7 @@ import axios from "../api/axios";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
+import NotificationBell from "../components/NotificationBell";
 
 const Dashboard = () => {
   const [stats, setStats] = useState(null);
@@ -77,7 +78,8 @@ const Dashboard = () => {
             <h2 style={{margin: 0, fontSize: 18, fontWeight: '600', color: '#202124'}}>Tổng quan</h2>
           </div>
           <div style={styles.headerRight}>
-            <div style={{textAlign: 'right', marginRight: 12}}>
+            <NotificationBell />
+            <div style={{textAlign: 'right', marginRight: 12, marginLeft: 16}}>
               <div style={{fontSize: 13, fontWeight: '500', color: '#202124'}}>{user?.username}</div>
               <div style={{fontSize: 11, color: '#5f6368'}}>
                 {user?.role_id === 1 ? 'Super Admin' : 'Quản trị viên'}
