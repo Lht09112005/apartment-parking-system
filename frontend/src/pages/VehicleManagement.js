@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import axios from "../api/axios";
 import { useRealtimeRefresh } from "../hooks/useRealtimeRefresh";
 import { useAuth } from "../context/AuthContext";
 import Sidebar from "../components/Sidebar";
 
 const VehicleManagement = () => {
+  const location = useLocation();
   const [vehicles, setVehicles] = useState([]);
   const [residents, setResidents] = useState([]);
   const [vehicleTypes, setVehicleTypes] = useState([]);
@@ -46,6 +48,14 @@ const VehicleManagement = () => {
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tabParam = params.get("tab");
+    if (tabParam && ["active", "pending"].includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, [location]);
 
   useRealtimeRefresh(fetchData, ["vehicles", "residents", "monthly"], {
     intervalMs: 10000,
@@ -317,7 +327,7 @@ const VehicleManagement = () => {
                     <input
                       style={styles.input}
                       placeholder="Nhập số căn hộ..."
-                      value={editData ? editData.apartment_number : form.apartment_number}
+                      value={(editData ? editData.apartment_number : form.apartment_number) || ""}
                       onChange={(e) =>
                         editData
                           ? setEditData({ ...editData, apartment_number: e.target.value })
@@ -330,7 +340,7 @@ const VehicleManagement = () => {
                     <label style={styles.label}>Loại phương tiện</label>
                     <select
                       style={styles.input}
-                      value={editData ? editData.type_id : form.type_id}
+                      value={(editData ? editData.type_id : form.type_id) || ""}
                       onChange={(e) =>
                         editData
                           ? setEditData({ ...editData, type_id: e.target.value })
@@ -351,7 +361,7 @@ const VehicleManagement = () => {
                     <input
                       style={styles.input}
                       placeholder="VD: Trắng, Đen..."
-                      value={editData ? editData.color : form.color}
+                      value={(editData ? editData.color : form.color) || ""}
                       onChange={(e) =>
                         editData
                           ? setEditData({ ...editData, color: e.target.value })

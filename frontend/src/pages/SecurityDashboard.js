@@ -2,12 +2,13 @@ import React, { useState, useEffect } from "react";
 import { useRealtimeRefresh } from "../hooks/useRealtimeRefresh";
 import axios from "../api/axios";
 import { useAuth } from "../context/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import NotificationBell from "../components/NotificationBell";
 
 const SecurityDashboard = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Mode: "IN" or "OUT"
   const [mode, setMode] = useState("IN");
@@ -86,6 +87,14 @@ const SecurityDashboard = () => {
     refreshSecurityData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const viewParam = params.get("view");
+    if (viewParam && ["gate", "logs", "search"].includes(viewParam)) {
+      setViewMode(viewParam);
+    }
+  }, [location]);
 
   // Realtime: khi backend có thay đổi xe / phiên gửi xe / phí thì tự cập nhật lại
   useRealtimeRefresh(

@@ -2,12 +2,13 @@ import React, { useState, useEffect } from "react";
 import { useRealtimeRefresh } from "../hooks/useRealtimeRefresh";
 import axios from "../api/axios";
 import { useAuth } from "../context/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import NotificationBell from "../components/NotificationBell";
 
 const ResidentDashboard = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [view, setView] = useState("vehicles");
   const [profile, setProfile] = useState(null);
@@ -30,6 +31,7 @@ const ResidentDashboard = () => {
   const [showVehicleForm, setShowVehicleForm] = useState(false);
   const [hoveredIndex, setHoveredIndex] = useState(null);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [renewVehicle, setRenewVehicle] = useState(null);
 
   const fetchProfile = async () => {
     try {
@@ -95,6 +97,14 @@ const ResidentDashboard = () => {
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const viewParam = params.get("view");
+    if (viewParam && ["vehicles", "monthly", "history", "fees", "profile"].includes(viewParam)) {
+      setView(viewParam);
+    }
+  }, [location]);
 
   useRealtimeRefresh(
     fetchData,
@@ -210,6 +220,25 @@ const ResidentDashboard = () => {
     } catch (e) {
       showMsg("error", e.response?.data?.message || "Lỗi đăng ký vé tháng");
     }
+  };
+
+  const handleRenewMonthly = async (plate) => {
+    try {
+      const r = await axios.post("/resident/monthly/renew", {
+        plate_number: plate,
+      });
+      showMsg("success", r.data.message || "Gửi yêu cầu gia hạn thành công!");
+      setRenewVehicle(null);
+      fetchData();
+    } catch (e) {
+      showMsg("error", e.response?.data?.message || "Lỗi gửi yêu cầu gia hạn");
+    }
+  };
+
+  const getVehicleMonthlyFee = (typeId) => {
+    if (!feesData || !feesData.feeConfig) return 0;
+    const fee = feesData.feeConfig.find((f) => f.type_id === typeId);
+    return fee ? parseFloat(fee.monthly_fee) : 0;
   };
 
   const handleUpdateProfile = async () => {
@@ -851,28 +880,64 @@ const ResidentDashboard = () => {
                         )}
                       </div>
 
-                      {(!v.monthly_status ||
-                        v.monthly_status === "expired" ||
+                      {v.monthly_status === "active" && (
+                        <button
+                          onClick={() => setRenewVehicle(v)}
+                          style={{
+                            ...S.primaryBtn,
+                            backgroundColor: "#10b981",
+                            color: "#fff",
+                            cursor: "pointer",
+                          }}
+                        >
+                          Gia hạn vé
+                        </button>
+                      )}
+
+                      {v.monthly_status === "pending" && null}
+
+                      {(v.monthly_status === "expired" ||
                         v.monthly_status === "canceled") && (
                           <button
-                            onClick={() => handleRegisterMonthly(v.plate_number)}
+                            onClick={() => setRenewVehicle(v)}
                             disabled={v.status !== "active"}
                             style={{
                               ...S.primaryBtn,
                               backgroundColor:
-                                v.status !== "active" ? "#cbd5e1" : "#3b82f6",
+                                v.status !== "active" ? "#cbd5e1" : "#ef4444",
                               cursor:
                                 v.status !== "active" ? "not-allowed" : "pointer",
                             }}
                             title={
                               v.status !== "active"
-                                ? "Cần được Admin duyệt xe trước khi đăng ký vé tháng"
+                                ? "Cần được Admin duyệt xe trước khi gia hạn"
                                 : ""
                             }
                           >
-                            Đăng ký vé tháng
+                            Gia hạn vé
                           </button>
                         )}
+
+                      {!v.monthly_status && (
+                        <button
+                          onClick={() => handleRegisterMonthly(v.plate_number)}
+                          disabled={v.status !== "active"}
+                          style={{
+                            ...S.primaryBtn,
+                            backgroundColor:
+                              v.status !== "active" ? "#cbd5e1" : "#3b82f6",
+                            cursor:
+                              v.status !== "active" ? "not-allowed" : "pointer",
+                          }}
+                          title={
+                            v.status !== "active"
+                              ? "Cần được Admin duyệt xe trước khi đăng ký vé tháng"
+                              : ""
+                          }
+                        >
+                          Đăng ký vé tháng
+                        </button>
+                      )}
                     </div>
                   ))
                 )}
@@ -1263,6 +1328,224 @@ const ResidentDashboard = () => {
           </div>
         </div>
       </div>
+
+      {renewVehicle && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0,0,0,0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+          }}
+          onClick={() => setRenewVehicle(null)}
+        >
+          <div
+            style={{
+              backgroundColor: "#fff",
+              borderRadius: 16,
+              width: 500,
+              maxHeight: "90vh",
+              overflow: "auto",
+              boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)",
+              fontFamily: "'Segoe UI', -apple-system, sans-serif",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div
+              style={{
+                backgroundColor: "#1a73e8",
+                padding: "20px 24px",
+                borderRadius: "16px 16px 0 0",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <h3 style={{ margin: 0, color: "#fff", fontSize: 18, fontWeight: "600" }}>
+                📑 GIA HẠN VÉ GỬI XE THÁNG
+              </h3>
+              <button
+                onClick={() => setRenewVehicle(null)}
+                style={{
+                  backgroundColor: "transparent",
+                  border: "none",
+                  color: "#fff",
+                  fontSize: 20,
+                  cursor: "pointer",
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Body */}
+            <div style={{ padding: 24 }}>
+              <div
+                style={{
+                  textAlign: "center",
+                  fontSize: 14,
+                  fontWeight: "700",
+                  color: "#5f6368",
+                  letterSpacing: 1,
+                  marginBottom: 20,
+                  textTransform: "uppercase",
+                  borderBottom: "2px dashed #e2e8f0",
+                  paddingBottom: 16,
+                }}
+              >
+                BIỂU MẪU GIA HẠN GỬI XE CD_BM2
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
+                <div style={{ padding: "10px 12px", backgroundColor: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0" }}>
+                  <div style={{ fontSize: 10, fontWeight: "700", color: "#94a3b8", textTransform: "uppercase", marginBottom: 4 }}>Biển số xe</div>
+                  <div style={{ fontSize: 16, fontWeight: "700", color: "#0f172a" }}>{renewVehicle.plate_number}</div>
+                </div>
+
+                <div style={{ padding: "10px 12px", backgroundColor: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0" }}>
+                  <div style={{ fontSize: 10, fontWeight: "700", color: "#94a3b8", textTransform: "uppercase", marginBottom: 4 }}>Loại xe</div>
+                  <div style={{ fontSize: 14, fontWeight: "600", color: "#0f172a" }}>{renewVehicle.type_name}</div>
+                </div>
+
+                <div style={{ padding: "10px 12px", backgroundColor: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0" }}>
+                  <div style={{ fontSize: 10, fontWeight: "700", color: "#94a3b8", textTransform: "uppercase", marginBottom: 4 }}>Căn hộ</div>
+                  <div style={{ fontSize: 14, fontWeight: "600", color: "#0f172a" }}>{profile?.apartment_number || "---"}</div>
+                </div>
+
+                <div style={{ padding: "10px 12px", backgroundColor: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0" }}>
+                  <div style={{ fontSize: 10, fontWeight: "700", color: "#94a3b8", textTransform: "uppercase", marginBottom: 4 }}>Phí tháng tới</div>
+                  <div style={{ fontSize: 14, fontWeight: "700", color: "#2563eb" }}>
+                    {getVehicleMonthlyFee(renewVehicle.type_id).toLocaleString()} VNĐ
+                  </div>
+                </div>
+              </div>
+
+              {/* Date calculation info */}
+              <div
+                style={{
+                  padding: "12px 16px",
+                  backgroundColor: "#eff6ff",
+                  borderLeft: "4px solid #3b82f6",
+                  color: "#1e3a8a",
+                  borderRadius: 8,
+                  fontSize: 13,
+                  marginBottom: 20,
+                  lineHeight: "18px",
+                }}
+              >
+                📅 <strong>Thời hạn mới dự kiến:</strong><br />
+                {renewVehicle.monthly_status === "active" ? (
+                  <>
+                    Nối tiếp thời gian hết hạn hiện tại:<br />
+                    <strong>
+                      {(() => {
+                        const activeEnd = new Date(renewVehicle.end_date);
+                        const nextStart = new Date(activeEnd);
+                        nextStart.setDate(activeEnd.getDate() + 1);
+                        const nextEnd = new Date(nextStart);
+                        nextEnd.setMonth(nextStart.getMonth() + 1);
+                        return `${nextStart.toLocaleDateString("vi-VN")} → ${nextEnd.toLocaleDateString("vi-VN")}`;
+                      })()}
+                    </strong>
+                  </>
+                ) : (
+                  <>
+                    Tính từ ngày hiện tại:<br />
+                    <strong>
+                      {(() => {
+                        const nextStart = new Date();
+                        const nextEnd = new Date(nextStart);
+                        nextEnd.setMonth(nextStart.getMonth() + 1);
+                        return `${nextStart.toLocaleDateString("vi-VN")} → ${nextEnd.toLocaleDateString("vi-VN")}`;
+                      })()}
+                    </strong>
+                  </>
+                )}
+              </div>
+
+              {/* Payment Instructions */}
+              <div
+                style={{
+                  padding: "16px",
+                  backgroundColor: "#fef3c7",
+                  border: "1px solid #fde68a",
+                  borderRadius: 12,
+                  fontSize: 13,
+                  color: "#78350f",
+                  lineHeight: "20px",
+                  marginBottom: 20,
+                }}
+              >
+                <strong style={{ fontSize: 14, color: "#92400e", display: "block", marginBottom: 8 }}>
+                  🏦 HƯỚNG DẪN CHUYỂN KHOẢN THANH TOÁN:
+                </strong>
+                • <strong>Ngân hàng:</strong> BIDV (Ngân hàng TMCP Đầu tư và Phát triển VN)<br />
+                • <strong>Số tài khoản:</strong> <span style={{ fontFamily: "monospace", fontWeight: "700", fontSize: 14 }}>1234567890</span><br />
+                • <strong>Tên tài khoản:</strong> BAN QUAN LY CHUNG CU PARKING SYSTEM<br />
+                • <strong>Số tiền:</strong> <span style={{ fontWeight: "700", color: "#b45309" }}>{getVehicleMonthlyFee(renewVehicle.type_id).toLocaleString()} VNĐ</span><br />
+                • <strong>Nội dung chuyển khoản:</strong> <span style={{ fontFamily: "monospace", backgroundColor: "#fffbeb", padding: "2px 6px", border: "1px solid #fcd34d", borderRadius: 4, fontWeight: "700" }}>{renewVehicle.plate_number} GIA HAN VE THANG</span>
+              </div>
+
+              <div
+                style={{
+                  fontSize: 12,
+                  color: "#64748b",
+                  textAlign: "center",
+                  marginBottom: 20,
+                  fontStyle: "italic",
+                }}
+              >
+                * Sau khi chuyển khoản thành công, hãy bấm nút Xác nhận bên dưới để gửi yêu cầu gia hạn đến Ban Quản Lý đối soát.
+              </div>
+
+              {/* Actions */}
+              <div style={{ display: "flex", gap: 12 }}>
+                <button
+                  onClick={() => handleRenewMonthly(renewVehicle.plate_number)}
+                  style={{
+                    flex: 1,
+                    padding: "12px 20px",
+                    backgroundColor: "#1a73e8",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: 8,
+                    fontSize: 14,
+                    fontWeight: "600",
+                    cursor: "pointer",
+                    transition: "background-color 0.2s",
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#1557b0"}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#1a73e8"}
+                >
+                  ✅ Tôi đã chuyển khoản, Gửi yêu cầu
+                </button>
+                <button
+                  onClick={() => setRenewVehicle(null)}
+                  style={{
+                    padding: "12px 20px",
+                    backgroundColor: "#f1f5f9",
+                    color: "#475569",
+                    border: "none",
+                    borderRadius: 8,
+                    fontSize: 14,
+                    fontWeight: "600",
+                    cursor: "pointer",
+                  }}
+                >
+                  Hủy bỏ
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

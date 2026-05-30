@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { useRealtimeRefresh } from "../hooks/useRealtimeRefresh";
 import axios from "../api/axios";
 import { useAuth } from "../context/AuthContext";
 import Sidebar from "../components/Sidebar";
 
 const MonthlyApproval = () => {
+  const location = useLocation();
   const [registrations, setRegistrations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState({ type: "", text: "" });
@@ -26,6 +28,14 @@ const MonthlyApproval = () => {
   };
 
   useEffect(() => { fetchData(); }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const statusParam = params.get("status");
+    if (statusParam && ["all", "pending", "active", "canceled"].includes(statusParam)) {
+      setFilterStatus(statusParam);
+    }
+  }, [location]);
 
   useRealtimeRefresh(fetchData, ["monthly", "residentVehicles", "residentFees"], {
     intervalMs: 10000,
