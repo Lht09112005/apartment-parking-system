@@ -95,7 +95,7 @@ router.post("/vehicles", async (req, res) => {
   }
   try {
     const [resident] = await db.query(
-      `SELECT resident_id FROM residents WHERE user_id = ?`,
+      `SELECT resident_id, name, apartment_number FROM residents WHERE user_id = ?`,
       [req.user.user_id]
     );
     if (resident.length === 0) {
@@ -105,6 +105,22 @@ router.post("/vehicles", async (req, res) => {
       `INSERT INTO vehicles (plate_number, resident_id, type_id, color, status) VALUES (?, ?, ?, ?, 'pending')`,
       [plate_number, resident[0].resident_id, type_id, color]
     );
+
+    // Gửi thông báo cho Admin & Super Admin (Role 1 & 2)
+    try {
+      const [[vehicleType]] = await db.query(`SELECT type_name FROM vehicle_types WHERE type_id = ?`, [type_id]);
+      const typeName = vehicleType ? vehicleType.type_name : "Chưa xác định";
+      const NotificationService = require("../services/notification.service");
+      await NotificationService.notifyRole(
+        [1, 2],
+        "Yêu cầu duyệt đăng ký xe mới",
+        `Cư dân ${resident[0].name} (Căn hộ ${resident[0].apartment_number}) đã đăng ký xe mới biển số ${plate_number}, loại xe ${typeName}. Vui lòng phê duyệt.`,
+        "VEHICLE_APPROVAL_REQUEST"
+      );
+    } catch (notifErr) {
+      console.error("Lỗi gửi thông báo đăng ký xe:", notifErr);
+    }
+
     res.status(201).json({ message: "Đăng ký xe thành công" });
   } catch (err) {
     if (err.code === "ER_DUP_ENTRY") {
@@ -122,7 +138,7 @@ router.put("/vehicles/:plate_number", async (req, res) => {
   console.log("PUT /vehicles/:plate_number called with params:", req.params, "body:", req.body);
   try {
     const [resident] = await db.query(
-      `SELECT resident_id FROM residents WHERE user_id = ?`,
+      `SELECT resident_id, name, apartment_number FROM residents WHERE user_id = ?`,
       [req.user.user_id]
     );
     if (resident.length === 0) {
@@ -143,6 +159,22 @@ router.put("/vehicles/:plate_number", async (req, res) => {
     const targetPlate = new_plate_number && new_plate_number.trim() ? new_plate_number : plate_number;
 
     await db.query(`UPDATE vehicles SET plate_number=?, type_id=?, color=?, status='pending' WHERE plate_number=? AND resident_id=?`, [targetPlate, type_id, color, plate_number, resident[0].resident_id]);
+
+    // Gửi thông báo cập nhật thông tin xe cho Admin & Super Admin (Role 1 & 2)
+    try {
+      const [[vehicleType]] = await db.query(`SELECT type_name FROM vehicle_types WHERE type_id = ?`, [type_id]);
+      const typeName = vehicleType ? vehicleType.type_name : "Chưa xác định";
+      const NotificationService = require("../services/notification.service");
+      await NotificationService.notifyRole(
+        [1, 2],
+        "Yêu cầu duyệt đăng ký xe mới",
+        `Cư dân ${resident[0].name} (Căn hộ ${resident[0].apartment_number}) đã cập nhật thông tin xe biển số ${targetPlate}, loại xe ${typeName}. Vui lòng phê duyệt.`,
+        "VEHICLE_APPROVAL_REQUEST"
+      );
+    } catch (notifErr) {
+      console.error("Lỗi gửi thông báo cập nhật xe:", notifErr);
+    }
+
     res.json({ message: "Cập nhật thành công, đang chờ Admin duyệt lại" });
   } catch (err) {
     console.error(err);
@@ -190,7 +222,7 @@ router.post("/monthly", async (req, res) => {
   try {
     // Verify the vehicle belongs to this resident
     const [resident] = await db.query(
-      `SELECT resident_id FROM residents WHERE user_id = ?`,
+      `SELECT resident_id, name, apartment_number FROM residents WHERE user_id = ?`,
       [req.user.user_id]
     );
     if (resident.length === 0) {
@@ -234,6 +266,20 @@ router.post("/monthly", async (req, res) => {
       `INSERT INTO monthly_parking (plate_number, area_id, start_date, end_date, status) VALUES (?, ?, ?, ?, 'pending')`,
       [plate_number, area_id, startDate, endDate]
     );
+
+    // Gửi thông báo cho Admin & Super Admin (Role 1 & 2)
+    try {
+      const NotificationService = require("../services/notification.service");
+      await NotificationService.notifyRole(
+        [1, 2],
+        "Yêu cầu duyệt vé tháng",
+        `Cư dân ${resident[0].name} (Căn hộ ${resident[0].apartment_number}) đã gửi yêu cầu đăng ký vé tháng cho xe biển số ${plate_number}.`,
+        "MONTHLY_APPROVAL_REQUEST"
+      );
+    } catch (notifErr) {
+      console.error("Lỗi gửi thông báo đăng ký vé tháng:", notifErr);
+    }
+
     res.status(201).json({ message: "Đăng ký vé tháng thành công, đang chờ duyệt" });
   } catch (err) {
     console.error(err);

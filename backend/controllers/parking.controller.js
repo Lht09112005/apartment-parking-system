@@ -73,16 +73,41 @@ const checkIn = async (req, res) => {
       }
     }
 
-    // 2. Cảnh báo bãi đỗ đầy cho Security (Role 3)
-    const [[{ total_parking }]] = await db.query(`SELECT COUNT(*) as total_parking FROM parking_session WHERE status = 'parking'`);
-    const MAX_CAPACITY = 500; // Có thể thay đổi theo quy mô thực tế
-    if (total_parking >= MAX_CAPACITY * 0.9) {
-      await NotificationService.notifyRole(
-        [3], 
-        "Cảnh báo bãi đỗ xe sắp đầy", 
-        `Khu vực đỗ xe đã đạt ${Math.round((total_parking/MAX_CAPACITY)*100)}% sức chứa (${total_parking}/${MAX_CAPACITY}).`, 
-        "PARKING_FULL_WARNING"
+    // 2. Cảnh báo bãi đỗ đầy cho Security (Role 3) theo từng khu vực thực tế
+    try {
+      const [[area]] = await db.query(
+        `SELECT area_name, capacity FROM parking_area WHERE type_id = ? LIMIT 1`,
+        [finalTypeId]
       );
+      if (area && area.capacity > 0) {
+        const [[{ occupied }]] = await db.query(
+          `SELECT COUNT(*) as occupied FROM parking_session WHERE status = 'parking' AND type_id = ?`,
+          [finalTypeId]
+        );
+        const percent = Math.round((occupied / area.capacity) * 100);
+        if (percent >= 90) {
+          await NotificationService.notifyRole(
+            [3], 
+            "Cảnh báo bãi đỗ xe sắp đầy", 
+            `Khu vực ${area.area_name} đã đạt ${percent}% sức chứa (${occupied}/${area.capacity}).`, 
+            "PARKING_FULL_WARNING"
+          );
+        }
+      } else {
+        // Fallback kiểm tra tổng dung lượng nếu không tìm thấy cấu hình khu vực
+        const [[{ total_parking }]] = await db.query(`SELECT COUNT(*) as total_parking FROM parking_session WHERE status = 'parking'`);
+        const MAX_CAPACITY = 500;
+        if (total_parking >= MAX_CAPACITY * 0.9) {
+          await NotificationService.notifyRole(
+            [3], 
+            "Cảnh báo bãi đỗ xe sắp đầy", 
+            `Khu vực đỗ xe đã đạt ${Math.round((total_parking/MAX_CAPACITY)*100)}% sức chứa (${total_parking}/${MAX_CAPACITY}).`, 
+            "PARKING_FULL_WARNING"
+          );
+        }
+      }
+    } catch (areaErr) {
+      console.error("Lỗi kiểm tra dung lượng bãi đỗ:", areaErr);
     }
     res.status(200).json({ message: "Check-in thành công", warning });
   } catch (err) {
