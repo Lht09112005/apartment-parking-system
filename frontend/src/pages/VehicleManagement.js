@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import axios from "../api/axios";
 import { useRealtimeRefresh } from "../hooks/useRealtimeRefresh";
 import { useAuth } from "../context/AuthContext";
@@ -7,6 +7,7 @@ import Sidebar from "../components/Sidebar";
 
 const VehicleManagement = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [vehicles, setVehicles] = useState([]);
   const [residents, setResidents] = useState([]);
   const [vehicleTypes, setVehicleTypes] = useState([]);
@@ -212,7 +213,7 @@ const VehicleManagement = () => {
           {/* Tabs */}
           <div style={{ display: 'flex', borderBottom: '2px solid #e2e8f0', marginBottom: 24 }}>
             <button
-              onClick={() => setActiveTab("active")}
+              onClick={() => navigate("?tab=active")}
               style={{
                 padding: '12px 24px',
                 border: 'none',
@@ -228,7 +229,7 @@ const VehicleManagement = () => {
               🚗 Xe đang hoạt động ({vehicles.filter(v => (v.status || 'active') === 'active').length})
             </button>
             <button
-              onClick={() => setActiveTab("pending")}
+              onClick={() => navigate("?tab=pending")}
               style={{
                 padding: '12px 24px',
                 border: 'none',
