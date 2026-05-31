@@ -10,6 +10,7 @@ const Sidebar = () => {
   const [systemName, setSystemName] = useState("Smart Parking");
   const [hoveredIndex, setHoveredIndex] = useState(null);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   useEffect(() => {
     const fetchSystemName = async () => {
@@ -33,10 +34,7 @@ const Sidebar = () => {
   }, []);
 
   const handleLogout = () => {
-    if (window.confirm("Bạn có chắc chắn muốn đăng xuất?")) {
-      logout();
-      navigate("/login");
-    }
+    setShowLogoutConfirm(true);
   };
 
   const isActive = (path) => location.pathname === path;
@@ -150,12 +148,12 @@ const Sidebar = () => {
               >
                 <span className="material-symbols-rounded" style={{
                   fontSize: 20,
-                  color: active ? '#1a73e8' : '#5f6368',
+                  color: active ? '#FFFBF5' : 'rgba(255, 251, 245, 0.75)',
                 }}>
                   {item.icon}
                 </span>
                 <span style={{
-                  color: active ? '#1a73e8' : '#3c4043',
+                  color: active ? '#FFFBF5' : 'rgba(255, 251, 245, 0.85)',
                   fontWeight: active ? '600' : '400',
                 }}>
                   {item.label}
@@ -180,14 +178,98 @@ const Sidebar = () => {
           <div
             style={styles.logoutBtn}
             onClick={handleLogout}
-            onMouseEnter={e => e.target.style.backgroundColor = '#fce8e6'}
-            onMouseLeave={e => e.target.style.backgroundColor = 'transparent'}
+            onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(255, 209, 209, 0.08)'}
+            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
           >
-            <span className="material-symbols-rounded" style={{ fontSize: 18, color: '#c5221f' }}>logout</span>
-            <span style={{ color: '#c5221f' }}>Đăng xuất</span>
+            <span className="material-symbols-rounded" style={{ fontSize: 18, color: '#FFD1D1' }}>logout</span>
+            <span style={{ color: '#FFD1D1' }}>Đăng xuất</span>
           </div>
         </div>
       </div>
+
+      {showLogoutConfirm && (
+        <div style={{
+          position: "fixed",
+          top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: "rgba(45, 51, 39, 0.6)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 2000,
+          backdropFilter: "blur(4px)"
+        }}>
+          <div style={{
+            backgroundColor: "#FFFBF5",
+            borderRadius: 20,
+            width: "90%",
+            maxWidth: 400,
+            padding: 24,
+            boxShadow: "0 20px 45px rgba(0,0,0,0.15)",
+            fontFamily: "'Outfit', sans-serif",
+            textAlign: "center"
+          }}>
+            <div style={{
+              width: 56,
+              height: 56,
+              borderRadius: "50%",
+              backgroundColor: "rgba(205, 92, 92, 0.1)",
+              color: "#CD5C5C",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 28,
+              margin: "0 auto 16px"
+            }}>
+              <span className="material-symbols-rounded" style={{ fontSize: 32 }}>logout</span>
+            </div>
+            <h3 style={{ margin: "0 0 8px 0", color: "#2D3327", fontSize: 18, fontWeight: "800" }}>ĐĂNG XUẤT HỆ THỐNG</h3>
+            <p style={{ margin: "0 0 24px 0", color: "#64748b", fontSize: 14, lineHeight: "20px" }}>
+              Bạn có chắc chắn muốn đăng xuất khỏi hệ thống quản lý bãi đỗ xe Vinhomes?
+            </p>
+            <div style={{ display: "flex", gap: 12 }}>
+              <button
+                onClick={() => {
+                  setShowLogoutConfirm(false);
+                  logout();
+                  navigate("/login");
+                }}
+                style={{
+                  flex: 1,
+                  padding: "10px 16px",
+                  backgroundColor: "#CD5C5C",
+                  color: "#FFFBF5",
+                  border: "none",
+                  borderRadius: 10,
+                  fontSize: 14,
+                  fontWeight: "700",
+                  cursor: "pointer",
+                  transition: "background-color 0.2s"
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#b04f4f"}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#CD5C5C"}
+              >
+                Đăng xuất
+              </button>
+              <button
+                onClick={() => setShowLogoutConfirm(false)}
+                style={{
+                  flex: 1,
+                  padding: "10px 16px",
+                  backgroundColor: "#F1ECE4",
+                  color: "#5F504B",
+                  border: "1px solid #E4DDD3",
+                  borderRadius: 10,
+                  fontSize: 14,
+                  fontWeight: "700",
+                  cursor: "pointer"
+                }}
+              >
+                Hủy
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };
@@ -195,16 +277,16 @@ const Sidebar = () => {
 const styles = {
   sidebar: {
     width: 256,
-    backgroundColor: "#fff",
+    backgroundColor: "#9E826C", // Warm Oak Wood
     display: "flex",
     flexDirection: "column",
     flexShrink: 0,
     height: "100vh",
-    borderRight: "1px solid #e0e0e0",
+    borderRight: "1px solid rgba(255, 255, 255, 0.1)",
   },
   sidebarHeader: {
-    padding: "20px 20px 16px",
-    borderBottom: "1px solid #f0f0f0",
+    padding: "24px 20px 20px",
+    borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
   },
   logoRow: {
     display: "flex",
@@ -212,67 +294,83 @@ const styles = {
     gap: 12,
   },
   logoIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: "#1a73e8",
-    color: "#fff",
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: "#FFFBF5",
+    color: "#3F5E4D", // Forest Green
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    fontSize: 18,
-    fontWeight: "700",
+    fontSize: 20,
+    fontWeight: "800",
     flexShrink: 0,
+    boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
   },
   sidebarTitle: {
     margin: 0,
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#202124",
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#FFFBF5",
     lineHeight: "20px",
+    letterSpacing: "0.5px",
   },
   sidebarSubTitle: {
     margin: 0,
-    fontSize: 12,
-    color: "#5f6368",
+    fontSize: 11,
+    color: "#FFFBF5",
+    opacity: 0.8,
     lineHeight: "16px",
+    marginTop: 2,
+    fontWeight: "600",
   },
   menuSection: {
-    padding: "12px 12px",
+    padding: "20px 0",
     flex: 1,
     overflowY: "auto",
+    display: "flex",
+    flexDirection: "column",
+    gap: 4,
   },
   menuLabel: {
     fontSize: 11,
-    fontWeight: "600",
-    color: "#5f6368",
-    letterSpacing: "0.8px",
-    padding: "8px 12px 8px",
-    marginBottom: 2,
+    fontWeight: "700",
+    color: "#FFFBF5",
+    opacity: 0.65,
+    letterSpacing: "1.2px",
+    padding: "0 20px",
+    marginBottom: 8,
+    textTransform: "uppercase",
   },
   menuItem: {
     display: "flex",
     alignItems: "center",
     gap: 12,
-    padding: "10px 12px",
-    borderRadius: 8,
+    padding: "12px 20px",
+    borderRadius: 12,
     cursor: "pointer",
     fontSize: 14,
-    transition: "background-color 0.15s",
-    marginBottom: 2,
+    transition: "all 0.2s ease-in-out",
+    margin: "0 12px",
+    color: "#FFFBF5",
+    opacity: 0.85,
   },
   menuItemActive: {
-    backgroundColor: "#e8f0fe",
+    backgroundColor: "#3F5E4D", // Forest Green
+    color: "#FFFBF5",
+    fontWeight: "600",
+    opacity: 1,
+    boxShadow: "0 4px 16px rgba(63, 94, 77, 0.25)",
   },
   menuItemHover: {
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
   },
   sidebarFooter: {
-    padding: "12px",
-    borderTop: "1px solid #f0f0f0",
+    padding: "16px 20px",
+    borderTop: "1px solid rgba(255, 255, 255, 0.1)",
     display: "flex",
     flexDirection: "column",
-    gap: 8,
+    gap: 12,
   },
   userCard: {
     display: "flex",
@@ -281,40 +379,44 @@ const styles = {
     padding: "8px 12px",
   },
   userAvatar: {
-    width: 32,
-    height: 32,
+    width: 36,
+    height: 36,
     borderRadius: "50%",
-    backgroundColor: "#e8f0fe",
-    color: "#1a73e8",
+    backgroundColor: "#FFFBF5",
+    color: "#9E826C",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    fontSize: 14,
-    fontWeight: "600",
+    fontSize: 15,
+    fontWeight: "700",
     flexShrink: 0,
+    boxShadow: "0 4px 10px rgba(0,0,0,0.05)",
   },
   userName: {
-    fontSize: 13,
-    fontWeight: "500",
-    color: "#202124",
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#FFFBF5",
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
   },
   userRole: {
-    fontSize: 11,
-    color: "#5f6368",
+    fontSize: 12,
+    color: "#FFFBF5",
+    opacity: 0.75,
   },
   logoutBtn: {
     display: "flex",
     alignItems: "center",
     gap: 10,
-    padding: "8px 12px",
-    borderRadius: 8,
+    padding: "10px 12px",
+    borderRadius: 10,
     cursor: "pointer",
     fontSize: 13,
-    fontWeight: "500",
-    transition: "background-color 0.15s",
+    fontWeight: "600",
+    transition: "all 0.2s",
+    color: "#FFD1D1",
+    border: "1px solid rgba(255, 209, 209, 0.2)",
   },
 };
 

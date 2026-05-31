@@ -26,6 +26,7 @@ const SecurityDashboard = () => {
   const [searchDone, setSearchDone] = useState(false);
   const [fees, setFees] = useState([]);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const fetchFees = async () => {
     try {
@@ -391,10 +392,7 @@ const SecurityDashboard = () => {
   };
 
   const handleLogout = () => {
-    if (window.confirm("Bạn có chắc chắn muốn đăng xuất khỏi hệ thống?")) {
-      logout();
-      navigate("/login");
-    }
+    setShowLogoutConfirm(true);
   };
 
   const userName = user?.name || user?.username || "";
@@ -466,9 +464,9 @@ const SecurityDashboard = () => {
         style={{
           display: 'none', 
           position: 'fixed', top: 15, left: 15, zIndex: 998, 
-          background: '#fff', border: '1px solid #e0e0e0', padding: 8, 
+          background: '#FFFBF5', border: '1px solid #EAE5D9', padding: 8, 
           borderRadius: 8, cursor: 'pointer', alignItems: 'center', justifyContent: 'center',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+          boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
         }}
         onClick={() => setIsMobileOpen(true)}
       >
@@ -525,7 +523,7 @@ const SecurityDashboard = () => {
                     className="material-symbols-rounded"
                     style={{
                       fontSize: 20,
-                      color: viewMode === item.key ? "#1a73e8" : "#5f6368",
+                      color: viewMode === item.key ? "#FFFBF5" : "rgba(255, 255, 255, 0.75)",
                       marginRight: 12,
                     }}
                   >
@@ -535,7 +533,7 @@ const SecurityDashboard = () => {
                   <span
                     style={{
                       fontWeight: viewMode === item.key ? "600" : "400",
-                      color: viewMode === item.key ? "#1a73e8" : "#3c4043",
+                      color: viewMode === item.key ? "#FFFBF5" : "rgba(255, 255, 255, 0.85)",
                     }}
                   >
                     {item.label}
@@ -620,7 +618,7 @@ const SecurityDashboard = () => {
               </div>
             )}
             <div style={styles.capacityRow}>
-              <div style={{ ...styles.capacityCard, borderColor: "#86efac" }}>
+              <div style={{ ...styles.capacityCard, borderColor: "#3F5E4D" }}>
                 <div style={{ flex: 1 }}>
                   <div style={styles.cardLabel}>KHU A - XE MÁY</div>
                   <div style={styles.cardNumber}>{activeMotos}/1200</div>
@@ -629,15 +627,15 @@ const SecurityDashboard = () => {
                 <div
                   style={{
                     ...styles.cardIcon,
-                    background: "#dcfce7",
-                    color: "#10b981",
+                    background: "rgba(63, 94, 77, 0.12)",
+                    color: "#3F5E4D",
                   }}
                 >
-                  🏍️
+                  <span className="material-symbols-rounded" style={{ fontSize: 26 }}>motorcycle</span>
                 </div>
               </div>
 
-              <div style={{ ...styles.capacityCard, borderColor: "#fca5a5" }}>
+              <div style={{ ...styles.capacityCard, borderColor: "#CD5C5C" }}>
                 <div style={{ flex: 1 }}>
                   <div style={styles.cardLabel}>KHU B - Ô TÔ</div>
                   <div style={styles.cardNumber}>{activeCars}/150</div>
@@ -646,15 +644,15 @@ const SecurityDashboard = () => {
                 <div
                   style={{
                     ...styles.cardIcon,
-                    background: "#fee2e2",
-                    color: "#ef4444",
+                    background: "rgba(205, 92, 92, 0.12)",
+                    color: "#CD5C5C",
                   }}
                 >
-                  🚗
+                  <span className="material-symbols-rounded" style={{ fontSize: 26 }}>directions_car</span>
                 </div>
               </div>
 
-              <div style={{ ...styles.capacityCard, borderColor: "#7dd3fc" }}>
+              <div style={{ ...styles.capacityCard, borderColor: "#C39A6B" }}>
                 <div style={{ flex: 1 }}>
                   <div style={styles.cardLabel}>TỔNG BÃI</div>
                   <div style={styles.cardNumber}>{totalActive}/1350</div>
@@ -663,11 +661,11 @@ const SecurityDashboard = () => {
                 <div
                   style={{
                     ...styles.cardIcon,
-                    background: "#dbeafe",
-                    color: "#0c4a6e",
+                    background: "rgba(195, 154, 107, 0.12)",
+                    color: "#C39A6B",
                   }}
                 >
-                  📊
+                  <span className="material-symbols-rounded" style={{ fontSize: 26 }}>analytics</span>
                 </div>
               </div>
             </div>
@@ -736,14 +734,19 @@ const SecurityDashboard = () => {
                             }}
                             style={{
                               ...styles.selectCard,
-                              backgroundColor: typeId === vt.type_id ? "#0f172a" : "#fff",
-                              color: typeId === vt.type_id ? "#fff" : "#64748b",
+                              backgroundColor: typeId === vt.type_id ? "#3F5E4D" : "#FFFBF5",
+                              color: typeId === vt.type_id ? "#FFFBF5" : "#64748b",
                               cursor: (currentVehicle || mode === "OUT") ? "not-allowed" : "pointer",
                               opacity: (currentVehicle || mode === "OUT") && typeId !== vt.type_id ? 0.5 : 1,
+                              border: typeId === vt.type_id ? "2px solid #3F5E4D" : "2px solid #EAE5D9"
                             }}
                           >
-                            <div style={{ fontSize: 24, marginBottom: 4 }}>
-                              {vt.type_name === "Ô tô" ? "🚘" : "🏍️"}
+                            <div style={{ fontSize: 24, marginBottom: 4, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                              {vt.type_name === "Ô tô" ? (
+                                <span className="material-symbols-rounded" style={{ fontSize: 28 }}>directions_car</span>
+                              ) : (
+                                <span className="material-symbols-rounded" style={{ fontSize: 28 }}>motorcycle</span>
+                              )}
                             </div>
                             <div>{vt.type_name}</div>
                           </div>
@@ -759,15 +762,17 @@ const SecurityDashboard = () => {
                           style={{
                             ...styles.selectCard,
                             backgroundColor:
-                              areaId === "A" ? "#0f172a" : "#f8fafc",
+                              areaId === "A" ? "#3F5E4D" : "#FFFBF5",
                             border:
                               areaId === "A"
-                                ? "2px solid #0f172a"
-                                : "1px solid #e2e8f0",
-                            color: areaId === "A" ? "#fff" : "#0f172a",
+                                ? "2px solid #3F5E4D"
+                                : "2px solid #EAE5D9",
+                            color: areaId === "A" ? "#FFFBF5" : "#2D3327",
                           }}
                         >
-                          <div style={{ fontSize: 20 }}>A</div>
+                          <div style={{ fontSize: 20, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 4 }}>
+                            <span className="material-symbols-rounded" style={{ fontSize: 26 }}>motorcycle</span>
+                          </div>
                           <div>XE MÁY</div>
                         </div>
 
@@ -775,15 +780,17 @@ const SecurityDashboard = () => {
                           style={{
                             ...styles.selectCard,
                             backgroundColor:
-                              areaId === "B" ? "#0f172a" : "#f8fafc",
+                              areaId === "B" ? "#3F5E4D" : "#FFFBF5",
                             border:
                               areaId === "B"
-                                ? "2px solid #0f172a"
-                                : "1px solid #e2e8f0",
-                            color: areaId === "B" ? "#fff" : "#0f172a",
+                                ? "2px solid #3F5E4D"
+                                : "2px solid #EAE5D9",
+                            color: areaId === "B" ? "#FFFBF5" : "#2D3327",
                           }}
                         >
-                          <div style={{ fontSize: 20 }}>B</div>
+                          <div style={{ fontSize: 20, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 4 }}>
+                            <span className="material-symbols-rounded" style={{ fontSize: 26 }}>directions_car</span>
+                          </div>
                           <div>Ô TÔ</div>
                         </div>
                       </div>
@@ -1552,6 +1559,90 @@ const SecurityDashboard = () => {
           </div>
         </div>
       </div>
+
+      {showLogoutConfirm && (
+        <div style={{
+          position: "fixed",
+          top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: "rgba(45, 51, 39, 0.6)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 2000,
+          backdropFilter: "blur(4px)"
+        }}>
+          <div style={{
+            backgroundColor: "#FFFBF5",
+            borderRadius: 20,
+            width: "90%",
+            maxWidth: 400,
+            padding: 24,
+            boxShadow: "0 20px 45px rgba(0,0,0,0.15)",
+            fontFamily: "'Outfit', sans-serif",
+            textAlign: "center"
+          }}>
+            <div style={{
+              width: 56,
+              height: 56,
+              borderRadius: "50%",
+              backgroundColor: "rgba(205, 92, 92, 0.1)",
+              color: "#CD5C5C",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 28,
+              margin: "0 auto 16px"
+            }}>
+              <span className="material-symbols-rounded" style={{ fontSize: 32 }}>logout</span>
+            </div>
+            <h3 style={{ margin: "0 0 8px 0", color: "#2D3327", fontSize: 18, fontWeight: "800" }}>ĐĂNG XUẤT HỆ THỐNG</h3>
+            <p style={{ margin: "0 0 24px 0", color: "#64748b", fontSize: 14, lineHeight: "20px" }}>
+              Bạn có chắc chắn muốn đăng xuất khỏi hệ thống quản lý bãi đỗ xe Vinhomes?
+            </p>
+            <div style={{ display: "flex", gap: 12 }}>
+              <button
+                onClick={() => {
+                  setShowLogoutConfirm(false);
+                  logout();
+                  navigate("/login");
+                }}
+                style={{
+                  flex: 1,
+                  padding: "10px 16px",
+                  backgroundColor: "#CD5C5C",
+                  color: "#FFFBF5",
+                  border: "none",
+                  borderRadius: 10,
+                  fontSize: 14,
+                  fontWeight: "700",
+                  cursor: "pointer",
+                  transition: "background-color 0.2s"
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#b04f4f"}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#CD5C5C"}
+              >
+                Đăng xuất
+              </button>
+              <button
+                onClick={() => setShowLogoutConfirm(false)}
+                style={{
+                  flex: 1,
+                  padding: "10px 16px",
+                  backgroundColor: "#F1ECE4",
+                  color: "#5F504B",
+                  border: "1px solid #E4DDD3",
+                  borderRadius: 10,
+                  fontSize: 14,
+                  fontWeight: "700",
+                  cursor: "pointer"
+                }}
+              >
+                Hủy
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };
@@ -1560,22 +1651,22 @@ const styles = {
   container: {
     display: "flex",
     height: "100vh",
-    backgroundColor: "#f8f9fa",
-    fontFamily: "'Segoe UI', -apple-system, sans-serif",
+    backgroundColor: "#FAF8F5",
+    fontFamily: "'Outfit', -apple-system, sans-serif",
     overflow: "hidden",
   },
 
   sidebar: {
     width: 256,
-    backgroundColor: "#fff",
-    borderRight: "1px solid #e0e0e0",
+    backgroundColor: "#9E826C", // Warm Oak Wood
+    borderRight: "1px solid rgba(255, 255, 255, 0.1)",
     display: "flex",
     flexDirection: "column",
     flexShrink: 0,
   },
   sidebarHeader: {
-    padding: "24px 20px",
-    borderBottom: "1px solid #e0e0e0",
+    padding: "24px 20px 20px",
+    borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
   },
   logoRow: {
     display: "flex",
@@ -1583,26 +1674,33 @@ const styles = {
     gap: 12,
   },
   logoIcon: {
-    width: 36,
-    height: 36,
-    backgroundColor: "#1a73e8",
-    borderRadius: 8,
+    width: 38,
+    height: 38,
+    backgroundColor: "#FFFBF5",
+    borderRadius: 12,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: 700,
+    color: "#3F5E4D", // Forest Green
+    fontSize: 20,
+    fontWeight: "800",
+    flexShrink: 0,
+    boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
   },
   logoText: {
     fontSize: 16,
-    fontWeight: 700,
-    color: "#202124",
+    fontWeight: "800",
+    color: "#FFFBF5",
+    lineHeight: "20px",
+    letterSpacing: "0.5px",
   },
   logoSubText: {
-    fontSize: 12,
-    color: "#5f6368",
-    marginTop: 1,
+    fontSize: 11,
+    color: "#FFFBF5",
+    opacity: 0.8,
+    lineHeight: "16px",
+    marginTop: 2,
+    fontWeight: "600",
   },
   menuSection: {
     flex: 1,
@@ -1610,35 +1708,43 @@ const styles = {
   },
   menuLabel: {
     fontSize: 11,
-    fontWeight: 600,
-    color: "#5f6368",
-    letterSpacing: 1,
-    textTransform: "uppercase",
+    fontWeight: "700",
+    color: "#FFFBF5",
+    opacity: 0.65,
+    letterSpacing: "1.2px",
     padding: "0 20px",
     marginBottom: 8,
+    textTransform: "uppercase",
   },
   menuItems: {
     display: "flex",
     flexDirection: "column",
+    gap: 4,
   },
   menuItem: {
-    padding: "10px 20px",
-    color: "#3c4043",
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+    padding: "12px 20px",
+    borderRadius: 12,
     cursor: "pointer",
     fontSize: 14,
-    fontWeight: 500,
-    borderRadius: 0,
-    margin: "1px 0",
-    transition: "background-color 0.15s",
+    transition: "all 0.2s ease-in-out",
+    margin: "0 12px",
+    color: "#FFFBF5",
+    opacity: 0.85,
+    fontWeight: "500",
   },
   menuItemActive: {
-    backgroundColor: "#e8f0fe",
-    color: "#1a73e8",
-    fontWeight: 600,
+    backgroundColor: "#3F5E4D", // Forest Green active background
+    color: "#FFFBF5",
+    fontWeight: "600",
+    opacity: 1,
+    boxShadow: "0 4px 16px rgba(63, 94, 77, 0.25)",
   },
   sidebarFooter: {
     padding: "16px 20px",
-    borderTop: "1px solid #e0e0e0",
+    borderTop: "1px solid rgba(255, 255, 255, 0.1)",
     display: "flex",
     flexDirection: "column",
     gap: 12,
@@ -1647,44 +1753,52 @@ const styles = {
     display: "flex",
     alignItems: "center",
     gap: 10,
+    padding: "8px 12px",
   },
   footerAvatar: {
     width: 36,
     height: 36,
-    backgroundColor: "#e8f0fe",
-    color: "#1a73e8",
     borderRadius: "50%",
+    backgroundColor: "#FFFBF5",
+    color: "#9E826C",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     fontSize: 15,
-    fontWeight: 700,
+    fontWeight: "700",
     flexShrink: 0,
+    boxShadow: "0 4px 10px rgba(0,0,0,0.05)",
   },
   footerUserInfo: {
     overflow: "hidden",
   },
   footerUserName: {
     fontSize: 14,
-    fontWeight: 600,
-    color: "#202124",
-    whiteSpace: "nowrap",
+    fontWeight: "600",
+    color: "#FFFBF5",
     overflow: "hidden",
     textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
   },
   footerUserRole: {
     fontSize: 12,
-    color: "#5f6368",
+    color: "#FFFBF5",
+    opacity: 0.75,
   },
   logoutBtn: {
-    backgroundColor: "#fce8e6",
-    color: "#d93025",
-    border: "none",
-    padding: "8px 0",
-    borderRadius: 6,
-    fontSize: 13,
-    fontWeight: 600,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    padding: "10px 12px",
+    borderRadius: 10,
     cursor: "pointer",
+    fontSize: 13,
+    fontWeight: "600",
+    transition: "all 0.2s",
+    color: "#FFD1D1",
+    backgroundColor: "transparent",
+    border: "1px solid rgba(255, 209, 209, 0.2)",
     textAlign: "center",
   },
   main: {
@@ -1694,9 +1808,9 @@ const styles = {
     overflow: "hidden",
   },
   topHeader: {
-    height: 56,
-    backgroundColor: "#fff",
-    borderBottom: "1px solid #e0e0e0",
+    height: 64,
+    backgroundColor: "#FFFBF5",
+    borderBottom: "1px solid rgba(139, 115, 85, 0.1)",
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
@@ -1714,18 +1828,19 @@ const styles = {
   avatar: {
     width: 36,
     height: 36,
-    backgroundColor: "#e8f0fe",
-    color: "#1a73e8",
+    backgroundColor: "#3F5E4D",
+    color: "#FFFBF5",
     borderRadius: "50%",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     fontSize: 15,
-    fontWeight: 700,
+    fontWeight: "700",
+    boxShadow: "0 4px 10px rgba(63, 94, 77, 0.15)",
   },
   contentBody: {
     flex: 1,
-    padding: "16px 24px",
+    padding: 24,
     overflow: "hidden",
     display: "flex",
     flexDirection: "column",
@@ -1738,30 +1853,33 @@ const styles = {
   },
   capacityCard: {
     flex: 1,
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    padding: 16,
+    backgroundColor: "#FFFBF5",
+    borderRadius: 20,
+    padding: 20,
     display: "flex",
     alignItems: "center",
-    border: "1px solid #e2e8f0",
+    border: "1px solid rgba(139, 115, 85, 0.08)",
     borderLeftWidth: 4,
-    boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+    borderLeftColor: "#3F5E4D",
+    boxShadow: "0 8px 30px rgba(139, 115, 85, 0.04)",
   },
   cardLabel: {
-    fontSize: 13,
-    fontWeight: "600",
+    fontSize: 12,
+    fontWeight: "700",
     color: "#64748b",
+    textTransform: "uppercase",
+    letterSpacing: "0.5px",
     marginBottom: 4,
   },
   cardNumber: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#0f172a",
+    fontSize: 26,
+    fontWeight: "800",
+    color: "#2D3327",
   },
   cardIcon: {
     width: 48,
     height: 48,
-    borderRadius: 8,
+    borderRadius: 12,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -1775,44 +1893,47 @@ const styles = {
   },
   leftPanel: {
     flex: 2,
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    border: "1px solid #e2e8f0",
+    backgroundColor: "#FFFBF5",
+    borderRadius: 20,
+    border: "1px solid rgba(139, 115, 85, 0.08)",
     display: "flex",
     flexDirection: "column",
-    padding: "16px 24px",
-    boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)",
+    padding: 24,
+    boxShadow: "0 8px 30px rgba(139, 115, 85, 0.04)",
     overflow: "hidden",
   },
   modeToggle: {
     display: "flex",
-    backgroundColor: "#f1f5f9",
-    borderRadius: 8,
+    backgroundColor: "#F1ECE4",
+    borderRadius: 10,
     padding: 4,
     marginBottom: 8,
     alignSelf: "center",
     flexShrink: 0,
+    border: "1px solid #E4DDD3",
   },
   modeBtn: {
     padding: "10px 30px",
-    borderRadius: 6,
+    borderRadius: 8,
     border: "none",
     backgroundColor: "transparent",
-    fontWeight: "bold",
+    fontWeight: "800",
     fontSize: 14,
-    color: "#64748b",
+    color: "#5F504B",
     cursor: "pointer",
     transition: "0.2s",
   },
   modeActiveIn: {
-    backgroundColor: "#fff",
-    color: "#059669",
-    boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+    backgroundColor: "#FFFBF5",
+    color: "#3F5E4D", // green for entry
+    boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+    border: "2px solid #3F5E4D",
   },
   modeActiveOut: {
-    backgroundColor: "#fff",
-    color: "#dc2626",
-    boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+    backgroundColor: "#FFFBF5",
+    color: "#CD5C5C", // terracotta red for exit
+    boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+    border: "2px solid #CD5C5C",
   },
   inputContainer: {
     flex: 1,
@@ -1823,47 +1944,53 @@ const styles = {
     minHeight: 0,
   },
   inputLabel: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#64748b",
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#9E826C",
     marginBottom: 8,
-    letterSpacing: 1,
+    letterSpacing: 2,
+    textTransform: "uppercase",
   },
   bigInput: {
     fontSize: 56,
     fontWeight: "900",
-    color: "#0f172a",
+    color: "#2D3327",
     textAlign: "center",
     border: "none",
     outline: "none",
     width: "100%",
     background: "transparent",
+    fontFamily: "'Outfit', sans-serif",
   },
   inputUnderline: {
     height: 4,
     width: 250,
-    backgroundColor: "#cbd5e1",
+    backgroundColor: "#3F5E4D",
     marginTop: 6,
+    borderRadius: 2,
   },
   selectorsRow: {
     display: "flex",
     gap: 20,
     marginBottom: 12,
-    borderTop: "1px solid #f1f5f9",
+    borderTop: "1px solid #F1ECE4",
     paddingTop: 12,
     flexShrink: 0,
   },
   selectorGroup: {
     flex: 1,
-    backgroundColor: "#f8fafc",
+    backgroundColor: "#FFFBF5",
     padding: "12px 16px",
-    borderRadius: 10,
+    borderRadius: 12,
+    border: "2px solid #EAE5D9",
   },
   selectorTitle: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#64748b",
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#9E826C",
     marginBottom: 10,
+    textTransform: "uppercase",
+    letterSpacing: "0.5px",
   },
   cardsWrap: {
     display: "flex",
@@ -1879,38 +2006,44 @@ const styles = {
     borderRadius: 12,
     fontWeight: "700",
     fontSize: 14,
-    transition: "0.2s",
-    border: "1px solid #e2e8f0",
+    transition: "all 0.2s ease-in-out",
+    border: "2px solid #EAE5D9",
     minHeight: 80,
+    backgroundColor: "#FFFBF5",
+    cursor: "pointer",
+    fontFamily: "'Outfit', sans-serif",
   },
   areaHint: {
     marginTop: 10,
-    color: "#475569",
+    color: "#5F504B",
     fontSize: 12,
     lineHeight: 1.5,
-    backgroundColor: "#e2e8f0",
-    borderRadius: 8,
-    padding: "8px 12px",
-    border: "1px solid #cbd5e1",
+    backgroundColor: "#F1ECE4",
+    borderRadius: 10,
+    padding: "10px 14px",
+    border: "1px solid #E4DDD3",
+    fontWeight: "500",
   },
   actionsRow: {
     display: "flex",
     alignItems: "stretch",
     height: 60,
-    borderTop: "1px solid #f1f5f9",
+    borderTop: "1px solid #F1ECE4",
     paddingTop: 12,
     flexShrink: 0,
   },
   actionBtn: {
     border: "none",
     borderRadius: 10,
-    padding: "0 20px",
-    fontWeight: "600",
+    padding: "0 24px",
+    fontWeight: "700",
     cursor: "pointer",
+    fontFamily: "'Outfit', sans-serif",
+    transition: "all 0.2s",
   },
   toast: {
-    padding: "12px 20px",
-    borderRadius: 8,
+    padding: "14px 24px",
+    borderRadius: 12,
     marginBottom: 20,
     fontWeight: "600",
     display: "flex",
@@ -1920,22 +2053,22 @@ const styles = {
     top: 120,
     right: 40,
     zIndex: 100,
-    boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+    boxShadow: "0 8px 30px rgba(139, 115, 85, 0.12)",
   },
   dashboardPanel: {
     flex: 1,
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    border: "1px solid #e2e8f0",
+    backgroundColor: "#FFFBF5",
+    borderRadius: 20,
+    border: "1px solid rgba(139, 115, 85, 0.08)",
     padding: 24,
-    boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)",
+    boxShadow: "0 8px 30px rgba(139, 115, 85, 0.04)",
     overflowY: "auto",
   },
   sectionHeader: {
     fontSize: 22,
-    fontWeight: "bold",
+    fontWeight: "800",
     marginBottom: 20,
-    color: "#0f172a",
+    color: "#2D3327",
   },
   sectionSummaryRow: {
     display: "flex",
@@ -1946,35 +2079,35 @@ const styles = {
   summaryCard: {
     flex: 1,
     minWidth: 180,
-    backgroundColor: "#f8fafc",
-    borderRadius: 14,
+    backgroundColor: "#FFFBF5",
+    borderRadius: 16,
     padding: 18,
-    border: "1px solid #e2e8f0",
-    boxShadow: "0 1px 2px rgba(15,23,42,0.05)",
+    border: "2px solid #EAE5D9",
+    boxShadow: "0 4px 12px rgba(139, 115, 85, 0.02)",
   },
   summaryLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#64748b",
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#9E826C",
     marginBottom: 8,
     textTransform: "uppercase",
     letterSpacing: 1,
   },
   summaryValue: {
     fontSize: 28,
-    fontWeight: "bold",
-    color: "#0f172a",
+    fontWeight: "800",
+    color: "#2D3327",
   },
   logsTable: {
-    borderRadius: 14,
+    borderRadius: 16,
     overflow: "hidden",
-    border: "1px solid #e2e8f0",
+    border: "1px solid #F1ECE4",
   },
   tableRowHeader: {
     display: "grid",
     gridTemplateColumns: "1.2fr 1fr 1.5fr 1.5fr 1fr",
-    backgroundColor: "#0f172a",
-    color: "#fff",
+    backgroundColor: "#EAE5D9",
+    color: "#2D3327",
     padding: "14px 16px",
     fontSize: 13,
     fontWeight: "700",
@@ -1983,15 +2116,15 @@ const styles = {
     display: "grid",
     gridTemplateColumns: "1.2fr 1fr 1.5fr 1.5fr 1fr",
     padding: "14px 16px",
-    borderBottom: "1px solid #e2e8f0",
+    borderBottom: "1px solid #F1ECE4",
     fontSize: 14,
-    color: "#0f172a",
+    color: "#2D3327",
   },
   tableRowHeader4: {
     display: "grid",
     gridTemplateColumns: "1.5fr 1fr 1.5fr 1.5fr",
-    backgroundColor: "#0f172a",
-    color: "#fff",
+    backgroundColor: "#EAE5D9",
+    color: "#2D3327",
     padding: "14px 16px",
     fontSize: 13,
     fontWeight: "700",
@@ -2000,9 +2133,9 @@ const styles = {
     display: "grid",
     gridTemplateColumns: "1.5fr 1fr 1.5fr 1.5fr",
     padding: "14px 16px",
-    borderBottom: "1px solid #e2e8f0",
+    borderBottom: "1px solid #F1ECE4",
     fontSize: 14,
-    color: "#0f172a",
+    color: "#2D3327",
   },
   tableCell: {
     wordBreak: "break-word",
@@ -2010,29 +2143,31 @@ const styles = {
   emptyState: {
     padding: 48,
     textAlign: "center",
-    color: "#64748b",
+    color: "#9E826C",
     fontSize: 14,
+    fontWeight: "500",
   },
   rightPanel: {
     flex: 1,
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    border: "1px solid #e2e8f0",
+    backgroundColor: "#FFFBF5",
+    borderRadius: 20,
+    border: "1px solid rgba(139, 115, 85, 0.08)",
     padding: 0,
     display: "flex",
     flexDirection: "column",
     overflowY: "auto",
     overflowX: "hidden",
-    boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)",
+    boxShadow: "0 8px 30px rgba(139, 115, 85, 0.04)",
   },
   ticketValidHeader: {
-    backgroundColor: "#34d399",
-    color: "#fff",
+    backgroundColor: "#3F5E4D", // Forest green
+    color: "#FFFBF5",
     padding: "16px",
     textAlign: "center",
-    fontWeight: "bold",
+    fontWeight: "800",
     fontSize: 16,
     letterSpacing: 1,
+    textTransform: "uppercase",
   },
   userInfo: {
     display: "flex",
@@ -2043,24 +2178,26 @@ const styles = {
   userPhotoPlaceholder: {
     width: 100,
     height: 100,
-    backgroundColor: "#e2e8f0",
-    borderRadius: 8,
+    backgroundColor: "#FAF8F5",
+    borderRadius: 16,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     fontSize: 50,
-    color: "#94a3b8",
+    color: "#EAE5D9",
     marginBottom: 16,
+    border: "2px solid #EAE5D9",
   },
   userName: {
     fontSize: 18,
-    fontWeight: "bold",
-    color: "#0f172a",
+    fontWeight: "800",
+    color: "#2D3327",
     marginBottom: 6,
   },
   userApt: {
     fontSize: 14,
-    color: "#64748b",
+    color: "#9E826C",
+    fontWeight: "500",
   },
   ticketDetails: {
     padding: "0 24px",
@@ -2070,15 +2207,16 @@ const styles = {
     display: "flex",
     justifyContent: "space-between",
     padding: "12px 0",
-    borderBottom: "1px solid #f1f5f9",
+    borderBottom: "1px solid #F1ECE4",
     fontSize: 14,
+    color: "#2D3327",
   },
   parkingInfoBox: {
-    backgroundColor: "#f8fafc",
+    backgroundColor: "#FFFBF5",
     margin: 24,
     padding: 20,
-    borderRadius: 10,
-    border: "1px solid #e2e8f0",
+    borderRadius: 16,
+    border: "2px solid #EAE5D9",
   },
   piRow: {
     display: "flex",
@@ -2086,18 +2224,20 @@ const styles = {
   piCol: {
     flex: 1,
     textAlign: "center",
-    borderRight: "1px solid #e2e8f0",
+    borderRight: "1px solid #EAE5D9",
   },
   piLabel: {
     fontSize: 11,
-    fontWeight: "bold",
-    color: "#94a3b8",
+    fontWeight: "800",
+    color: "#9E826C",
     marginBottom: 4,
+    textTransform: "uppercase",
+    letterSpacing: "0.5px",
   },
   piValue: {
     fontSize: 18,
-    fontWeight: "bold",
-    color: "#0f172a",
+    fontWeight: "800",
+    color: "#2D3327",
   },
 };
 

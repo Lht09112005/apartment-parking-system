@@ -161,27 +161,27 @@ const SystemSettings = () => {
 };
 
 const styles = {
-  container: { display: "flex", height: "100vh", backgroundColor: "#f1f5f9", fontFamily: "sans-serif" },
+  container: { display: "flex", height: "100vh", backgroundColor: "#FAF8F5", fontFamily: "'Outfit', sans-serif" },
   main: { flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" },
-  topHeader: { height: 70, backgroundColor: "#fff", borderBottom: "1px solid #e2e8f0", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 30px", flexShrink: 0 },
+  topHeader: { height: 64, backgroundColor: "#FFFBF5", borderBottom: "1px solid rgba(139, 115, 85, 0.1)", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 24px", flexShrink: 0 },
   headerLeft: { display: "flex", alignItems: "center", gap: 24 },
   headerRight: { display: "flex", alignItems: "center" },
-  avatar: { width: 40, height: 40, backgroundColor: "#f1f5f9", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, marginLeft: 12 },
-  contentBody: { flex: 1, padding: 30, overflowY: "auto" },
+  avatar: { width: 36, height: 36, backgroundColor: "#3F5E4D", color: "#FFFBF5", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: "700", boxShadow: "0 4px 10px rgba(63, 94, 77, 0.15)", marginLeft: 12 },
+  contentBody: { flex: 1, padding: 24, overflowY: "auto" },
   
-  toast: { padding: "12px 20px", borderRadius: 8, marginBottom: 20, fontWeight: "600", display: "flex", alignItems: "center", gap: 10 },
+  toast: { padding: "14px 24px", borderRadius: 12, marginBottom: 20, fontWeight: "600", display: "flex", alignItems: "center", gap: 10, boxShadow: "0 8px 30px rgba(139, 115, 85, 0.04)" },
   
-  card: { backgroundColor: "#fff", borderRadius: 12, padding: 30, boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)", border: "1px solid #e2e8f0", maxWidth: 800 },
-  settingGroup: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 0', borderBottom: '1px solid #f1f5f9' },
+  card: { backgroundColor: "#fff", borderRadius: 20, padding: 30, boxShadow: "0 8px 30px rgba(139, 115, 85, 0.04)", border: "1px solid rgba(139, 115, 85, 0.08)", maxWidth: 800 },
+  settingGroup: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 0', borderBottom: '1px solid #F1ECE4' },
   settingInfo: { flex: 1, paddingRight: 40 },
-  settingTitle: { fontSize: 16, fontWeight: '600', color: '#0f172a', marginBottom: 4 },
+  settingTitle: { fontSize: 16, fontWeight: '700', color: '#2D3327', marginBottom: 4 },
   settingDesc: { fontSize: 14, color: '#64748b' },
   
   toggleBtn: { width: 44, height: 24, borderRadius: 12, border: 'none', position: 'relative', cursor: 'pointer', transition: 'background-color 0.3s' },
   toggleCircle: { width: 20, height: 20, borderRadius: '50%', backgroundColor: '#fff', position: 'absolute', top: 2, left: 2, transition: 'transform 0.3s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' },
   
-  input: { padding: '8px 16px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 15, width: 100, textAlign: 'center', outline: 'none' },
-  saveBtn: { backgroundColor: '#3b82f6', color: '#fff', border: 'none', padding: '12px 24px', borderRadius: 8, fontSize: 15, fontWeight: '600', cursor: 'pointer', transition: 'background-color 0.2s' }
+  input: { padding: '8px 16px', borderRadius: 10, border: '2px solid #EAE5D9', fontSize: 15, width: 200, textAlign: 'left', outline: 'none', backgroundColor: "#FFFBF5", color: "#2D3327", fontFamily: "'Outfit', sans-serif" },
+  saveBtn: { backgroundColor: '#3F5E4D', color: '#FFFBF5', border: 'none', padding: '12px 24px', borderRadius: 10, fontSize: 15, fontWeight: '700', cursor: 'pointer', boxShadow: "0 4px 12px rgba(63, 94, 77, 0.15)", transition: "all 0.2s" }
 };
 
 export default SystemSettings;

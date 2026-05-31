@@ -10,7 +10,7 @@ const ResidentDashboard = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [view, setView] = useState("vehicles");
+  const [view, setView] = useState("overview");
   const [profile, setProfile] = useState(null);
   const [vehicles, setVehicles] = useState([]);
   const [vehicleTypes, setVehicleTypes] = useState([]);
@@ -32,6 +32,11 @@ const ResidentDashboard = () => {
   const [hoveredIndex, setHoveredIndex] = useState(null);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [renewVehicle, setRenewVehicle] = useState(null);
+  const [showMapModal, setShowMapModal] = useState(false);
+  const [mapZone, setMapZone] = useState("car");
+  const [modalLevel, setModalLevel] = useState("B1");
+  const [searchSlot, setSearchSlot] = useState("");
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const fetchProfile = async () => {
     try {
@@ -101,7 +106,7 @@ const ResidentDashboard = () => {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const viewParam = params.get("view");
-    if (viewParam && ["vehicles", "monthly", "history", "fees", "profile"].includes(viewParam)) {
+    if (viewParam && ["overview", "vehicles", "monthly", "history", "fees", "profile"].includes(viewParam)) {
       setView(viewParam);
     }
   }, [location]);
@@ -123,15 +128,27 @@ const ResidentDashboard = () => {
   );
 
   useEffect(() => {
-    if (view === "vehicles" || view === "monthly") {
+    if (vehicles.length > 0) {
+      const hasCar = vehicles.some(v => v.type_name === "Ô tô");
+      const hasBike = vehicles.some(v => v.type_name === "Xe máy" || v.type_name === "Xe đạp");
+      if (hasBike && !hasCar) {
+        setMapZone("motorbike");
+      } else {
+        setMapZone("car");
+      }
+    }
+  }, [vehicles]);
+
+  useEffect(() => {
+    if (view === "vehicles" || view === "monthly" || view === "overview") {
       fetchVehicles();
     }
 
-    if (view === "history") {
+    if (view === "history" || view === "overview") {
       fetchHistory();
     }
 
-    if (view === "fees") {
+    if (view === "fees" || view === "overview") {
       fetchFees();
     }
 
@@ -256,13 +273,953 @@ const ResidentDashboard = () => {
   };
 
   const handleLogout = () => {
-    if (window.confirm("Bạn có chắc chắn muốn đăng xuất khỏi hệ thống?")) {
-      logout();
-      navigate("/login");
+    setShowLogoutConfirm(true);
+  };
+
+  const getSlotState = (slotName) => {
+    let charCodeSum = 0;
+    for (let i = 0; i < slotName.length; i++) {
+      charCodeSum += slotName.charCodeAt(i);
     }
+    const mod = charCodeSum % 3;
+    if (mod === 0) return "available";
+    if (mod === 1) return "occupied";
+    return "guest";
+  };
+
+  const renderOverview = () => {
+    const displayHistory = history.length > 0 ? history.slice(0, 3) : [
+      {
+        session_id: "mock1",
+        plate_number: vehicles[0]?.plate_number || "29A-888.88",
+        type_name: vehicles[0]?.type_name || "Ô tô",
+        time_in: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+        time_out: null,
+        status: "parking"
+      },
+      {
+        session_id: "mock2",
+        plate_number: vehicles[1]?.plate_number || "30F-999.99",
+        type_name: vehicles[1]?.type_name || "Xe máy",
+        time_in: new Date(Date.now() - 28 * 60 * 60 * 1000).toISOString(),
+        time_out: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+        status: "completed"
+      },
+      {
+        session_id: "mock3",
+        plate_number: vehicles[0]?.plate_number || "29A-888.88",
+        type_name: vehicles[0]?.type_name || "Ô tô",
+        time_in: new Date(Date.now() - 50 * 60 * 60 * 1000).toISOString(),
+        time_out: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(),
+        status: "completed"
+      }
+    ];
+
+    const carSlots = Array.from({ length: 10 }, (_, i) => `A-${String(i + 1).padStart(2, '0')}`);
+    const motoSlots = Array.from({ length: 20 }, (_, i) => `M-${String(i + 1).padStart(2, '0')}`);
+
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+        {/* Luxury greeting banner with CSS towers */}
+        <div style={{
+          backgroundColor: "#3F5E4D",
+          borderRadius: 24,
+          padding: "32px 40px",
+          color: "#FFFBF5",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          position: "relative",
+          overflow: "hidden",
+          boxShadow: "0 10px 30px rgba(63,94,77,0.15)",
+          minHeight: 180
+        }}>
+          <div style={{
+            position: "absolute",
+            top: "-50%",
+            left: "-20%",
+            width: "80%",
+            height: "200%",
+            background: "radial-gradient(circle, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0) 70%)",
+            pointerEvents: "none"
+          }} />
+
+          <div style={{ flex: 1, zIndex: 2 }}>
+            <div style={{
+              fontSize: 12,
+              fontWeight: "700",
+              letterSpacing: "2px",
+              opacity: 0.8,
+              textTransform: "uppercase",
+              marginBottom: 8
+            }}>
+              CHÀO BUỒI SÁNG · VINHOMES ECO-GREEN RESIDENT
+            </div>
+            <h1 style={{
+              fontSize: 32,
+              fontWeight: "800",
+              margin: "0 0 12px 0",
+              letterSpacing: "-0.5px"
+            }}>
+              Xin chào, {profile?.name || user?.username || "Cư dân"} 👋
+            </h1>
+            <p style={{
+              margin: 0,
+              fontSize: 14,
+              opacity: 0.9,
+              maxWidth: 500,
+              lineHeight: "22px"
+            }}>
+              Hệ thống bãi đỗ xe thông minh Vinhomes đang hoạt động ổn định. Hôm nay bãi xe còn trống <strong>45 chỗ</strong> (Hầm B1: 30, B2: 15).
+            </p>
+          </div>
+
+          {/* Skyscapers Pure CSS graphics */}
+          <div style={{
+            display: "flex",
+            gap: 12,
+            alignItems: "flex-end",
+            height: "100%",
+            alignSelf: "flex-end",
+            marginTop: -32,
+            marginBottom: -32,
+            opacity: 0.9,
+            zIndex: 1,
+            pointerEvents: "none"
+          }}>
+            {/* Tower 1 */}
+            <div style={{
+              width: 45,
+              height: 120,
+              backgroundColor: "rgba(255, 253, 245, 0.12)",
+              borderRadius: "8px 8px 0 0",
+              padding: "8px 6px",
+              display: "grid",
+              gridTemplateColumns: "repeat(3, 1fr)",
+              gap: 4,
+              backdropFilter: "blur(1px)"
+            }}>
+              {Array.from({ length: 15 }).map((_, i) => (
+                <div key={i} style={{
+                  backgroundColor: i % 3 === 0 ? "transparent" : "#FFFBF5",
+                  opacity: i % 4 === 0 ? 0.2 : 0.8,
+                  height: 6,
+                  borderRadius: 1
+                }} />
+              ))}
+            </div>
+            {/* Tower 2 */}
+            <div style={{
+              width: 55,
+              height: 150,
+              backgroundColor: "rgba(255, 253, 245, 0.2)",
+              borderRadius: "10px 10px 0 0",
+              padding: "10px 8px",
+              display: "grid",
+              gridTemplateColumns: "repeat(3, 1fr)",
+              gap: 4,
+              boxShadow: "0 10px 30px rgba(0,0,0,0.1)",
+              backdropFilter: "blur(2px)"
+            }}>
+              {Array.from({ length: 18 }).map((_, i) => (
+                <div key={i} style={{
+                  backgroundColor: i % 5 === 0 ? "transparent" : "#FFFBF5",
+                  opacity: i % 3 === 0 ? 0.3 : 0.9,
+                  height: 7,
+                  borderRadius: 1
+                }} />
+              ))}
+            </div>
+            {/* Tower 3 */}
+            <div style={{
+              width: 40,
+              height: 100,
+              backgroundColor: "rgba(255, 253, 245, 0.08)",
+              borderRadius: "6px 6px 0 0",
+              padding: "6px 5px",
+              display: "grid",
+              gridTemplateColumns: "repeat(2, 1fr)",
+              gap: 4,
+              backdropFilter: "blur(1px)"
+            }}>
+              {Array.from({ length: 10 }).map((_, i) => (
+                <div key={i} style={{
+                  backgroundColor: i % 2 === 0 ? "transparent" : "#FFFBF5",
+                  opacity: i % 3 === 0 ? 0.15 : 0.7,
+                  height: 6,
+                  borderRadius: 1
+                }} />
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Resident vehicle wallet */}
+        <div style={{
+          backgroundColor: "#FFFBF5",
+          borderRadius: 24,
+          padding: 24,
+          border: "1px solid rgba(139, 115, 85, 0.08)",
+          boxShadow: "0 8px 30px rgba(139, 115, 85, 0.04)"
+        }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+            <div>
+              <h3 style={{ margin: 0, color: "#2D3327", fontSize: 18, fontWeight: "800" }}>Ví xe của tôi</h3>
+              <p style={{ margin: "2px 0 0", fontSize: 13, color: "#64748b" }}>Các phương tiện giao thông đã được phê duyệt</p>
+            </div>
+            <button
+              onClick={() => setView("vehicles")}
+              style={{
+                backgroundColor: "transparent",
+                border: "none",
+                color: "#3F5E4D",
+                fontWeight: "700",
+                fontSize: 14,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 4
+              }}
+            >
+              Xem tất cả <span className="material-symbols-rounded" style={{ fontSize: 16 }}>arrow_forward</span>
+            </button>
+          </div>
+
+          {vehicles.length === 0 ? (
+            <div style={{
+              padding: "32px 16px",
+              textAlign: "center",
+              border: "2px dashed #EAE5D9",
+              borderRadius: 16,
+              color: "#64748b",
+              backgroundColor: "rgba(139, 115, 85, 0.02)"
+            }}>
+              <span className="material-symbols-rounded" style={{ fontSize: 48, color: "#9E826C", marginBottom: 12 }}>directions_car</span>
+              <p style={{ margin: "0 0 16px", fontSize: 14 }}>Bạn chưa đăng ký phương tiện nào trong hệ thống.</p>
+              <button
+                onClick={() => {
+                  setView("vehicles");
+                  setShowVehicleForm(true);
+                }}
+                style={S.primaryBtn}
+              >
+                + Đăng ký xe đầu tiên
+              </button>
+            </div>
+          ) : (
+            <div style={{
+              display: "flex",
+              gap: 16,
+              overflowX: "auto",
+              paddingBottom: 4,
+              margin: "0 -4px"
+            }}>
+              {vehicles.map((v) => (
+                <div
+                  key={v.plate_number}
+                  style={{
+                    flex: "0 0 280px",
+                    backgroundColor: "#FFFBF5",
+                    borderRadius: 18,
+                    border: "1.5px solid rgba(139, 115, 85, 0.12)",
+                    padding: 16,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 12,
+                    boxShadow: "0 4px 12px rgba(139, 115, 85, 0.02)",
+                    transition: "transform 0.2s ease-in-out"
+                  }}
+                >
+                  <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                    <div style={{
+                      width: 48,
+                      height: 48,
+                      borderRadius: 12,
+                      backgroundColor: "#F1ECE4",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 24,
+                      boxShadow: "inset 0 1px 4px rgba(0,0,0,0.05)"
+                    }}>
+                      {v.type_name === "Ô tô" ? "🚗" : "🏍️"}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 16, fontWeight: "800", color: "#2D3327", letterSpacing: "0.5px" }}>{v.plate_number}</div>
+                      <div style={{ fontSize: 12, color: "#64748b" }}>{v.type_name} · {v.color || "Không màu"}</div>
+                    </div>
+                  </div>
+                  <div style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    borderTop: "1px dashed #EAE5D9",
+                    paddingTop: 10,
+                    fontSize: 12
+                  }}>
+                    <span style={{
+                      color: v.status === "active" ? "#3F5E4D" : "#d97706",
+                      fontWeight: "700"
+                    }}>
+                      {v.status === "active" ? "✅ ĐÃ PHÊ DUYỆT" : "⏳ CHỜ DUYỆT"}
+                    </span>
+                    {v.monthly_status === "active" ? (
+                      <span style={{
+                        backgroundColor: "#E2ECE9",
+                        color: "#3F5E4D",
+                        padding: "2px 8px",
+                        borderRadius: 6,
+                        fontWeight: "700",
+                        fontSize: 10
+                      }}>
+                        VÉ THÁNG
+                      </span>
+                    ) : (
+                      <span style={{
+                        backgroundColor: "#F1ECE4",
+                        color: "#5F504B",
+                        padding: "2px 8px",
+                        borderRadius: 6,
+                        fontWeight: "600",
+                        fontSize: 10
+                      }}>
+                        VÉ LƯỢT
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Map grid and Activities timeline combined */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 24 }}>
+          {/* Parking Area Mini View */}
+          <div style={{
+            backgroundColor: "#FFFBF5",
+            borderRadius: 24,
+            padding: 24,
+            border: "1px solid rgba(139, 115, 85, 0.08)",
+            boxShadow: "0 8px 30px rgba(139, 115, 85, 0.04)",
+            display: "flex",
+            flexDirection: "column",
+            gap: 16
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <h3 style={{ margin: 0, color: "#2D3327", fontSize: 18, fontWeight: "800" }}>Sơ đồ bãi xe</h3>
+                <p style={{ margin: "2px 0 0", fontSize: 13, color: "#64748b" }}>Tình trạng hầm gửi xe trực quan</p>
+              </div>
+              <button
+                onClick={() => setShowMapModal(true)}
+                style={{
+                  ...S.primaryBtn,
+                  padding: "6px 14px",
+                  fontSize: 12,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4
+                }}
+              >
+                <span className="material-symbols-rounded" style={{ fontSize: 16 }}>fullscreen</span> Vào sơ đồ xe
+              </button>
+            </div>
+
+            {/* Smart Switcher Tab */}
+            <div style={{
+              display: "flex",
+              backgroundColor: "#EAE5D9",
+              padding: 4,
+              borderRadius: 10,
+              gap: 4
+            }}>
+              <button
+                onClick={() => setMapZone("car")}
+                style={{
+                  flex: 1,
+                  padding: "8px 12px",
+                  border: "none",
+                  borderRadius: 8,
+                  backgroundColor: mapZone === "car" ? "#3F5E4D" : "transparent",
+                  color: mapZone === "car" ? "#FFFBF5" : "#5F504B",
+                  fontWeight: "700",
+                  fontSize: 13,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                  transition: "all 0.2s"
+                }}
+              >
+                🚗 Khu đỗ Ô tô
+              </button>
+              <button
+                onClick={() => setMapZone("motorbike")}
+                style={{
+                  flex: 1,
+                  padding: "8px 12px",
+                  border: "none",
+                  borderRadius: 8,
+                  backgroundColor: mapZone === "motorbike" ? "#3F5E4D" : "transparent",
+                  color: mapZone === "motorbike" ? "#FFFBF5" : "#5F504B",
+                  fontWeight: "700",
+                  fontSize: 13,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                  transition: "all 0.2s"
+                }}
+              >
+                🏍️ Khu đỗ Xe máy
+              </button>
+            </div>
+
+            {/* Parking space grid simulation */}
+            <div
+              onClick={() => setShowMapModal(true)}
+              style={{
+                border: "1px solid #EAE5D9",
+                borderRadius: 16,
+                padding: 16,
+                backgroundColor: "rgba(139, 115, 85, 0.01)",
+                cursor: "pointer",
+                transition: "all 0.2s",
+                position: "relative"
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.borderColor = "#9E826C"}
+              onMouseLeave={(e) => e.currentTarget.style.borderColor = "#EAE5D9"}
+            >
+              {mapZone === "car" ? (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10 }}>
+                  {carSlots.map((slot) => {
+                    const state = getSlotState(slot);
+                    return (
+                      <div key={slot} style={{
+                        height: 52,
+                        borderRadius: 8,
+                        border: `1.5px solid ${state === "available" ? "#3F5E4D" : state === "occupied" ? "#CD5C5C" : "#C39A6B"}`,
+                        backgroundColor: state === "available" ? "rgba(63, 94, 77, 0.15)" : state === "occupied" ? "rgba(205, 92, 92, 0.15)" : "rgba(195, 154, 107, 0.15)",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 2
+                      }}>
+                        <span style={{ fontSize: 11, fontWeight: "800", color: "#2D3327" }}>{slot}</span>
+                        <span style={{
+                          width: 6,
+                          height: 6,
+                          borderRadius: "50%",
+                          backgroundColor: state === "available" ? "#3F5E4D" : state === "occupied" ? "#CD5C5C" : "#C39A6B"
+                        }} />
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8 }}>
+                  {motoSlots.map((slot) => {
+                    const state = getSlotState(slot);
+                    return (
+                      <div key={slot} style={{
+                        height: 40,
+                        borderRadius: 6,
+                        border: `1px solid ${state === "available" ? "#3F5E4D" : state === "occupied" ? "#CD5C5C" : "#C39A6B"}`,
+                        backgroundColor: state === "available" ? "rgba(63, 94, 77, 0.1)" : state === "occupied" ? "rgba(205, 92, 92, 0.1)" : "rgba(195, 154, 107, 0.1)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: 10,
+                        fontWeight: "700",
+                        color: "#2D3327"
+                      }}>
+                        {slot}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              
+              {/* Overlay hover prompt */}
+              <div style={{
+                position: "absolute",
+                top: 0, left: 0, right: 0, bottom: 0,
+                backgroundColor: "rgba(63, 94, 77, 0.02)",
+                borderRadius: 16,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                opacity: 0,
+                transition: "opacity 0.2s",
+                fontWeight: "700",
+                fontSize: 13,
+                color: "#3F5E4D",
+                backdropFilter: "blur(0.5px)"
+              }}
+              className="map-overlay-hover"
+              onMouseEnter={(e) => e.currentTarget.style.opacity = 1}
+              onMouseLeave={(e) => e.currentTarget.style.opacity = 0}
+              >
+                🔍 CLICK ĐỂ XEM CHI TIẾT HẦM B1 & B2
+              </div>
+            </div>
+
+            {/* Legends */}
+            <div style={{ display: "flex", justifyContent: "space-around", fontSize: 11, fontWeight: "700", color: "#64748b", borderTop: "1px dashed #EAE5D9", paddingTop: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: "#3F5E4D" }} /> Trống
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: "#CD5C5C" }} /> Đang đỗ
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: "#C39A6B" }} /> Khách
+              </div>
+            </div>
+          </div>
+
+          {/* Activities Timeline */}
+          <div style={{
+            backgroundColor: "#FFFBF5",
+            borderRadius: 24,
+            padding: 24,
+            border: "1px solid rgba(139, 115, 85, 0.08)",
+            boxShadow: "0 8px 30px rgba(139, 115, 85, 0.04)",
+            display: "flex",
+            flexDirection: "column",
+            gap: 16
+          }}>
+            <div>
+              <h3 style={{ margin: 0, color: "#2D3327", fontSize: 18, fontWeight: "800" }}>Nhật ký ra vào</h3>
+              <p style={{ margin: "2px 0 0", fontSize: 13, color: "#64748b" }}>3 hoạt động gửi xe gần đây nhất</p>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", flex: 1, justifyContent: "center" }}>
+              {displayHistory.map((item, index) => {
+                const isIn = item.status === "parking" || !item.time_out;
+                const eventTime = isIn ? item.time_in : item.time_out;
+                return (
+                  <div key={item.session_id} style={{ display: "flex", gap: 14, position: "relative" }}>
+                    {/* Visual node */}
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                      <div style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: "50%",
+                        backgroundColor: isIn ? "#E2ECE9" : "#F8F1E5",
+                        color: isIn ? "#3F5E4D" : "#C39A6B",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: 16,
+                        fontWeight: "800",
+                        boxShadow: "0 2px 6px rgba(0,0,0,0.02)"
+                      }}>
+                        {isIn ? "↓" : "↑"}
+                      </div>
+                      {index < displayHistory.length - 1 && (
+                        <div style={{
+                          width: 2,
+                          flex: 1,
+                          borderLeft: "2px dashed #EAE5D9",
+                          margin: "6px 0"
+                        }} />
+                      )}
+                    </div>
+
+                    {/* Node details */}
+                    <div style={{ flex: 1, paddingBottom: index < displayHistory.length - 1 ? 16 : 0 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                        <span style={{ fontSize: 14, fontWeight: "800", color: "#2D3327" }}>{item.plate_number}</span>
+                        <span style={{ fontSize: 11, color: "#94a3b8", fontWeight: "600" }}>
+                          {eventTime ? new Date(eventTime).toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' }) : "---"}
+                        </span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginTop: 2 }}>
+                        <span style={{ color: "#64748b" }}>{item.type_name} · {isIn ? "Lượt xe VÀO" : "Lượt xe RA"}</span>
+                        <span style={{ fontSize: 11, color: "#94a3b8" }}>
+                          {eventTime ? new Date(eventTime).toLocaleDateString("vi-VN") : "---"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderMapModal = () => {
+    const levelCarSlots = modalLevel === "B1"
+      ? Array.from({ length: 24 }, (_, i) => `A-${String(i + 1).padStart(2, '0')}`)
+      : Array.from({ length: 24 }, (_, i) => `B-${String(i + 1).padStart(2, '0')}`);
+
+    const levelMotoSlots = modalLevel === "B1"
+      ? Array.from({ length: 48 }, (_, i) => `M-${String(i + 1).padStart(2, '0')}`)
+      : Array.from({ length: 48 }, (_, i) => `K-${String(i + 1).padStart(2, '0')}`);
+
+    return (
+      <div
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: "rgba(45, 51, 39, 0.6)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 1100,
+          backdropFilter: "blur(4px)"
+        }}
+        onClick={() => setShowMapModal(false)}
+      >
+        <div
+          style={{
+            backgroundColor: "#FFFBF5",
+            borderRadius: 24,
+            width: "90%",
+            maxWidth: 960,
+            height: "85vh",
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+            boxShadow: "0 25px 60px rgba(0,0,0,0.25)",
+            fontFamily: "'Outfit', sans-serif"
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Modal Header */}
+          <div style={{
+            backgroundColor: "#3F5E4D",
+            padding: "20px 28px",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center"
+          }}>
+            <div>
+              <h3 style={{ margin: 0, color: "#FFFBF5", fontSize: 20, fontWeight: "800", letterSpacing: "0.5px" }}>
+                🗺️ SƠ ĐỒ CHI TIẾT BÃI ĐỖ XE
+              </h3>
+              <p style={{ margin: "2px 0 0", color: "rgba(255,251,245,0.75)", fontSize: 12 }}>
+                Khu đô thị Vinhomes Luxury Eco-Green
+              </p>
+            </div>
+            <button
+              onClick={() => setShowMapModal(false)}
+              style={{
+                backgroundColor: "transparent",
+                border: "none",
+                color: "#FFFBF5",
+                fontSize: 24,
+                fontWeight: "300",
+                cursor: "pointer",
+                width: 36,
+                height: 36,
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                transition: "background-color 0.2s"
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.1)"}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* Modal Controls Section */}
+          <div style={{
+            padding: "20px 28px",
+            borderBottom: "1.5px solid #F1ECE4",
+            display: "flex",
+            gap: 16,
+            flexWrap: "wrap",
+            alignItems: "center",
+            justifyContent: "space-between",
+            backgroundColor: "rgba(139, 115, 85, 0.02)"
+          }}>
+            <div style={{ display: "flex", gap: 12 }}>
+              <div style={{ display: "flex", backgroundColor: "#EAE5D9", padding: 3, borderRadius: 8, gap: 2 }}>
+                <button
+                  onClick={() => setModalLevel("B1")}
+                  style={{
+                    padding: "6px 16px",
+                    border: "none",
+                    borderRadius: 6,
+                    backgroundColor: modalLevel === "B1" ? "#3F5E4D" : "transparent",
+                    color: modalLevel === "B1" ? "#FFFBF5" : "#5F504B",
+                    fontWeight: "700",
+                    fontSize: 12,
+                    cursor: "pointer",
+                    transition: "all 0.2s"
+                  }}
+                >
+                  Tầng Hầm B1
+                </button>
+                <button
+                  onClick={() => setModalLevel("B2")}
+                  style={{
+                    padding: "6px 16px",
+                    border: "none",
+                    borderRadius: 6,
+                    backgroundColor: modalLevel === "B2" ? "#3F5E4D" : "transparent",
+                    color: modalLevel === "B2" ? "#FFFBF5" : "#5F504B",
+                    fontWeight: "700",
+                    fontSize: 12,
+                    cursor: "pointer",
+                    transition: "all 0.2s"
+                  }}
+                >
+                  Tầng Hầm B2
+                </button>
+              </div>
+
+              <div style={{ display: "flex", backgroundColor: "#EAE5D9", padding: 3, borderRadius: 8, gap: 2 }}>
+                <button
+                  onClick={() => setMapZone("car")}
+                  style={{
+                    padding: "6px 16px",
+                    border: "none",
+                    borderRadius: 6,
+                    backgroundColor: mapZone === "car" ? "#3F5E4D" : "transparent",
+                    color: mapZone === "car" ? "#FFFBF5" : "#5F504B",
+                    fontWeight: "700",
+                    fontSize: 12,
+                    cursor: "pointer",
+                    transition: "all 0.2s"
+                  }}
+                >
+                  🚗 Khu Ô tô
+                </button>
+                <button
+                  onClick={() => setMapZone("motorbike")}
+                  style={{
+                    padding: "6px 16px",
+                    border: "none",
+                    borderRadius: 6,
+                    backgroundColor: mapZone === "motorbike" ? "#3F5E4D" : "transparent",
+                    color: mapZone === "motorbike" ? "#FFFBF5" : "#5F504B",
+                    fontWeight: "700",
+                    fontSize: 12,
+                    cursor: "pointer",
+                    transition: "all 0.2s"
+                  }}
+                >
+                  🏍️ Khu Xe máy
+                </button>
+              </div>
+            </div>
+
+            <div style={{ position: "relative", minWidth: 240 }}>
+              <span className="material-symbols-rounded" style={{
+                position: "absolute",
+                left: 12,
+                top: "50%",
+                transform: "translateY(-50%)",
+                fontSize: 18,
+                color: "#9E826C"
+              }}>
+                search
+              </span>
+              <input
+                style={{
+                  ...S.input,
+                  paddingLeft: 38,
+                  height: 38,
+                  fontSize: 13,
+                  width: "100%"
+                }}
+                value={searchSlot}
+                onChange={(e) => setSearchSlot(e.target.value)}
+                placeholder="Tìm slot đỗ xe (VD: 03, 14)..."
+              />
+            </div>
+          </div>
+
+          {/* Modal Grid Map Body */}
+          <div style={{
+            flex: 1,
+            overflowY: "auto",
+            padding: 28,
+            backgroundColor: "#FAF8F5"
+          }}>
+            {mapZone === "car" ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1.5px solid #EAE5D9", paddingBottom: 8 }}>
+                  <span style={{ fontSize: 13, fontWeight: "800", color: "#3F5E4D" }}>LÀN XE 01</span>
+                  <div style={{ height: 2, flex: 1, backgroundColor: "#EAE5D9", margin: "0 16px", borderStyle: "dashed" }} />
+                  <span style={{ fontSize: 13, fontWeight: "800", color: "#3F5E4D" }}>LÀN XE 02</span>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 60px 1fr", gap: 16 }}>
+                  {/* Left Column slots */}
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+                    {levelCarSlots.slice(0, 12).map((slot) => {
+                      const state = getSlotState(slot);
+                      const isHighlighted = searchSlot && slot.toLowerCase().includes(searchSlot.toLowerCase());
+                      return (
+                        <div key={slot} style={{
+                          height: 70,
+                          borderRadius: 12,
+                          border: isHighlighted ? "3px solid #C39A6B" : `1.5px solid ${state === "available" ? "#3F5E4D" : state === "occupied" ? "#CD5C5C" : "#C39A6B"}`,
+                          backgroundColor: state === "available" ? "rgba(63, 94, 77, 0.12)" : state === "occupied" ? "rgba(205, 92, 92, 0.12)" : "rgba(195, 154, 107, 0.12)",
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          boxShadow: isHighlighted ? "0 0 12px rgba(195,154,107,0.6)" : "none",
+                          transition: "all 0.2s"
+                        }}>
+                          <span style={{ fontSize: 13, fontWeight: "800", color: "#2D3327" }}>{slot}</span>
+                          <span style={{
+                            fontSize: 10,
+                            fontWeight: "700",
+                            marginTop: 4,
+                            color: state === "available" ? "#3F5E4D" : state === "occupied" ? "#CD5C5C" : "#C39A6B"
+                          }}>
+                            {state === "available" ? "Trống" : state === "occupied" ? "Đang đỗ" : "Khách"}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Virtual Driveway */}
+                  <div style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "space-around",
+                    alignItems: "center",
+                    backgroundColor: "#EAE5D9",
+                    borderRadius: 8,
+                    color: "#5F504B",
+                    fontSize: 11,
+                    fontWeight: "800",
+                    letterSpacing: "1px",
+                    writingMode: "vertical-rl",
+                    textTransform: "uppercase",
+                    opacity: 0.8,
+                    padding: "12px 0"
+                  }}>
+                    <span>↑ LỐI ĐI CHUNG ↓</span>
+                  </div>
+
+                  {/* Right Column slots */}
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+                    {levelCarSlots.slice(12, 24).map((slot) => {
+                      const state = getSlotState(slot);
+                      const isHighlighted = searchSlot && slot.toLowerCase().includes(searchSlot.toLowerCase());
+                      return (
+                        <div key={slot} style={{
+                          height: 70,
+                          borderRadius: 12,
+                          border: isHighlighted ? "3px solid #C39A6B" : `1.5px solid ${state === "available" ? "#3F5E4D" : state === "occupied" ? "#CD5C5C" : "#C39A6B"}`,
+                          backgroundColor: state === "available" ? "rgba(63, 94, 77, 0.12)" : state === "occupied" ? "rgba(205, 92, 92, 0.12)" : "rgba(195, 154, 107, 0.12)",
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          boxShadow: isHighlighted ? "0 0 12px rgba(195,154,107,0.6)" : "none",
+                          transition: "all 0.2s"
+                        }}>
+                          <span style={{ fontSize: 13, fontWeight: "800", color: "#2D3327" }}>{slot}</span>
+                          <span style={{
+                            fontSize: 10,
+                            fontWeight: "700",
+                            marginTop: 4,
+                            color: state === "available" ? "#3F5E4D" : state === "occupied" ? "#CD5C5C" : "#C39A6B"
+                          }}>
+                            {state === "available" ? "Trống" : state === "occupied" ? "Đang đỗ" : "Khách"}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 10 }}>
+                  {levelMotoSlots.map((slot) => {
+                    const state = getSlotState(slot);
+                    const isHighlighted = searchSlot && slot.toLowerCase().includes(searchSlot.toLowerCase());
+                    return (
+                      <div key={slot} style={{
+                        height: 52,
+                        borderRadius: 10,
+                        border: isHighlighted ? "2.5px solid #C39A6B" : `1px solid ${state === "available" ? "#3F5E4D" : state === "occupied" ? "#CD5C5C" : "#C39A6B"}`,
+                        backgroundColor: state === "available" ? "rgba(63, 94, 77, 0.08)" : state === "occupied" ? "rgba(205, 92, 92, 0.08)" : "rgba(195, 154, 107, 0.08)",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        boxShadow: isHighlighted ? "0 0 8px rgba(195,154,107,0.5)" : "none",
+                        transition: "all 0.2s"
+                      }}>
+                        <span style={{ fontSize: 11, fontWeight: "800", color: "#2D3327" }}>{slot}</span>
+                        <span style={{
+                          fontSize: 8,
+                          fontWeight: "700",
+                          marginTop: 2,
+                          color: state === "available" ? "#3F5E4D" : state === "occupied" ? "#CD5C5C" : "#C39A6B"
+                        }}>
+                          {state === "available" ? "Trống" : "Đầy"}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Modal Footer Legends */}
+          <div style={{
+            padding: "20px 28px",
+            borderTop: "1.5px solid #F1ECE4",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            backgroundColor: "rgba(139, 115, 85, 0.02)"
+          }}>
+            <div style={{ display: "flex", gap: 24, fontSize: 13, fontWeight: "700", color: "#64748b" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ width: 12, height: 12, borderRadius: "50%", backgroundColor: "#3F5E4D" }} />
+                <span>Available (Trống)</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ width: 12, height: 12, borderRadius: "50%", backgroundColor: "#CD5C5C" }} />
+                <span>Occupied (Đầy)</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ width: 12, height: 12, borderRadius: "50%", backgroundColor: "#C39A6B" }} />
+                <span>Guest (Vãng lai)</span>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowMapModal(false)}
+              style={S.cancelBtn}
+            >
+              Đóng sơ đồ
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   const menuItems = [
+    { key: "overview", label: "Tổng quan", icon: "grid_view" },
     { key: "vehicles", label: "Xe của tôi", icon: "directions_car" },
     { key: "monthly", label: "Vé tháng", icon: "receipt_long" },
     { key: "history", label: "Lịch sử gửi xe", icon: "history" },
@@ -311,9 +1268,9 @@ const ResidentDashboard = () => {
         style={{
           display: 'none',
           position: 'fixed', top: 15, left: 15, zIndex: 998,
-          background: '#fff', border: '1px solid #e0e0e0', padding: 8,
+          background: '#FFFBF5', border: '1px solid #EAE5D9', padding: 8,
           borderRadius: 8, cursor: 'pointer', alignItems: 'center', justifyContent: 'center',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+          boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
         }}
         onClick={() => setIsMobileOpen(true)}
       >
@@ -385,7 +1342,7 @@ const ResidentDashboard = () => {
                     className="material-symbols-rounded"
                     style={{
                       fontSize: 20,
-                      color: isActive ? "#1a73e8" : "#5f6368",
+                      color: isActive ? "#FFFBF5" : "rgba(255, 255, 255, 0.75)",
                       marginRight: 12,
                     }}
                   >
@@ -395,7 +1352,7 @@ const ResidentDashboard = () => {
                   <span
                     style={{
                       fontWeight: isActive ? "600" : "400",
-                      color: isActive ? "#1a73e8" : "#3c4043",
+                      color: isActive ? "#FFFBF5" : "rgba(255, 255, 255, 0.85)",
                     }}
                   >
                     {m.label}
@@ -499,6 +1456,8 @@ const ResidentDashboard = () => {
           )}
 
           <div style={S.content}>
+            {view === "overview" && renderOverview()}
+
             {view === "vehicles" && (
               <div>
                 <div
@@ -630,114 +1589,97 @@ const ResidentDashboard = () => {
                     Bạn chưa đăng ký xe nào. Hãy nhấn "Đăng ký xe mới" để bắt đầu.
                   </div>
                 ) : (
-                  <div style={S.tableWrap}>
-                    <div style={S.tHeader}>
-                      <div style={S.tCell}>Biển số</div>
-                      <div style={S.tCell}>Căn hộ</div>
-                      <div style={S.tCell}>Loại xe</div>
-                      <div style={S.tCell}>Màu</div>
-                      <div style={S.tCell}>Trạng thái xe</div>
-                      <div style={S.tCell}>Vé tháng</div>
-                      <div style={S.tCell}>Thao tác</div>
-                    </div>
-
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 24 }}>
                     {vehicles.map((v) => (
-                      <div key={v.plate_number} style={S.tRow}>
-                        <div style={{ ...S.tCell, fontWeight: "700" }}>
-                          {v.plate_number}
+                      <div
+                        key={v.plate_number}
+                        style={{
+                          ...S.vehicleCard,
+                          flexDirection: "column",
+                          alignItems: "stretch",
+                          gap: 16,
+                          margin: 0,
+                        }}
+                      >
+                        {/* Vehicle illustration backdrop */}
+                        <div style={{
+                          height: 120,
+                          backgroundColor: "#FAF8F5",
+                          borderRadius: 16,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: 54,
+                          position: "relative",
+                          overflow: "hidden",
+                          boxShadow: "inset 0 2px 8px rgba(0,0,0,0.02)"
+                        }}>
+                          {v.type_name === "Ô tô" ? "🚗" : "🏍️"}
                         </div>
 
-                        <div style={S.tCell}>
-                          {profile?.apartment_number || "---"}
+                        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
+                          <div
+                            style={{
+                              fontSize: 18,
+                              fontWeight: "800",
+                              color: "#2D3327",
+                              letterSpacing: "0.5px",
+                            }}
+                          >
+                            {v.plate_number}
+                          </div>
+
+                          <div
+                            style={{
+                              fontSize: 13,
+                              color: "#64748b",
+                              fontWeight: "600",
+                            }}
+                          >
+                            Căn hộ: {profile?.apartment_number || "---"} · {v.type_name} · {v.color || "---"}
+                          </div>
+
+                          <div style={{ marginTop: 4, fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
+                            <span style={{ color: "#64748b", fontWeight: "500" }}>Trạng thái xe:</span>
+                            {v.status === "active" ? (
+                              <span style={{ color: "#3F5E4D", fontWeight: "700" }}>✅ Đã duyệt</span>
+                            ) : (
+                              <span style={{ color: "#d97706", fontWeight: "700" }}>⏳ Chờ duyệt</span>
+                            )}
+                          </div>
+
+                          <div style={{ marginTop: 4, fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
+                            <span style={{ color: "#64748b", fontWeight: "500" }}>Vé tháng:</span>
+                            {v.monthly_status === "active" ? (
+                              <span style={{ color: "#3F5E4D", fontWeight: "700" }}>✅ Đang hoạt động</span>
+                            ) : v.monthly_status === "pending" ? (
+                              <span style={{ color: "#d97706", fontWeight: "700" }}>⏳ Chờ duyệt</span>
+                            ) : (
+                              <span style={{ color: "#64748b", fontWeight: "600" }}>Chưa đăng ký</span>
+                            )}
+                          </div>
                         </div>
 
-                        <div style={S.tCell}>{v.type_name}</div>
-
-                        <div style={S.tCell}>{v.color || "---"}</div>
-
-                        <div style={S.tCell}>
-                          {v.status === "active" ? (
-                            <span
-                              style={{
-                                ...S.badge,
-                                background: "#dcfce7",
-                                color: "#166534",
-                              }}
-                            >
-                              Đã duyệt
-                            </span>
-                          ) : (
-                            <span
-                              style={{
-                                ...S.badge,
-                                background: "#fef3c7",
-                                color: "#92400e",
-                              }}
-                            >
-                              Chờ duyệt
-                            </span>
-                          )}
-                        </div>
-
-                        <div style={S.tCell}>
-                          {v.monthly_status === "active" ? (
-                            <span
-                              style={{
-                                ...S.badge,
-                                background: "#dcfce7",
-                                color: "#166534",
-                              }}
-                            >
-                              Đang hoạt động
-                            </span>
-                          ) : v.monthly_status === "pending" ? (
-                            <span
-                              style={{
-                                ...S.badge,
-                                background: "#fef3c7",
-                                color: "#92400e",
-                              }}
-                            >
-                              Chờ duyệt
-                            </span>
-                          ) : (
-                            <span
-                              style={{
-                                ...S.badge,
-                                background: "#f1f5f9",
-                                color: "#64748b",
-                              }}
-                            >
-                              Chưa đăng ký
-                            </span>
-                          )}
-                        </div>
-
-                        <div
-                          style={{
-                            ...S.tCell,
-                            display: "flex",
-                            gap: 8,
-                            flexWrap: "wrap",
-                          }}
-                        >
+                        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
                           {v.monthly_status === "active" ? (
                             <button
                               disabled
-                              style={{ ...S.smallBtn, background: "#94a3b8" }}
+                              style={{ ...S.smallBtn, background: "#cbd5e1", color: "#64748b", cursor: "not-allowed", flex: 1 }}
                             >
-                              Đã đăng ký
+                              Đã có vé
                             </button>
                           ) : v.monthly_status === "pending" ? (
                             <button
                               disabled
                               style={{
                                 ...S.smallBtn,
-                                background: "#fbbf24",
+                                background: "#FEF3C7",
                                 color: "#92400e",
+                                cursor: "not-allowed",
+                                flex: 1
                               }}
                             >
-                              Đang chờ duyệt
+                              Chờ duyệt vé
                             </button>
                           ) : (
                             <button
@@ -745,19 +1687,15 @@ const ResidentDashboard = () => {
                               disabled={v.status !== "active"}
                               style={{
                                 ...S.smallBtn,
+                                backgroundColor: v.status !== "active" ? "#cbd5e1" : "#3F5E4D",
+                                color: "#FFFBF5",
                                 opacity: v.status !== "active" ? 0.5 : 1,
-                                cursor:
-                                  v.status !== "active"
-                                    ? "not-allowed"
-                                    : "pointer",
+                                cursor: v.status !== "active" ? "not-allowed" : "pointer",
+                                flex: 1
                               }}
-                              title={
-                                v.status !== "active"
-                                  ? "Cần được Admin duyệt xe trước khi đăng ký vé tháng"
-                                  : ""
-                              }
+                              title={v.status !== "active" ? "Cần được Admin duyệt xe trước khi đăng ký vé tháng" : ""}
                             >
-                              Đăng ký vé tháng
+                              Đăng ký vé
                             </button>
                           )}
 
@@ -765,8 +1703,9 @@ const ResidentDashboard = () => {
                             onClick={() => openEditForm(v)}
                             style={{
                               ...S.smallBtn,
-                              background: "#e2e8f0",
-                              color: "#1e293b",
+                              background: "#F1ECE4",
+                              color: "#5F504B",
+                              border: "1px solid #E4DDD3",
                             }}
                           >
                             Sửa
@@ -776,8 +1715,9 @@ const ResidentDashboard = () => {
                             onClick={() => handleDeleteVehicle(v.plate_number)}
                             style={{
                               ...S.smallBtn,
-                              background: "#fee2e2",
-                              color: "#ef4444",
+                              background: "#FEE2E2",
+                              color: "#CD5C5C",
+                              border: "1px solid #FCA5A5",
                             }}
                           >
                             Xóa
@@ -792,154 +1732,206 @@ const ResidentDashboard = () => {
 
             {view === "monthly" && (
               <div>
-                <h3 style={{ margin: "0 0 20px", color: "#0f172a" }}>
+                <h3 style={{ margin: "0 0 20px", color: "#2D3327", fontWeight: "800" }}>
                   Đăng ký gửi xe theo tháng
                 </h3>
 
                 <div style={S.infoBox}>
-                  <p style={{ margin: 0, color: "#475569" }}>
-                    Chọn một xe chưa đăng ký vé tháng để đăng ký. Sau khi đăng ký,
-                    Admin sẽ duyệt và bạn sẽ được miễn phí gửi xe hàng ngày.
+                  <p style={{ margin: 0, color: "#1E3A8A" }}>
+                    Chọn một xe đã được duyệt để đăng ký hoặc gia hạn vé tháng. Sau khi gửi yêu cầu, 
+                    Ban quản lý sẽ duyệt vé và bạn sẽ được gửi xe không giới hạn hàng ngày.
                   </p>
                 </div>
 
                 {vehicles.length === 0 ? (
                   <div style={S.empty}>Bạn chưa có xe nào. Hãy đăng ký xe trước.</div>
                 ) : (
-                  vehicles.map((v) => (
-                    <div key={v.plate_number} style={S.vehicleCard}>
-                      <div style={{ flex: 1 }}>
-                        <div
-                          style={{
-                            fontSize: 18,
-                            fontWeight: "bold",
-                            color: "#0f172a",
-                          }}
-                        >
-                          {v.plate_number}
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 24 }}>
+                    {vehicles.map((v) => (
+                      <div
+                        key={v.plate_number}
+                        style={{
+                          ...S.vehicleCard,
+                          flexDirection: "column",
+                          alignItems: "stretch",
+                          gap: 16,
+                          margin: 0,
+                        }}
+                      >
+                        {/* Vehicle illustration backdrop */}
+                        <div style={{
+                          height: 120,
+                          backgroundColor: "#FAF8F5",
+                          borderRadius: 16,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: 54,
+                          position: "relative",
+                          overflow: "hidden",
+                          boxShadow: "inset 0 2px 8px rgba(0,0,0,0.02)"
+                        }}>
+                          {v.type_name === "Ô tô" ? "🚗" : "🏍️"}
                         </div>
 
-                        <div
-                          style={{
-                            fontSize: 14,
-                            color: "#64748b",
-                            marginTop: 4,
-                          }}
-                        >
-                          Căn hộ: {profile?.apartment_number || "---"} ·{" "}
-                          {v.type_name} · {v.color || "---"}
-                        </div>
+                        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
+                          <div
+                            style={{
+                              fontSize: 18,
+                              fontWeight: "800",
+                              color: "#2D3327",
+                              letterSpacing: "0.5px",
+                            }}
+                          >
+                            {v.plate_number}
+                          </div>
 
-                        <div style={{ marginTop: 6, fontSize: 13 }}>
-                          Trạng thái xe:{" "}
-                          {v.status === "active" ? (
-                            <span
+                          <div
+                            style={{
+                              fontSize: 13,
+                              color: "#64748b",
+                              fontWeight: "600",
+                            }}
+                          >
+                            Căn hộ: {profile?.apartment_number || "---"} · {v.type_name} · {v.color || "---"}
+                          </div>
+
+                          <div style={{ marginTop: 4, fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
+                            <span style={{ color: "#64748b", fontWeight: "500" }}>Trạng thái xe:</span>
+                            {v.status === "active" ? (
+                              <span style={{ color: "#3F5E4D", fontWeight: "700" }}>✅ Đã duyệt</span>
+                            ) : (
+                              <span style={{ color: "#d97706", fontWeight: "700" }}>⏳ Chờ duyệt</span>
+                            )}
+                          </div>
+
+                          {v.monthly_status === "active" && (
+                            <div
                               style={{
-                                color: "#059669",
-                                fontWeight: "bold",
+                                marginTop: 6,
+                                padding: "8px 12px",
+                                backgroundColor: "#EFF6FF",
+                                borderRadius: 8,
+                                fontSize: 12,
+                                color: "#1E3A8A",
+                                fontWeight: "700",
+                                display: "inline-block",
+                                border: "1px solid #BFDBFE",
                               }}
                             >
-                              ✅ Đã duyệt
-                            </span>
-                          ) : (
-                            <span
+                              📅 Vé tháng: {new Date(v.start_date).toLocaleDateString("vi-VN")} → {new Date(v.end_date).toLocaleDateString("vi-VN")}
+                            </div>
+                          )}
+
+                          {v.monthly_status === "pending" && (
+                            <div
                               style={{
-                                color: "#d97706",
-                                fontWeight: "bold",
+                                marginTop: 6,
+                                padding: "8px 12px",
+                                backgroundColor: "#FEF3C7",
+                                borderRadius: 8,
+                                fontSize: 12,
+                                color: "#92400e",
+                                fontWeight: "700",
+                                display: "inline-block",
+                                border: "1px solid #FDE68A",
                               }}
                             >
-                              ⏳ Chờ duyệt
-                            </span>
+                              ⏳ Đang chờ duyệt vé tháng
+                            </div>
+                          )}
+
+                          {(v.monthly_status === "expired" || v.monthly_status === "canceled") && (
+                            <div
+                              style={{
+                                marginTop: 6,
+                                padding: "8px 12px",
+                                backgroundColor: "#FEE2E2",
+                                borderRadius: 8,
+                                fontSize: 12,
+                                color: "#CD5C5C",
+                                fontWeight: "700",
+                                display: "inline-block",
+                                border: "1px solid #FCA5A5",
+                              }}
+                            >
+                              🚫 Vé tháng đã hết hạn / bị hủy
+                            </div>
                           )}
                         </div>
 
-                        {v.monthly_status === "active" && (
-                          <div
-                            style={{
-                              marginTop: 8,
-                              fontSize: 13,
-                              color: "#059669",
-                            }}
-                          >
-                            ✅ Vé tháng:{" "}
-                            {new Date(v.start_date).toLocaleDateString("vi-VN")} →{" "}
-                            {new Date(v.end_date).toLocaleDateString("vi-VN")}
-                          </div>
-                        )}
+                        <div style={{ display: "flex", marginTop: 8 }}>
+                          {v.monthly_status === "active" && (
+                            <button
+                              onClick={() => setRenewVehicle(v)}
+                              style={{
+                                ...S.primaryBtn,
+                                backgroundColor: "#3F5E4D",
+                                color: "#FFFBF5",
+                                cursor: "pointer",
+                                width: "100%",
+                                borderRadius: 10,
+                                padding: "10px 16px",
+                              }}
+                            >
+                              Gia hạn vé
+                            </button>
+                          )}
 
-                        {v.monthly_status === "pending" && (
-                          <div
-                            style={{
-                              marginTop: 8,
-                              fontSize: 13,
-                              color: "#d97706",
-                            }}
-                          >
-                            ⏳ Đang chờ duyệt
-                          </div>
-                        )}
+                          {v.monthly_status === "pending" && (
+                            <button
+                              disabled
+                              style={{
+                                ...S.primaryBtn,
+                                backgroundColor: "#cbd5e1",
+                                color: "#64748b",
+                                cursor: "not-allowed",
+                                width: "100%",
+                                borderRadius: 10,
+                                padding: "10px 16px",
+                              }}
+                            >
+                              Đang chờ duyệt...
+                            </button>
+                          )}
+
+                          {(v.monthly_status === "expired" || v.monthly_status === "canceled") && (
+                            <button
+                              onClick={() => setRenewVehicle(v)}
+                              disabled={v.status !== "active"}
+                              style={{
+                                ...S.primaryBtn,
+                                backgroundColor: v.status !== "active" ? "#cbd5e1" : "#CD5C5C",
+                                cursor: v.status !== "active" ? "not-allowed" : "pointer",
+                                width: "100%",
+                                borderRadius: 10,
+                                padding: "10px 16px",
+                              }}
+                            >
+                              Gia hạn vé tháng mới
+                            </button>
+                          )}
+
+                          {!v.monthly_status && (
+                            <button
+                              onClick={() => handleRegisterMonthly(v.plate_number)}
+                              disabled={v.status !== "active"}
+                              style={{
+                                ...S.primaryBtn,
+                                backgroundColor: v.status !== "active" ? "#cbd5e1" : "#3F5E4D",
+                                cursor: v.status !== "active" ? "not-allowed" : "pointer",
+                                width: "100%",
+                                borderRadius: 10,
+                                padding: "10px 16px",
+                              }}
+                            >
+                              Đăng ký vé tháng
+                            </button>
+                          )}
+                        </div>
                       </div>
-
-                      {v.monthly_status === "active" && (
-                        <button
-                          onClick={() => setRenewVehicle(v)}
-                          style={{
-                            ...S.primaryBtn,
-                            backgroundColor: "#10b981",
-                            color: "#fff",
-                            cursor: "pointer",
-                          }}
-                        >
-                          Gia hạn vé
-                        </button>
-                      )}
-
-                      {v.monthly_status === "pending" && null}
-
-                      {(v.monthly_status === "expired" ||
-                        v.monthly_status === "canceled") && (
-                          <button
-                            onClick={() => setRenewVehicle(v)}
-                            disabled={v.status !== "active"}
-                            style={{
-                              ...S.primaryBtn,
-                              backgroundColor:
-                                v.status !== "active" ? "#cbd5e1" : "#ef4444",
-                              cursor:
-                                v.status !== "active" ? "not-allowed" : "pointer",
-                            }}
-                            title={
-                              v.status !== "active"
-                                ? "Cần được Admin duyệt xe trước khi gia hạn"
-                                : ""
-                            }
-                          >
-                            Gia hạn vé
-                          </button>
-                        )}
-
-                      {!v.monthly_status && (
-                        <button
-                          onClick={() => handleRegisterMonthly(v.plate_number)}
-                          disabled={v.status !== "active"}
-                          style={{
-                            ...S.primaryBtn,
-                            backgroundColor:
-                              v.status !== "active" ? "#cbd5e1" : "#3b82f6",
-                            cursor:
-                              v.status !== "active" ? "not-allowed" : "pointer",
-                          }}
-                          title={
-                            v.status !== "active"
-                              ? "Cần được Admin duyệt xe trước khi đăng ký vé tháng"
-                              : ""
-                          }
-                        >
-                          Đăng ký vé tháng
-                        </button>
-                      )}
-                    </div>
-                  ))
+                    ))}
+                  </div>
                 )}
               </div>
             )}
@@ -1347,20 +2339,20 @@ const ResidentDashboard = () => {
         >
           <div
             style={{
-              backgroundColor: "#fff",
+              backgroundColor: "#FFFBF5",
               borderRadius: 16,
               width: 500,
               maxHeight: "90vh",
               overflow: "auto",
               boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)",
-              fontFamily: "'Segoe UI', -apple-system, sans-serif",
+              fontFamily: "'Outfit', sans-serif",
             }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
             <div
               style={{
-                backgroundColor: "#1a73e8",
+                backgroundColor: "#3F5E4D",
                 padding: "20px 24px",
                 borderRadius: "16px 16px 0 0",
                 display: "flex",
@@ -1512,8 +2504,8 @@ const ResidentDashboard = () => {
                   style={{
                     flex: 1,
                     padding: "12px 20px",
-                    backgroundColor: "#1a73e8",
-                    color: "#fff",
+                    backgroundColor: "#3F5E4D",
+                    color: "#FFFBF5",
                     border: "none",
                     borderRadius: 8,
                     fontSize: 14,
@@ -1521,8 +2513,8 @@ const ResidentDashboard = () => {
                     cursor: "pointer",
                     transition: "background-color 0.2s",
                   }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#1557b0"}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#1a73e8"}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#2e4639"}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#3F5E4D"}
                 >
                   ✅ Tôi đã chuyển khoản, Gửi yêu cầu
                 </button>
@@ -1546,6 +2538,90 @@ const ResidentDashboard = () => {
           </div>
         </div>
       )}
+      {showMapModal && renderMapModal()}
+      {showLogoutConfirm && (
+        <div style={{
+          position: "fixed",
+          top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: "rgba(45, 51, 39, 0.6)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 2000,
+          backdropFilter: "blur(4px)"
+        }}>
+          <div style={{
+            backgroundColor: "#FFFBF5",
+            borderRadius: 20,
+            width: "90%",
+            maxWidth: 400,
+            padding: 24,
+            boxShadow: "0 20px 45px rgba(0,0,0,0.15)",
+            fontFamily: "'Outfit', sans-serif",
+            textAlign: "center"
+          }}>
+            <div style={{
+              width: 56,
+              height: 56,
+              borderRadius: "50%",
+              backgroundColor: "rgba(205, 92, 92, 0.1)",
+              color: "#CD5C5C",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 28,
+              margin: "0 auto 16px"
+            }}>
+              <span className="material-symbols-rounded" style={{ fontSize: 32 }}>logout</span>
+            </div>
+            <h3 style={{ margin: "0 0 8px 0", color: "#2D3327", fontSize: 18, fontWeight: "800" }}>ĐĂNG XUẤT HỆ THỐNG</h3>
+            <p style={{ margin: "0 0 24px 0", color: "#64748b", fontSize: 14, lineHeight: "20px" }}>
+              Bạn có chắc chắn muốn đăng xuất khỏi hệ thống quản lý bãi đỗ xe Vinhomes?
+            </p>
+            <div style={{ display: "flex", gap: 12 }}>
+              <button
+                onClick={() => {
+                  setShowLogoutConfirm(false);
+                  logout();
+                  navigate("/login");
+                }}
+                style={{
+                  flex: 1,
+                  padding: "10px 16px",
+                  backgroundColor: "#CD5C5C",
+                  color: "#FFFBF5",
+                  border: "none",
+                  borderRadius: 10,
+                  fontSize: 14,
+                  fontWeight: "700",
+                  cursor: "pointer",
+                  transition: "background-color 0.2s"
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#b04f4f"}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#CD5C5C"}
+              >
+                Đăng xuất
+              </button>
+              <button
+                onClick={() => setShowLogoutConfirm(false)}
+                style={{
+                  flex: 1,
+                  padding: "10px 16px",
+                  backgroundColor: "#F1ECE4",
+                  color: "#5F504B",
+                  border: "1px solid #E4DDD3",
+                  borderRadius: 10,
+                  fontSize: 14,
+                  fontWeight: "700",
+                  cursor: "pointer"
+                }}
+              >
+                Hủy
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };
@@ -1554,67 +2630,76 @@ const S = {
   container: {
     display: "flex",
     minHeight: "100vh",
-    fontFamily: "'Segoe UI', -apple-system, sans-serif",
-    backgroundColor: "#f8f9fa",
+    fontFamily: "'Outfit', -apple-system, sans-serif",
+    backgroundColor: "#FAF8F5", // Warm Cream
   },
   sidebar: {
     width: 256,
-    backgroundColor: "#fff",
-    borderRight: "1px solid #e0e0e0",
+    backgroundColor: "#9E826C", // Warm Oak Wood
+    borderRight: "1px solid rgba(255, 255, 255, 0.1)",
     display: "flex",
     flexDirection: "column",
     flexShrink: 0,
   },
   sidebarHeader: {
-    padding: "24px 20px",
-    borderBottom: "1px solid #e0e0e0",
+    padding: "24px 20px 20px",
+    borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
   },
   logoIcon: {
-    width: 36,
-    height: 36,
-    backgroundColor: "#1a73e8",
-    borderRadius: 8,
+    width: 38,
+    height: 38,
+    backgroundColor: "#FFFBF5",
+    borderRadius: 12,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "700",
+    color: "#3F5E4D",
+    fontSize: 20,
+    fontWeight: "800",
+    boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
   },
   menuLabel: {
-    padding: "4px 20px 8px",
+    padding: "16px 20px 8px",
     fontSize: 11,
     fontWeight: "700",
-    color: "#5f6368",
-    letterSpacing: "0.5px",
+    color: "#FFFBF5",
+    opacity: 0.65,
+    letterSpacing: "1.2px",
     textTransform: "uppercase",
   },
   menuItem: {
-    padding: "10px 20px",
-    color: "#3c4043",
+    padding: "12px 20px",
+    color: "#FFFBF5",
+    opacity: 0.85,
     cursor: "pointer",
     fontSize: 14,
     fontWeight: "500",
-    borderRadius: 0,
-    transition: "background 0.15s",
+    borderRadius: 12,
+    transition: "all 0.2s ease-in-out",
+    margin: "0 12px 4px",
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
   },
   menuActive: {
-    backgroundColor: "#e8f0fe",
-    color: "#1a73e8",
+    backgroundColor: "#3F5E4D", // Forest Green
+    color: "#FFFBF5",
     fontWeight: "600",
+    opacity: 1,
+    boxShadow: "0 4px 16px rgba(63, 94, 77, 0.25)",
   },
   menuHover: {
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
   },
   sidebarFooter: {
     padding: "16px 20px",
-    borderTop: "1px solid #e0e0e0",
+    borderTop: "1px solid rgba(255, 255, 255, 0.1)",
   },
   sidebarAvatar: {
     width: 36,
     height: 36,
-    backgroundColor: "#e8f0fe",
-    color: "#1a73e8",
+    backgroundColor: "#FFFBF5",
+    color: "#9E826C",
     borderRadius: "50%",
     display: "flex",
     alignItems: "center",
@@ -1622,13 +2707,17 @@ const S = {
     fontSize: 15,
     fontWeight: "700",
     flexShrink: 0,
+    boxShadow: "0 4px 10px rgba(0,0,0,0.05)",
   },
   logoutBtn: {
     fontSize: 13,
-    color: "#d93025",
+    color: "#FFD1D1",
     cursor: "pointer",
-    fontWeight: "500",
+    fontWeight: "600",
     paddingTop: 4,
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
   },
   main: {
     flex: 1,
@@ -1637,9 +2726,9 @@ const S = {
     overflow: "auto",
   },
   topHeader: {
-    height: 56,
-    backgroundColor: "#fff",
-    borderBottom: "1px solid #e0e0e0",
+    height: 64,
+    backgroundColor: "#FFFBF5",
+    borderBottom: "1px solid rgba(139, 115, 85, 0.1)",
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
@@ -1649,14 +2738,15 @@ const S = {
   avatar: {
     width: 36,
     height: 36,
-    backgroundColor: "#e8f0fe",
+    backgroundColor: "#3F5E4D",
     borderRadius: "50%",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     fontSize: 15,
     fontWeight: "700",
-    color: "#1a73e8",
+    color: "#FFFBF5",
+    boxShadow: "0 4px 10px rgba(63, 94, 77, 0.15)",
   },
   content: {
     flex: 1,
@@ -1664,19 +2754,21 @@ const S = {
   },
   toast: {
     padding: "12px 20px",
-    borderRadius: 8,
-    margin: "0 24px",
+    borderRadius: 12,
+    margin: "0 24px 20px",
     fontWeight: "600",
     display: "flex",
     alignItems: "center",
     gap: 10,
+    boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
   },
   formCard: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
+    backgroundColor: "#FFFBF5",
+    borderRadius: 20,
     padding: 24,
-    border: "1px solid #e2e8f0",
-    boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+    border: "1px solid rgba(139, 115, 85, 0.08)",
+    boxShadow: "0 8px 30px rgba(139, 115, 85, 0.04)",
+    marginBottom: 24,
   },
   formRow: {
     display: "flex",
@@ -1689,47 +2781,53 @@ const S = {
   },
   label: {
     display: "block",
-    fontSize: 13,
-    fontWeight: "600",
+    fontSize: 12,
+    fontWeight: "700",
     color: "#64748b",
     marginBottom: 8,
     textTransform: "uppercase",
-    letterSpacing: "0.5px",
+    letterSpacing: "1px",
   },
   input: {
     width: "100%",
     padding: "12px 14px",
-    border: "2px solid #e2e8f0",
-    borderRadius: 8,
+    border: "2px solid #EAE5D9",
+    borderRadius: 10,
     fontSize: 14,
     boxSizing: "border-box",
     outline: "none",
-    backgroundColor: "#f8fafc",
+    backgroundColor: "#FFFBF5",
+    color: "#2D3327",
+    fontFamily: "'Outfit', sans-serif",
+    transition: "all 0.2s",
   },
   primaryBtn: {
     padding: "10px 20px",
-    backgroundColor: "#1a73e8",
-    color: "#fff",
+    backgroundColor: "#3F5E4D", // Forest Green
+    color: "#FFFBF5",
     border: "none",
-    borderRadius: 8,
+    borderRadius: 10,
     fontSize: 14,
     fontWeight: "600",
     cursor: "pointer",
+    boxShadow: "0 4px 12px rgba(63, 94, 77, 0.15)",
+    transition: "all 0.2s",
   },
   cancelBtn: {
     padding: "10px 20px",
-    backgroundColor: "#f1f5f9",
-    color: "#64748b",
-    border: "1px solid #e2e8f0",
-    borderRadius: 8,
+    backgroundColor: "#F1ECE4",
+    color: "#5F504B",
+    border: "1px solid #E4DDD3",
+    borderRadius: 10,
     fontSize: 14,
     fontWeight: "600",
     cursor: "pointer",
+    transition: "all 0.2s",
   },
   smallBtn: {
     padding: "6px 12px",
-    backgroundColor: "#1a73e8",
-    color: "#fff",
+    backgroundColor: "#3F5E4D",
+    color: "#FFFBF5",
     border: "none",
     borderRadius: 6,
     fontSize: 12,
@@ -1737,61 +2835,69 @@ const S = {
     cursor: "pointer",
   },
   tableWrap: {
-    borderRadius: 12,
+    borderRadius: 20,
     overflow: "hidden",
-    border: "1px solid #e2e8f0",
+    border: "1px solid rgba(139, 115, 85, 0.08)",
+    boxShadow: "0 8px 30px rgba(139, 115, 85, 0.04)",
   },
   tHeader: {
     display: "flex",
-    backgroundColor: "#0f172a",
-    color: "#fff",
-    padding: "14px 16px",
+    backgroundColor: "#EAE5D9", // Warm light grey beige
+    color: "#2D3327",
+    padding: "16px 20px",
     fontSize: 13,
     fontWeight: "700",
+    letterSpacing: "0.5px",
+    textTransform: "uppercase",
   },
   tRow: {
     display: "flex",
-    padding: "14px 16px",
-    borderBottom: "1px solid #e2e8f0",
+    padding: "16px 20px",
+    borderBottom: "1px solid #F1ECE4",
     fontSize: 14,
-    color: "#0f172a",
-    backgroundColor: "#fff",
+    color: "#2D3327",
+    backgroundColor: "#FFFBF5",
+    alignItems: "center",
   },
   tCell: {
     flex: 1,
     wordBreak: "break-word",
   },
   badge: {
-    padding: "4px 10px",
-    borderRadius: 999,
+    padding: "6px 12px",
+    borderRadius: 8,
     fontSize: 12,
-    fontWeight: "600",
+    fontWeight: "700",
   },
   empty: {
     padding: 48,
     textAlign: "center",
     color: "#64748b",
     fontSize: 14,
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    border: "1px solid #e2e8f0",
+    backgroundColor: "#FFFBF5",
+    borderRadius: 20,
+    border: "1px solid rgba(139, 115, 85, 0.08)",
+    boxShadow: "0 8px 30px rgba(139, 115, 85, 0.04)",
   },
   infoBox: {
-    backgroundColor: "#eef2ff",
+    backgroundColor: "#EFF6FF",
     padding: 16,
     borderRadius: 12,
-    border: "1px solid #c7d2fe",
+    border: "1px solid #BFDBFE",
+    color: "#1E3A8A",
     marginBottom: 20,
+    fontSize: 14,
+    lineHeight: "20px",
   },
   vehicleCard: {
     display: "flex",
     alignItems: "center",
-    padding: 20,
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    border: "1px solid #e2e8f0",
-    marginBottom: 12,
-    boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+    padding: 24,
+    backgroundColor: "#FFFBF5",
+    borderRadius: 20,
+    border: "1px solid rgba(139, 115, 85, 0.08)",
+    marginBottom: 16,
+    boxShadow: "0 8px 30px rgba(139, 115, 85, 0.04)",
   },
 };
 
