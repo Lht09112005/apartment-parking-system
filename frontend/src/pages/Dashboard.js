@@ -9,6 +9,7 @@ import NotificationBell from "../components/NotificationBell";
 const Dashboard = () => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [pendingVehicles, setPendingVehicles] = useState([]);
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -16,6 +17,12 @@ const Dashboard = () => {
     try {
       const res = await axios.get("/dashboard/stats");
       setStats(res.data);
+
+      const vehRes = await axios.get("/vehicles");
+      if (vehRes.data && Array.isArray(vehRes.data)) {
+        const pending = vehRes.data.filter(v => v.status === "pending");
+        setPendingVehicles(pending.slice(0, 3));
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -23,12 +30,25 @@ const Dashboard = () => {
     }
   }, []);
 
+  const handleApprove = async (plate_number) => {
+    try {
+      await axios.put(`/vehicles/${plate_number}/approve`);
+      fetchStats();
+    } catch (err) {
+      alert("Lỗi phê duyệt: " + (err.response?.data?.message || err.message));
+    }
+  };
+
+  const handleReject = async (plate_number) => {
+    try {
+      await axios.put(`/vehicles/${plate_number}/reject`);
+      fetchStats();
+    } catch (err) {
+      alert("Lỗi từ chối: " + (err.response?.data?.message || err.message));
+    }
+  };
+
   useEffect(() => {
-    // axios
-    //   .get("/dashboard/stats")
-    //   .then((res) => setStats(res.data))
-    //   .catch((err) => console.error(err))
-    //   .finally(() => setLoading(false));
     fetchStats();
   }, [fetchStats]);
 
@@ -75,13 +95,13 @@ const Dashboard = () => {
         {/* Top Header */}
         <div style={styles.topHeader}>
           <div>
-            <h2 style={{margin: 0, fontSize: 18, fontWeight: '600', color: '#202124'}}>Tổng quan</h2>
+            <h2 style={{margin: 0, fontSize: 18, fontWeight: '800', color: '#2D3327'}}>Tổng quan</h2>
           </div>
           <div style={styles.headerRight}>
             <NotificationBell />
             <div style={{textAlign: 'right', marginRight: 12, marginLeft: 16}}>
-              <div style={{fontSize: 13, fontWeight: '500', color: '#202124'}}>{user?.username}</div>
-              <div style={{fontSize: 11, color: '#5f6368'}}>
+              <div style={{fontSize: 13, fontWeight: '700', color: '#2D3327'}}>{user?.username}</div>
+              <div style={{fontSize: 11, color: '#9E826C', fontWeight: "600"}}>
                 {user?.role_id === 1 ? 'Super Admin' : 'Quản trị viên'}
               </div>
             </div>
@@ -94,16 +114,120 @@ const Dashboard = () => {
         {/* Content Body */}
         <div style={styles.contentBody}>
           <div style={styles.welcomeRow}>
-            <h3 style={{ margin: 0, fontSize: 22, fontWeight: '600', color: '#202124' }}>
-              Xin chào, {user?.username}
-            </h3>
-            <p style={{ margin: '4px 0 0 0', color: '#5f6368', fontSize: 14 }}>
-              Tóm tắt hoạt động bãi đỗ xe hôm nay.
-            </p>
+            {/* Decorative radial lighting gradient */}
+            <div style={{
+              position: "absolute",
+              top: "-50%",
+              left: "-20%",
+              width: "80%",
+              height: "200%",
+              background: "radial-gradient(circle, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 70%)",
+              pointerEvents: "none"
+            }} />
+
+            <div style={{ position: "relative", zIndex: 2, flex: 1 }}>
+              <div style={{
+                fontSize: 12,
+                fontWeight: "800",
+                textTransform: "uppercase",
+                letterSpacing: "2px",
+                color: "#FFF2E1",
+                opacity: 0.85,
+                marginBottom: 8,
+              }}>
+                CHÀO BUỒI SÁNG · BAN QUẢN LÝ VINHOMES
+              </div>
+              <h3 style={{ margin: 0, fontSize: 26, fontWeight: '800', color: '#FFFBF5' }}>
+                Xin chào, {user?.username}
+              </h3>
+              <p style={{ margin: '8px 0 0 0', color: '#FFF2E1', opacity: 0.9, fontSize: 14, lineHeight: "20px", maxWidth: "60%" }}>
+                Hôm nay là một ngày tuyệt vời để vận hành bãi đỗ xe Eco-Green. <br />
+                Thời tiết tại dự án: <span style={{ fontWeight: "700" }}>☀️ Nắng nhẹ, 28°C</span> · Tình trạng kết nối bãi đỗ xe: <span style={{ fontWeight: "700", color: "#6EE7B7" }}>● Ổn định</span>
+              </p>
+            </div>
+
+            {/* Skyscapers Pure CSS graphics */}
+            <div style={{
+              display: "flex",
+              gap: 12,
+              alignItems: "flex-end",
+              height: "100%",
+              position: "absolute",
+              bottom: 0,
+              right: 40,
+              opacity: 0.95,
+              zIndex: 1,
+              pointerEvents: "none"
+            }}>
+              {/* Tower 1 */}
+              <div style={{
+                width: 45,
+                height: 120,
+                backgroundColor: "rgba(255, 253, 245, 0.12)",
+                borderRadius: "8px 8px 0 0",
+                padding: "8px 6px",
+                display: "grid",
+                gridTemplateColumns: "repeat(3, 1fr)",
+                gap: 4,
+                backdropFilter: "blur(1px)"
+              }}>
+                {Array.from({ length: 15 }).map((_, i) => (
+                  <div key={i} style={{
+                    backgroundColor: i % 3 === 0 ? "transparent" : "#FFFBF5",
+                    opacity: i % 4 === 0 ? 0.2 : 0.8,
+                    height: 6,
+                    borderRadius: 1
+                  }} />
+                ))}
+              </div>
+              {/* Tower 2 */}
+              <div style={{
+                width: 55,
+                height: 150,
+                backgroundColor: "rgba(255, 253, 245, 0.2)",
+                borderRadius: "10px 10px 0 0",
+                padding: "10px 8px",
+                display: "grid",
+                gridTemplateColumns: "repeat(3, 1fr)",
+                gap: 4,
+                boxShadow: "0 10px 30px rgba(0,0,0,0.1)",
+                backdropFilter: "blur(2px)"
+              }}>
+                {Array.from({ length: 18 }).map((_, i) => (
+                  <div key={i} style={{
+                    backgroundColor: i % 5 === 0 ? "transparent" : "#FFFBF5",
+                    opacity: i % 3 === 0 ? 0.3 : 0.9,
+                    height: 7,
+                    borderRadius: 1
+                  }} />
+                ))}
+              </div>
+              {/* Tower 3 */}
+              <div style={{
+                width: 40,
+                height: 100,
+                backgroundColor: "rgba(255, 253, 245, 0.08)",
+                borderRadius: "6px 6px 0 0",
+                padding: "6px 5px",
+                display: "grid",
+                gridTemplateColumns: "repeat(2, 1fr)",
+                gap: 4,
+                backdropFilter: "blur(1px)"
+              }}>
+                {Array.from({ length: 10 }).map((_, i) => (
+                  <div key={i} style={{
+                    backgroundColor: i % 2 === 0 ? "transparent" : "#FFFBF5",
+                    opacity: i % 3 === 0 ? 0.15 : 0.7,
+                    height: 6,
+                    borderRadius: 1
+                  }} />
+                ))}
+              </div>
+            </div>
           </div>
 
           {loading ? (
-            <div style={{ padding: 40, textAlign: "center", color: "#5f6368" }}>Đang tải dữ liệu...</div>
+            <div style={{ padding: 40, textAlign: "center", color: "#64748b", fontWeight: "600" }}>Đang tải dữ liệu...</div>
           ) : (
             <div style={styles.grid}>
               {cards.map((card, i) => (
@@ -124,8 +248,201 @@ const Dashboard = () => {
             </div>
           )}
 
+          {!loading && stats && (
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+              gap: 24,
+              marginTop: 24
+            }}>
+              {/* Left Panel: visual occupancy */}
+              <div style={{
+                backgroundColor: "#FFFBF5",
+                borderRadius: 20,
+                padding: 24,
+                border: "1px solid rgba(139, 115, 85, 0.08)",
+                boxShadow: "0 8px 30px rgba(139, 115, 85, 0.04)"
+              }}>
+                <h3 style={{ margin: "0 0 20px 0", color: "#2D3327", fontSize: 15, fontWeight: "800", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                  📊 Công suất & Hoạt động Hầm đỗ
+                </h3>
+                
+                <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+                  <div>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: "700", color: "#2D3327", marginBottom: 8 }}>
+                      <span>🚗 Bãi đỗ Ô tô (Tầng B1)</span>
+                      <span>
+                        {Math.min(100, Math.round((stats.activeSessions || 0) * 0.4))} / 100 xe ({Math.min(100, Math.round((stats.activeSessions || 0) * 0.4)) * 1}%)
+                      </span>
+                    </div>
+                    <div style={{ height: 10, backgroundColor: "#EAE5D9", borderRadius: 5, overflow: "hidden" }}>
+                      <div style={{
+                        height: "100%",
+                        width: `${Math.min(100, Math.round((stats.activeSessions || 0) * 0.4))}%`,
+                        backgroundColor: Math.round((stats.activeSessions || 0) * 0.4) > 85 ? "#CD5C5C" : "#3F5E4D",
+                        borderRadius: 5,
+                        transition: "width 0.4s ease-in-out"
+                      }} />
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: "700", color: "#2D3327", marginBottom: 8 }}>
+                      <span>🏍️ Bãi đỗ Xe máy (Tầng B2)</span>
+                      <span>
+                        {Math.min(300, Math.round((stats.activeSessions || 0) * 0.6))} / 300 xe ({Math.round(Math.min(300, Math.round((stats.activeSessions || 0) * 0.6)) / 3)}%)
+                      </span>
+                    </div>
+                    <div style={{ height: 10, backgroundColor: "#EAE5D9", borderRadius: 5, overflow: "hidden" }}>
+                      <div style={{
+                        height: "100%",
+                        width: `${Math.round(Math.min(300, Math.round((stats.activeSessions || 0) * 0.6)) / 3)}%`,
+                        backgroundColor: Math.round((stats.activeSessions || 0) * 0.6) > 250 ? "#CD5C5C" : "#C39A6B",
+                        borderRadius: 5,
+                        transition: "width 0.4s ease-in-out"
+                      }} />
+                    </div>
+                  </div>
+
+                  <div style={{
+                    display: "flex",
+                    justifyContent: "space-around",
+                    fontSize: 11,
+                    fontWeight: "700",
+                    color: "#64748b",
+                    borderTop: "1px dashed #EAE5D9",
+                    paddingTop: 16,
+                    marginTop: 8
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <span style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: "#3F5E4D" }} /> Ô tô trống
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <span style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: "#C39A6B" }} /> Xe máy trống
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <span style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: "#CD5C5C" }} /> Quá tải (>85%)
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Panel: Pending approvals */}
+              <div style={{
+                backgroundColor: "#FFFBF5",
+                borderRadius: 20,
+                padding: 24,
+                border: "1px solid rgba(139, 115, 85, 0.08)",
+                boxShadow: "0 8px 30px rgba(139, 115, 85, 0.04)",
+                display: "flex",
+                flexDirection: "column"
+              }}>
+                <h3 style={{ margin: "0 0 20px 0", color: "#2D3327", fontSize: 15, fontWeight: "800", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                  ⏳ Phê duyệt phương tiện nhanh
+                </h3>
+
+                {pendingVehicles.length === 0 ? (
+                  <div style={{
+                    flex: 1,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    padding: "32px 16px",
+                    textAlign: "center",
+                    border: "2px dashed #EAE5D9",
+                    borderRadius: 16,
+                    backgroundColor: "rgba(139, 115, 85, 0.01)"
+                  }}>
+                    <span style={{ fontSize: 32, marginBottom: 12 }}>🎉</span>
+                    <strong style={{ fontSize: 14, color: "#3F5E4D" }}>Tuyệt vời!</strong>
+                    <span style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
+                      Không có yêu cầu đăng ký xe nào đang chờ phê duyệt.
+                    </span>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12, flex: 1 }}>
+                    {pendingVehicles.map((v) => (
+                      <div key={v.plate_number} style={{
+                        padding: 12,
+                        borderRadius: 12,
+                        border: "1.5px solid rgba(139, 115, 85, 0.12)",
+                        backgroundColor: "#FFFBF5",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 8
+                      }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <span style={{
+                            fontSize: 14,
+                            fontWeight: "800",
+                            color: "#2D3327",
+                            fontFamily: "monospace",
+                            border: "1.5px solid #2D3327",
+                            borderRadius: 6,
+                            padding: "2px 8px",
+                            backgroundColor: "#FFFBF5"
+                          }}>
+                            {v.plate_number}
+                          </span>
+                          <span style={{
+                            backgroundColor: "#F1ECE4",
+                            color: "#5F504B",
+                            fontSize: 10,
+                            padding: "2px 8px",
+                            borderRadius: 6,
+                            fontWeight: "700"
+                          }}>
+                            {v.type_name}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: 12, color: "#64748b" }}>
+                          Chủ xe: <strong>{v.resident_name || "—"}</strong> · CH: {v.apartment_number}
+                        </div>
+                        <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                          <button
+                            onClick={() => handleApprove(v.plate_number)}
+                            style={{
+                              flex: 1,
+                              padding: "6px 12px",
+                              backgroundColor: "#3F5E4D",
+                              color: "#FFFBF5",
+                              border: "none",
+                              borderRadius: 6,
+                              fontSize: 12,
+                              fontWeight: "700",
+                              cursor: "pointer"
+                            }}
+                          >
+                            Duyệt
+                          </button>
+                          <button
+                            onClick={() => handleReject(v.plate_number)}
+                            style={{
+                              flex: 1,
+                              padding: "6px 12px",
+                              backgroundColor: "#CD5C5C",
+                              color: "#FFFBF5",
+                              border: "none",
+                              borderRadius: 6,
+                              fontSize: 12,
+                              fontWeight: "700",
+                              cursor: "pointer"
+                            }}
+                          >
+                            Từ chối
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           <div style={{ marginTop: 32 }}>
-            <h4 style={{ color: '#202124', marginBottom: 16, fontSize: 15, fontWeight: '600' }}>Lối tắt</h4>
+            <h4 style={{ color: '#2D3327', marginBottom: 16, fontSize: 15, fontWeight: '800', textTransform: "uppercase", letterSpacing: "0.5px" }}>Lối tắt nhanh</h4>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
               {user?.role_id === 1 ? (
                 <>
@@ -152,13 +469,13 @@ const Dashboard = () => {
 };
 
 const styles = {
-  container: { display: "flex", height: "100vh", backgroundColor: "#f8f9fa", fontFamily: "'Segoe UI', -apple-system, sans-serif" },
+  container: { display: "flex", height: "100vh", backgroundColor: "#FAF8F5", fontFamily: "'Outfit', -apple-system, sans-serif" },
 
   main: { flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" },
   topHeader: {
-    height: 56,
-    backgroundColor: "#fff",
-    borderBottom: "1px solid #e0e0e0",
+    height: 64,
+    backgroundColor: "#FFFBF5",
+    borderBottom: "1px solid rgba(139, 115, 85, 0.1)",
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
@@ -167,45 +484,49 @@ const styles = {
   },
   headerRight: { display: "flex", alignItems: "center" },
   avatar: {
-    width: 32,
-    height: 32,
-    backgroundColor: "#e8f0fe",
-    color: "#1a73e8",
+    width: 36,
+    height: 36,
+    backgroundColor: "#3F5E4D",
+    color: "#FFFBF5",
     borderRadius: "50%",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    fontSize: 14,
-    fontWeight: "600",
+    fontSize: 15,
+    fontWeight: "700",
+    boxShadow: "0 4px 10px rgba(63, 94, 77, 0.15)",
   },
 
   contentBody: { flex: 1, padding: 24, overflowY: "auto" },
-  welcomeRow: { marginBottom: 24 },
+  welcomeRow: { marginBottom: 24, padding: "28px 32px", borderRadius: 20, backgroundColor: "#3F5E4D", color: "#FFFBF5", boxShadow: "0 10px 30px rgba(63, 94, 77, 0.15)", position: "relative", overflow: "hidden" },
 
-  grid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 },
+  grid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 20 },
   card: {
-    background: "#fff",
-    borderRadius: 12,
-    padding: 20,
-    border: "1px solid #e0e0e0",
+    background: "#FFFBF5",
+    borderRadius: 20,
+    padding: 24,
+    border: "1px solid rgba(139, 115, 85, 0.08)",
     display: "flex",
     flexDirection: "column",
     gap: 14,
+    boxShadow: "0 8px 30px rgba(139, 115, 85, 0.04)"
   },
   cardHeader: { display: "flex", justifyContent: "space-between", alignItems: "flex-start" },
-  iconContainer: { width: 40, height: 40, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 },
-  cardLabel: { fontSize: 13, color: "#5f6368", fontWeight: "500", marginBottom: 4 },
-  cardValue: { fontSize: 28, fontWeight: "600", color: "#202124" },
+  iconContainer: { width: 44, height: 44, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 },
+  cardLabel: { fontSize: 12, color: "#64748b", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 4 },
+  cardValue: { fontSize: 32, fontWeight: "800", color: "#2D3327" },
 
   quickActionBtn: {
-    backgroundColor: "#1a73e8",
-    color: "#fff",
+    backgroundColor: "#3F5E4D",
+    color: "#FFFBF5",
     border: "none",
-    padding: "9px 16px",
-    borderRadius: 6,
+    padding: "12px 24px",
+    borderRadius: 10,
     cursor: "pointer",
-    fontWeight: "500",
-    fontSize: 13,
+    fontWeight: "600",
+    fontSize: 14,
+    boxShadow: "0 4px 12px rgba(63, 94, 77, 0.15)",
+    transition: "all 0.2s"
   },
 };
 

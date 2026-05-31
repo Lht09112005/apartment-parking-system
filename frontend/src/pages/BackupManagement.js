@@ -175,28 +175,28 @@ const BackupManagement = () => {
 };
 
 const styles = {
-  container: { display: "flex", height: "100vh", backgroundColor: "#f1f5f9", fontFamily: "sans-serif" },
+  container: { display: "flex", height: "100vh", backgroundColor: "#FAF8F5", fontFamily: "'Outfit', sans-serif" },
   main: { flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" },
-  topHeader: { height: 70, backgroundColor: "#fff", borderBottom: "1px solid #e2e8f0", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 30px", flexShrink: 0 },
+  topHeader: { height: 64, backgroundColor: "#FFFBF5", borderBottom: "1px solid rgba(139, 115, 85, 0.1)", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 24px", flexShrink: 0 },
   headerLeft: { display: "flex", alignItems: "center", gap: 24 },
   headerRight: { display: "flex", alignItems: "center" },
-  avatar: { width: 40, height: 40, backgroundColor: "#e0e7ff", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, marginLeft: 12 },
-  contentBody: { flex: 1, padding: 30, overflowY: "auto" },
+  avatar: { width: 36, height: 36, backgroundColor: "#3F5E4D", color: "#FFFBF5", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: "700", boxShadow: "0 4px 10px rgba(63, 94, 77, 0.15)", marginLeft: 12 },
+  contentBody: { flex: 1, padding: 24, overflowY: "auto" },
   
-  toast: { padding: "12px 20px", borderRadius: 8, marginBottom: 20, fontWeight: "600", display: "flex", alignItems: "center", gap: 10 },
+  toast: { padding: "14px 24px", borderRadius: 12, marginBottom: 20, fontWeight: "600", display: "flex", alignItems: "center", gap: 10, boxShadow: "0 8px 30px rgba(139, 115, 85, 0.04)" },
   
-  primaryBtn: { backgroundColor: '#3b82f6', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: 8, fontSize: 14, fontWeight: '600', cursor: 'pointer' },
-  restoreBtn: { backgroundColor: '#fef3c7', color: '#d97706', border: '1px solid #fde68a', padding: '6px 12px', borderRadius: 6, fontSize: 13, fontWeight: '600', cursor: 'pointer' },
-  dangerBtn: { backgroundColor: '#ef4444', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: 8, fontSize: 14, fontWeight: '600', cursor: 'pointer' },
+  primaryBtn: { backgroundColor: '#3F5E4D', color: '#FFFBF5', border: 'none', padding: '12px 24px', borderRadius: 10, fontSize: 14, fontWeight: '700', cursor: 'pointer', boxShadow: "0 4px 12px rgba(63, 94, 77, 0.15)" },
+  restoreBtn: { backgroundColor: '#F1ECE4', color: '#5F504B', border: '1px solid #E4DDD3', padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: '600', cursor: 'pointer' },
+  dangerBtn: { backgroundColor: '#CD5C5C', color: '#FFFBF5', border: 'none', padding: '12px 24px', borderRadius: 10, fontSize: 14, fontWeight: '700', cursor: 'pointer', boxShadow: "0 4px 12px rgba(205, 92, 92, 0.15)" },
   
-  tableCard: { background: "#fff", borderRadius: "12px", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)", border: "1px solid #e2e8f0", overflow: "hidden" },
+  tableCard: { background: "#fff", borderRadius: 20, boxShadow: "0 8px 30px rgba(139, 115, 85, 0.04)", border: "1px solid rgba(139, 115, 85, 0.08)", overflow: "hidden" },
   table: { width: "100%", borderCollapse: "collapse" },
-  thead: { backgroundColor: "#f8fafc", borderBottom: "1px solid #e2e8f0" },
-  th: { padding: "16px 20px", textAlign: "left", fontWeight: "600", fontSize: 13, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5 },
-  tr: { borderBottom: "1px solid #f1f5f9", transition: "background-color 0.15s", "&:hover": { backgroundColor: "#f8fafc" } },
-  td: { padding: "16px 20px", fontSize: 14, color: "#334155" },
+  thead: { backgroundColor: "#EAE5D9", borderBottom: "1px solid #F1ECE4" },
+  th: { padding: "16px 20px", textAlign: "left", fontWeight: "700", fontSize: 12, color: "#2D3327", textTransform: "uppercase", letterSpacing: 0.5 },
+  tr: { borderBottom: "1px solid #F1ECE4", transition: "background-color 0.15s" },
+  td: { padding: "16px 20px", fontSize: 14, color: "#2D3327" },
   
-  input: { padding: '8px 16px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 14, outline: 'none' },
+  input: { padding: '10px 16px', borderRadius: 10, border: '2px solid #EAE5D9', fontSize: 14, outline: 'none', backgroundColor: "#FFFBF5", color: "#2D3327", fontFamily: "'Outfit', sans-serif" },
 };
 
 export default BackupManagement;

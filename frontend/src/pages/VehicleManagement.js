@@ -473,54 +473,44 @@ const VehicleManagement = () => {
 };
 
 const styles = {
-  container: { display: "flex", height: "100vh", backgroundColor: "#f1f5f9", fontFamily: "sans-serif" },
-  sidebar: { width: 260, backgroundColor: "#0f172a", color: "#fff", display: "flex", flexDirection: "column", flexShrink: 0 },
-  sidebarHeader: { padding: "30px 24px", borderBottom: "1px solid #1e293b" },
-  sidebarTitle: { margin: 0, fontSize: 32, fontWeight: "900", color: "#34d399", letterSpacing: 1 },
-  sidebarSubTitle: { margin: 0, fontSize: 13, color: "#94a3b8", marginTop: 4 },
-  menuItems: { padding: "20px 0", flex: 1 },
-  menuItem: { padding: "14px 24px", color: "#cbd5e1", cursor: "pointer", fontSize: 15, fontWeight: "500", transition: "0.2s" },
-  menuItemActive: { backgroundColor: "#3b82f6", color: "#fff", borderLeft: "4px solid #93c5fd" },
-  sidebarFooter: { padding: "24px", borderTop: "1px solid #1e293b", display: "flex", flexDirection: "column", gap: 16 },
-  emergencyBtn: { backgroundColor: "#1e293b", color: "#34d399", border: "1px solid #34d399", padding: "12px", borderRadius: 6, fontWeight: "bold", cursor: "pointer" },
-  bottomLink: { color: "#94a3b8", fontSize: 14, cursor: "pointer", marginBottom: 8, padding: "8px 0", transition: "color 0.2s" },
+  container: { display: "flex", height: "100vh", backgroundColor: "#FAF8F5", fontFamily: "'Outfit', sans-serif" },
   
   main: { flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" },
-  topHeader: { height: 70, backgroundColor: "#fff", borderBottom: "1px solid #e2e8f0", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 30px", flexShrink: 0 },
+  topHeader: { height: 64, backgroundColor: "#FFFBF5", borderBottom: "1px solid rgba(139, 115, 85, 0.1)", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 24px", flexShrink: 0 },
   headerLeft: { display: "flex", alignItems: "center", gap: 24 },
-  onlineBadge: { display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#059669", fontWeight: "600", backgroundColor: "#ecfdf5", padding: "4px 12px", borderRadius: 20 },
-  onlineDot: { width: 8, height: 8, backgroundColor: "#059669", borderRadius: "50%" },
+  onlineBadge: { display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#3F5E4D", fontWeight: "700", backgroundColor: "#EAE5D9", padding: "4px 12px", borderRadius: 20 },
+  onlineDot: { width: 8, height: 8, backgroundColor: "#3F5E4D", borderRadius: "50%" },
   headerRight: { display: "flex", alignItems: "center" },
-  avatar: { width: 40, height: 40, backgroundColor: "#f1f5f9", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, marginLeft: 12 },
+  avatar: { width: 36, height: 36, backgroundColor: "#3F5E4D", color: "#FFFBF5", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: "700", boxShadow: "0 4px 10px rgba(63, 94, 77, 0.15)", marginLeft: 12 },
   
-  contentBody: { flex: 1, padding: 30, overflowY: "auto" },
+  contentBody: { flex: 1, padding: 24, overflowY: "auto" },
   
   titleRow: { display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 24 },
-  addBtn: { backgroundColor: "#0f172a", color: "#fff", border: "none", padding: "12px 24px", borderRadius: "8px", cursor: "pointer", fontWeight: "bold", fontSize: 14, transition: "0.2s" },
+  addBtn: { backgroundColor: "#3F5E4D", color: "#FFFBF5", border: "none", padding: "12px 24px", borderRadius: 10, cursor: "pointer", fontWeight: "bold", fontSize: 14, boxShadow: "0 4px 12px rgba(63, 94, 77, 0.15)", transition: "all 0.2s" },
   
-  filterLabel: { display: "block", marginBottom: 6, fontWeight: "600", fontSize: 13, color: "#64748b" },
-  toast: { padding: "12px 20px", borderRadius: 8, marginBottom: 20, fontWeight: "600", display: "flex", alignItems: "center", gap: 10, boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)" },
+  filterLabel: { display: "block", marginBottom: 6, fontWeight: "700", fontSize: 12, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.5px" },
+  toast: { padding: "14px 24px", borderRadius: 12, marginBottom: 20, fontWeight: "600", display: "flex", alignItems: "center", gap: 10, boxShadow: "0 8px 30px rgba(139, 115, 85, 0.04)" },
   
-  formCard: { background: "#fff", padding: "30px", borderRadius: "12px", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)", marginBottom: 24, border: "1px solid #e2e8f0" },
+  formCard: { background: "#fff", padding: "30px", borderRadius: 20, boxShadow: "0 8px 30px rgba(139, 115, 85, 0.04)", marginBottom: 24, border: "1px solid rgba(139, 115, 85, 0.08)" },
   formRow: { display: "flex", gap: 24, flexWrap: "wrap" },
   formGroup: { flex: 1, minWidth: 200 },
-  label: { display: "block", marginBottom: 8, fontWeight: "600", fontSize: 13, color: "#475569" },
-  input: { width: "100%", padding: "12px 16px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: 14, boxSizing: "border-box", outline: "none" },
-  select: { width: "100%", padding: "12px 16px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: 14, outline: "none", backgroundColor: "#fff", cursor: "pointer", color: "#475569" },
+  label: { display: "block", marginBottom: 8, fontWeight: "700", fontSize: 12, color: "#64748b", textTransform: "uppercase", letterSpacing: "1px" },
+  input: { width: "100%", padding: "12px 16px", border: "2px solid #EAE5D9", borderRadius: 10, fontSize: 14, boxSizing: "border-box", outline: "none", backgroundColor: "#FFFBF5", color: "#2D3327", fontFamily: "'Outfit', sans-serif" },
+  select: { width: "100%", padding: "12px 16px", border: "2px solid #EAE5D9", borderRadius: 10, fontSize: 14, outline: "none", backgroundColor: "#FFFBF5", cursor: "pointer", color: "#2D3327", fontFamily: "'Outfit', sans-serif" },
   
-  submitBtn: { backgroundColor: "#3b82f6", color: "#fff", border: "none", padding: "12px 24px", borderRadius: "8px", cursor: "pointer", fontWeight: "bold", fontSize: 14 },
-  cancelBtn: { backgroundColor: "#f1f5f9", color: "#475569", border: "none", padding: "12px 24px", borderRadius: "8px", cursor: "pointer", fontWeight: "bold", fontSize: 14, marginLeft: 12 },
+  submitBtn: { backgroundColor: "#3F5E4D", color: "#FFFBF5", border: "none", padding: "12px 24px", borderRadius: 10, cursor: "pointer", fontWeight: "bold", fontSize: 14, boxShadow: "0 4px 12px rgba(63, 94, 77, 0.15)" },
+  cancelBtn: { backgroundColor: "#F1ECE4", color: "#5F504B", border: "1px solid #E4DDD3", padding: "12px 24px", borderRadius: 10, cursor: "pointer", fontWeight: "bold", fontSize: 14, marginLeft: 12 },
 
-  tableCard: { background: "#fff", borderRadius: "12px", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)", border: "1px solid #e2e8f0", overflow: "hidden" },
+  tableCard: { background: "#fff", borderRadius: 20, boxShadow: "0 8px 30px rgba(139, 115, 85, 0.04)", border: "1px solid rgba(139, 115, 85, 0.08)", overflow: "hidden" },
   table: { width: "100%", borderCollapse: "collapse" },
-  thead: { backgroundColor: "#f8fafc", borderBottom: "1px solid #e2e8f0" },
-  th: { padding: "16px 20px", textAlign: "left", fontWeight: "600", fontSize: 13, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5 },
-  tr: { borderBottom: "1px solid #f1f5f9", transition: "background-color 0.15s" },
-  td: { padding: "16px 20px", fontSize: 14, color: "#334155" },
+  thead: { backgroundColor: "#EAE5D9", borderBottom: "1px solid #F1ECE4" },
+  th: { padding: "16px 20px", textAlign: "left", fontWeight: "700", fontSize: 12, color: "#2D3327", textTransform: "uppercase", letterSpacing: 0.5 },
+  tr: { borderBottom: "1px solid #F1ECE4", transition: "background-color 0.15s" },
+  td: { padding: "16px 20px", fontSize: 14, color: "#2D3327" },
   
-  plateBadge: { display: "inline-block", padding: "4px 12px", backgroundColor: "#fff", border: "2px solid #0f172a", borderRadius: "4px", fontWeight: "bold", fontSize: 14, color: "#0f172a" },
-  typeTag: { padding: "4px 10px", backgroundColor: "#f1f5f9", borderRadius: "6px", fontSize: 12, fontWeight: "600", color: "#475569" },
-  actionBtn: { backgroundColor: "transparent", border: "none", color: "#3b82f6", padding: "4px 8px", cursor: "pointer", fontSize: 13, fontWeight: "bold" },
+  plateBadge: { display: "inline-block", padding: "6px 16px", backgroundColor: "#FFFBF5", border: "2px solid #2D3327", borderRadius: "8px", fontWeight: "800", fontSize: 14, color: "#2D3327", fontFamily: "'Outfit', sans-serif", letterSpacing: "0.5px" },
+  typeTag: { padding: "6px 12px", backgroundColor: "#F1ECE4", borderRadius: 8, fontSize: 12, fontWeight: "700", color: "#5F504B" },
+  actionBtn: { backgroundColor: "#F1ECE4", color: "#5F504B", border: "1px solid #E4DDD3", padding: "8px 16px", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: "600", transition: "0.2s" },
 };
 
 export default VehicleManagement;
