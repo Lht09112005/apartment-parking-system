@@ -160,6 +160,16 @@ const ResidentDashboard = () => {
     setIsMobileOpen(false);
   }, [view]);
 
+  useEffect(() => {
+    const handlePopState = (e) => {
+      if (editProfile !== null) {
+        setEditProfile(null);
+      }
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [editProfile]);
+
   const showMsg = (type, text) => {
     setMsg({ type, text });
 
@@ -265,7 +275,7 @@ const ResidentDashboard = () => {
       const r = await axios.put("/resident/profile", editProfile);
 
       showMsg("success", r.data.message);
-      setEditProfile(null);
+      window.history.back(); // Pop the dummy history state
       fetchData();
     } catch (e) {
       showMsg("error", e.response?.data?.message || "Lỗi cập nhật");
@@ -468,7 +478,7 @@ const ResidentDashboard = () => {
               <p style={{ margin: "2px 0 0", fontSize: 13, color: "#64748b" }}>Các phương tiện giao thông đã được phê duyệt</p>
             </div>
             <button
-              onClick={() => setView("vehicles")}
+              onClick={() => navigate("?view=vehicles")}
               style={{
                 backgroundColor: "transparent",
                 border: "none",
@@ -498,7 +508,7 @@ const ResidentDashboard = () => {
               <p style={{ margin: "0 0 16px", fontSize: 14 }}>Bạn chưa đăng ký phương tiện nào trong hệ thống.</p>
               <button
                 onClick={() => {
-                  setView("vehicles");
+                  navigate("?view=vehicles");
                   setShowVehicleForm(true);
                 }}
                 style={S.primaryBtn}
@@ -1327,7 +1337,7 @@ const ResidentDashboard = () => {
               return (
                 <div
                   key={m.key}
-                  onClick={() => setView(m.key)}
+                  onClick={() => navigate("?view=" + m.key)}
                   onMouseEnter={() => setHoveredIndex(idx)}
                   onMouseLeave={() => setHoveredIndex(null)}
                   style={{
@@ -2120,58 +2130,43 @@ const ResidentDashboard = () => {
             )}
 
             {view === "profile" && (
-              <div>
-                <h3 style={{ margin: "0 0 20px", color: "#0f172a" }}>
-                  Thông tin cá nhân
-                </h3>
+              <div style={{ animation: "fadeIn 0.4s ease-out" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+                  <h3 style={{ margin: 0, color: "#2d3748", fontSize: "24px", fontWeight: "700" }}>
+                    Thẻ Cư Dân Điện Tử
+                  </h3>
+                </div>
 
                 {!profile ? (
                   <div style={S.empty}>Đang tải...</div>
                 ) : editProfile ? (
-                  <div style={S.formCard}>
+                  <div style={{...S.formCard, background: "#FFFBF5", border: "1px solid #e2e8f0", borderRadius: "20px", padding: "30px", boxShadow: "0 10px 25px rgba(0,0,0,0.02)"}}>
+                    <h4 style={{ margin: "0 0 20px", color: "#3F5E4D", fontSize: "18px", borderBottom: "2px solid #e2e8f0", paddingBottom: "10px" }}>Cập nhật liên hệ</h4>
                     <div style={S.formRow}>
                       <div style={S.formGroup}>
-                        <label style={S.label}>Họ tên</label>
+                        <label style={{...S.label, color: "#64748b"}}>Họ tên (Mặc định)</label>
                         <input
-                          style={{ ...S.input, backgroundColor: "#e2e8f0" }}
+                          style={{ ...S.input, backgroundColor: "#f1f5f9", color: "#94a3b8", cursor: "not-allowed", border: "1px solid #e2e8f0" }}
                           value={profile.name}
                           readOnly
                         />
-                        <div
-                          style={{
-                            fontSize: 11,
-                            color: "#94a3b8",
-                            marginTop: 4,
-                          }}
-                        >
-                          Liên hệ Admin để thay đổi
-                        </div>
                       </div>
 
                       <div style={S.formGroup}>
-                        <label style={S.label}>Căn hộ</label>
+                        <label style={{...S.label, color: "#64748b"}}>Căn hộ (Mặc định)</label>
                         <input
-                          style={{ ...S.input, backgroundColor: "#e2e8f0" }}
+                          style={{ ...S.input, backgroundColor: "#f1f5f9", color: "#94a3b8", cursor: "not-allowed", border: "1px solid #e2e8f0" }}
                           value={profile.apartment_number}
                           readOnly
                         />
-                        <div
-                          style={{
-                            fontSize: 11,
-                            color: "#94a3b8",
-                            marginTop: 4,
-                          }}
-                        >
-                          Liên hệ Admin để thay đổi
-                        </div>
                       </div>
                     </div>
 
-                    <div style={{ ...S.formRow, marginTop: 12 }}>
+                    <div style={{ ...S.formRow, marginTop: 20 }}>
                       <div style={S.formGroup}>
-                        <label style={S.label}>Số điện thoại</label>
+                        <label style={{...S.label, color: "#2d3748", fontWeight: "600"}}>Số điện thoại mới</label>
                         <input
-                          style={S.input}
+                          style={{...S.input, border: "2px solid #e2e8f0", transition: "all 0.3s"}}
                           value={editProfile.phone}
                           onChange={(e) =>
                             setEditProfile({
@@ -2179,13 +2174,14 @@ const ResidentDashboard = () => {
                               phone: e.target.value,
                             })
                           }
+                          placeholder="Nhập số điện thoại..."
                         />
                       </div>
 
                       <div style={S.formGroup}>
-                        <label style={S.label}>Email</label>
+                        <label style={{...S.label, color: "#2d3748", fontWeight: "600"}}>Email mới</label>
                         <input
-                          style={S.input}
+                          style={{...S.input, border: "2px solid #e2e8f0", transition: "all 0.3s"}}
                           value={editProfile.email}
                           onChange={(e) =>
                             setEditProfile({
@@ -2193,126 +2189,123 @@ const ResidentDashboard = () => {
                               email: e.target.value,
                             })
                           }
+                          placeholder="Nhập email..."
                         />
                       </div>
                     </div>
 
-                    <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-                      <button onClick={handleUpdateProfile} style={S.primaryBtn}>
-                        Lưu thay đổi
+                    <div style={{ display: "flex", gap: 12, marginTop: 30 }}>
+                      <button onClick={handleUpdateProfile} style={{...S.primaryBtn, background: "#3F5E4D", color: "#FFFBF5", padding: "12px 24px", borderRadius: "12px", fontWeight: "600", border: "none", cursor: "pointer"}}>
+                        <span style={{marginRight: 8}}>💾</span> Lưu thay đổi
                       </button>
 
                       <button
-                        onClick={() => setEditProfile(null)}
-                        style={S.cancelBtn}
+                        onClick={() => window.history.back()}
+                        style={{...S.cancelBtn, background: "#f1f5f9", color: "#475569", padding: "12px 24px", borderRadius: "12px", fontWeight: "600", border: "none", cursor: "pointer"}}
                       >
-                        Hủy
+                        Hủy bỏ
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <div style={S.formCard}>
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "1fr 1fr",
-                        gap: 20,
-                      }}
-                    >
-                      <div>
-                        <div style={S.label}>Họ tên</div>
-                        <div
-                          style={{
-                            fontSize: 16,
-                            fontWeight: "600",
-                            color: "#0f172a",
-                          }}
-                        >
-                          {profile.name}
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "24px" }}>
+                    {/* Left Column: ID Card */}
+                    <div style={{ background: "linear-gradient(135deg, #3F5E4D 0%, #2a4034 100%)", borderRadius: "24px", padding: "30px", color: "#FFFBF5", position: "relative", overflow: "hidden", boxShadow: "0 20px 40px rgba(63, 94, 77, 0.2)" }}>
+                      <div style={{ position: "absolute", top: -50, right: -50, width: 200, height: 200, background: "rgba(255, 255, 255, 0.05)", borderRadius: "50%" }}></div>
+                      <div style={{ position: "absolute", bottom: -30, left: -30, width: 100, height: 100, background: "rgba(255, 255, 255, 0.05)", borderRadius: "50%" }}></div>
+                      
+                      <div style={{ display: "flex", alignItems: "center", marginBottom: "30px", position: "relative", zIndex: 1 }}>
+                        <div style={{ width: "80px", height: "80px", borderRadius: "50%", background: "#FFFBF5", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "36px", boxShadow: "0 10px 20px rgba(0,0,0,0.1)", border: "4px solid rgba(255, 255, 255, 0.2)", color: "#3F5E4D" }}>
+                          👤
+                        </div>
+                        <div style={{ marginLeft: "20px" }}>
+                          <div style={{ fontSize: "14px", opacity: 0.8, textTransform: "uppercase", letterSpacing: "1px", marginBottom: "4px" }}>Cư Dân</div>
+                          <div style={{ fontSize: "24px", fontWeight: "700", letterSpacing: "0.5px" }}>{profile.name}</div>
                         </div>
                       </div>
 
-                      <div>
-                        <div style={S.label}>Căn hộ</div>
-                        <div
-                          style={{
-                            fontSize: 16,
-                            fontWeight: "600",
-                            color: "#0f172a",
-                          }}
-                        >
-                          {profile.apartment_number}
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", position: "relative", zIndex: 1, background: "rgba(255, 255, 255, 0.1)", padding: "20px", borderRadius: "16px", backdropFilter: "blur(10px)" }}>
+                        <div>
+                          <div style={{ fontSize: "12px", opacity: 0.8, marginBottom: "4px" }}>MÃ CĂN HỘ</div>
+                          <div style={{ fontSize: "18px", fontWeight: "600" }}>{profile.apartment_number}</div>
                         </div>
-                      </div>
-
-                      <div>
-                        <div style={S.label}>Số điện thoại</div>
-                        <div
-                          style={{
-                            fontSize: 16,
-                            fontWeight: "600",
-                            color: "#0f172a",
-                          }}
-                        >
-                          {profile.phone || "---"}
-                        </div>
-                      </div>
-
-                      <div>
-                        <div style={S.label}>Email</div>
-                        <div
-                          style={{
-                            fontSize: 16,
-                            fontWeight: "600",
-                            color: "#0f172a",
-                          }}
-                        >
-                          {profile.email || "---"}
-                        </div>
-                      </div>
-
-                      <div>
-                        <div style={S.label}>Tài khoản</div>
-                        <div
-                          style={{
-                            fontSize: 16,
-                            fontWeight: "600",
-                            color: "#0f172a",
-                          }}
-                        >
-                          {profile.username}
-                        </div>
-                      </div>
-
-                      <div>
-                        <div style={S.label}>Trạng thái</div>
-                        <div
-                          style={{
-                            fontSize: 16,
-                            fontWeight: "600",
-                            color: "#059669",
-                          }}
-                        >
-                          ✅ {profile.status}
+                        <div>
+                          <div style={{ fontSize: "12px", opacity: 0.8, marginBottom: "4px" }}>TRẠNG THÁI</div>
+                          <div style={{ fontSize: "16px", fontWeight: "600", display: "flex", alignItems: "center", gap: "6px" }}>
+                            <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#4ade80", boxShadow: "0 0 10px #4ade80" }}></span>
+                            {profile.status === "active" ? "Hoạt động" : profile.status}
+                          </div>
                         </div>
                       </div>
                     </div>
 
-                    <button
-                      onClick={() =>
-                        setEditProfile({
-                          name: profile.name,
-                          phone: profile.phone || "",
-                          email: profile.email || "",
-                        })
-                      }
-                      style={{
-                        ...S.primaryBtn,
-                        marginTop: 24,
-                      }}
-                    >
-                      Chỉnh sửa thông tin
-                    </button>
+                    {/* Right Column: Contact Details */}
+                    <div style={{ background: "#FFFBF5", borderRadius: "24px", padding: "30px", border: "1px solid #e2e8f0", display: "flex", flexDirection: "column", justifyContent: "space-between", boxShadow: "0 10px 30px rgba(0,0,0,0.03)" }}>
+                      <div>
+                        <h4 style={{ margin: "0 0 24px 0", color: "#2d3748", fontSize: "18px", borderBottom: "2px solid #f1f5f9", paddingBottom: "12px" }}>Chi tiết liên hệ</h4>
+                        
+                        <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+                            <div style={{ width: "48px", height: "48px", borderRadius: "12px", background: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px" }}>
+                              📱
+                            </div>
+                            <div>
+                              <div style={{ fontSize: "13px", color: "#64748b", marginBottom: "2px" }}>Số điện thoại</div>
+                              <div style={{ fontSize: "16px", fontWeight: "600", color: "#0f172a" }}>{profile.phone || "Chưa cập nhật"}</div>
+                            </div>
+                          </div>
+
+                          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+                            <div style={{ width: "48px", height: "48px", borderRadius: "12px", background: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px" }}>
+                              📧
+                            </div>
+                            <div>
+                              <div style={{ fontSize: "13px", color: "#64748b", marginBottom: "2px" }}>Địa chỉ Email</div>
+                              <div style={{ fontSize: "16px", fontWeight: "600", color: "#0f172a", wordBreak: "break-all" }}>{profile.email || "Chưa cập nhật"}</div>
+                            </div>
+                          </div>
+
+                          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+                            <div style={{ width: "48px", height: "48px", borderRadius: "12px", background: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px" }}>
+                              🔑
+                            </div>
+                            <div>
+                              <div style={{ fontSize: "13px", color: "#64748b", marginBottom: "2px" }}>Tên đăng nhập (Username)</div>
+                              <div style={{ fontSize: "16px", fontWeight: "600", color: "#0f172a" }}>{profile.username}</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          window.history.pushState({ editProfile: true }, "");
+                          setEditProfile({
+                            name: profile.name,
+                            phone: profile.phone || "",
+                            email: profile.email || "",
+                          });
+                        }}
+                        style={{
+                          ...S.primaryBtn,
+                          width: "100%",
+                          marginTop: "30px",
+                          background: "#e2e8f0",
+                          color: "#3F5E4D",
+                          border: "none",
+                          borderRadius: "12px",
+                          padding: "14px",
+                          fontWeight: "700",
+                          fontSize: "15px",
+                          cursor: "pointer",
+                          transition: "all 0.3s"
+                        }}
+                        onMouseOver={(e) => { e.currentTarget.style.background = "#cbd5e1" }}
+                        onMouseOut={(e) => { e.currentTarget.style.background = "#e2e8f0" }}
+                      >
+                        ✏️ Cập nhật thông tin
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

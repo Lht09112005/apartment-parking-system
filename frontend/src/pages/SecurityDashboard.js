@@ -507,7 +507,7 @@ const SecurityDashboard = () => {
                     ...styles.menuItem,
                     ...(viewMode === item.key ? styles.menuItemActive : {}),
                   }}
-                  onClick={() => setViewMode(item.key)}
+                  onClick={() => navigate("?view=" + item.key)}
                   onMouseEnter={(e) => {
                     if (viewMode !== item.key) {
                       e.currentTarget.style.backgroundColor = "#f5f5f5";
@@ -704,16 +704,14 @@ const SecurityDashboard = () => {
                   </div>
 
                   <div style={styles.inputContainer}>
-                    <div style={styles.inputLabel}>
-                      NHẬP BIỂN SỐ XE / QUÉT THẺ
-                    </div>
-
+                    {/* Label removed per user request */}
                     <input
                       autoFocus
                       value={plate}
                       onChange={(e) => setPlate(e.target.value.toUpperCase())}
                       style={styles.bigInput}
                       placeholder="--- ---"
+                      maxLength={15}
                     />
 
                     <div style={styles.inputUnderline}></div>
@@ -1952,22 +1950,25 @@ const styles = {
     textTransform: "uppercase",
   },
   bigInput: {
-    fontSize: 56,
+    fontSize: 72,
     fontWeight: "900",
-    color: "#2D3327",
+    color: "#1E293B",
     textAlign: "center",
     border: "none",
     outline: "none",
     width: "100%",
     background: "transparent",
     fontFamily: "'Outfit', sans-serif",
+    letterSpacing: 4,
+    textShadow: "0 4px 15px rgba(0,0,0,0.1)",
   },
   inputUnderline: {
-    height: 4,
-    width: 250,
+    height: 6,
+    width: 320,
     backgroundColor: "#3F5E4D",
-    marginTop: 6,
-    borderRadius: 2,
+    marginTop: 8,
+    borderRadius: 3,
+    boxShadow: "0 4px 12px rgba(63, 94, 77, 0.4)",
   },
   selectorsRow: {
     display: "flex",
@@ -1980,15 +1981,15 @@ const styles = {
   selectorGroup: {
     flex: 1,
     backgroundColor: "#FFFBF5",
-    padding: "12px 16px",
+    padding: "8px 12px",
     borderRadius: 12,
     border: "2px solid #EAE5D9",
   },
   selectorTitle: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "700",
     color: "#9E826C",
-    marginBottom: 10,
+    marginBottom: 6,
     textTransform: "uppercase",
     letterSpacing: "0.5px",
   },
@@ -2002,25 +2003,25 @@ const styles = {
     flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
-    padding: "10px 0",
-    borderRadius: 12,
+    padding: "6px 0",
+    borderRadius: 10,
     fontWeight: "700",
-    fontSize: 14,
+    fontSize: 13,
     transition: "all 0.2s ease-in-out",
     border: "2px solid #EAE5D9",
-    minHeight: 80,
+    minHeight: 65,
     backgroundColor: "#FFFBF5",
     cursor: "pointer",
     fontFamily: "'Outfit', sans-serif",
   },
   areaHint: {
-    marginTop: 10,
+    marginTop: 6,
     color: "#5F504B",
-    fontSize: 12,
-    lineHeight: 1.5,
+    fontSize: 11,
+    lineHeight: 1.4,
     backgroundColor: "#F1ECE4",
-    borderRadius: 10,
-    padding: "10px 14px",
+    borderRadius: 8,
+    padding: "6px 10px",
     border: "1px solid #E4DDD3",
     fontWeight: "500",
   },
