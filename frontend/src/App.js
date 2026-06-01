@@ -13,6 +13,7 @@ import ResidentDashboard from "./pages/ResidentDashboard";
 import SystemSettings from "./pages/SystemSettings";
 import AuditLogs from "./pages/AuditLogs";
 import BackupManagement from "./pages/BackupManagement";
+import RevenueReport from "./pages/RevenueReport";
 const PrivateRoute = ({ children, roles }) => {
   const { token, user } = useAuth();
   
@@ -95,6 +96,14 @@ function App() {
             element={
               <PrivateRoute roles={[1, 2]}>
                 <Dashboard />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/admin/revenue"
+            element={
+              <PrivateRoute roles={[1, 2]}>
+                <RevenueReport />
               </PrivateRoute>
             }
           />

@@ -463,35 +463,82 @@ const VehicleManagement = () => {
       {/* Confirm Modal */}
       {confirmModal.isOpen && (
         <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
+          position: "fixed",
+          top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: "rgba(45, 51, 39, 0.6)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 2000,
+          backdropFilter: "blur(4px)"
         }} onClick={() => setConfirmModal({ isOpen: false, plate_number: null, action: null })}>
           <div style={{
-            backgroundColor: '#fff', width: '400px', padding: '32px', borderRadius: '16px',
-            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', textAlign: 'center'
+            backgroundColor: "#FFFBF5",
+            borderRadius: 20,
+            width: "90%",
+            maxWidth: 400,
+            padding: 24,
+            boxShadow: "0 20px 45px rgba(0,0,0,0.15)",
+            fontFamily: "'Outfit', sans-serif",
+            textAlign: "center"
           }} onClick={e => e.stopPropagation()}>
-            <h3 style={{ marginTop: 0, fontSize: 20, color: "#1e293b" }}>Xác nhận thao tác</h3>
-            <p style={{ color: "#64748b", margin: "16px 0 24px 0" }}>
-              Bạn có chắc chắn muốn {confirmModal.action === 'reject' ? "TỪ CHỐI yêu cầu đăng ký xe" : "XÓA xe"} <strong>{confirmModal.plate_number}</strong> không?
+            <div style={{
+              width: 56,
+              height: 56,
+              borderRadius: "50%",
+              backgroundColor: "rgba(205, 92, 92, 0.1)",
+              color: "#CD5C5C",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 28,
+              margin: "0 auto 16px"
+            }}>
+              <span className="material-symbols-rounded" style={{ fontSize: 32 }}>
+                {confirmModal.action === "reject" ? "cancel" : "delete"}
+              </span>
+            </div>
+            <h3 style={{ margin: "0 0 8px 0", color: "#2D3327", fontSize: 18, fontWeight: "800", textTransform: "uppercase" }}>
+              {confirmModal.action === "reject" ? "Từ chối đăng ký xe" : "Xóa phương tiện"}
+            </h3>
+            <p style={{ margin: "0 0 24px 0", color: "#64748b", fontSize: 14, lineHeight: "20px" }}>
+              Bạn có chắc chắn muốn {confirmModal.action === "reject" ? "từ chối yêu cầu đăng ký xe" : "xóa xe"} của biển số <strong>{confirmModal.plate_number}</strong> khỏi hệ thống?
             </p>
-            <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
-              <button 
-                onClick={executeAction} 
+            <div style={{ display: "flex", gap: 12 }}>
+              <button
+                onClick={executeAction}
                 style={{
-                  padding: '10px 24px', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer',
-                  backgroundColor: '#ef4444', color: '#fff'
+                  flex: 1,
+                  padding: "10px 16px",
+                  backgroundColor: "#CD5C5C",
+                  color: "#FFFBF5",
+                  border: "none",
+                  borderRadius: 10,
+                  fontSize: 14,
+                  fontWeight: "700",
+                  cursor: "pointer",
+                  transition: "background-color 0.2s"
                 }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#b04f4f"}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#CD5C5C"}
               >
-                Xác nhận
+                {confirmModal.action === "reject" ? "Từ chối" : "Xóa"}
               </button>
-              <button 
-                onClick={() => setConfirmModal({ isOpen: false, plate_number: null, action: null })} 
+              <button
+                onClick={() => setConfirmModal({ isOpen: false, plate_number: null, action: null })}
                 style={{
-                  padding: '10px 24px', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer',
-                  backgroundColor: '#f1f5f9', color: '#475569'
+                  flex: 1,
+                  padding: "10px 16px",
+                  backgroundColor: "#F1ECE4",
+                  color: "#5F504B",
+                  border: "1px solid #E4DDD3",
+                  borderRadius: 10,
+                  fontSize: 14,
+                  fontWeight: "700",
+                  cursor: "pointer"
                 }}
               >
-                Hủy bỏ
+                Hủy
               </button>
             </div>
           </div>

@@ -37,6 +37,7 @@ const ResidentDashboard = () => {
   const [modalLevel, setModalLevel] = useState("B1");
   const [searchSlot, setSearchSlot] = useState("");
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [vehicleToDelete, setVehicleToDelete] = useState(null);
 
   const [showAccountSettings, setShowAccountSettings] = useState(false);
   const [accountForm, setAccountForm] = useState({
@@ -215,8 +216,14 @@ const ResidentDashboard = () => {
     }
   };
 
-  const handleDeleteVehicle = async (plate) => {
-    if (!window.confirm(`Bạn có chắc muốn xóa xe ${plate}?`)) return;
+  const handleDeleteVehicle = (plate) => {
+    setVehicleToDelete(plate);
+  };
+
+  const executeDeleteVehicle = async () => {
+    if (!vehicleToDelete) return;
+    const plate = vehicleToDelete;
+    setVehicleToDelete(null);
 
     try {
       await axios.delete(`/resident/vehicles/${plate}`);
@@ -2716,6 +2723,85 @@ const ResidentDashboard = () => {
         </div>
       )}
       {showMapModal && renderMapModal()}
+      {vehicleToDelete && (
+        <div style={{
+          position: "fixed",
+          top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: "rgba(45, 51, 39, 0.6)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 2000,
+          backdropFilter: "blur(4px)"
+        }}>
+          <div style={{
+            backgroundColor: "#FFFBF5",
+            borderRadius: 20,
+            width: "90%",
+            maxWidth: 400,
+            padding: 24,
+            boxShadow: "0 20px 45px rgba(0,0,0,0.15)",
+            fontFamily: "'Outfit', sans-serif",
+            textAlign: "center"
+          }}>
+            <div style={{
+              width: 56,
+              height: 56,
+              borderRadius: "50%",
+              backgroundColor: "rgba(205, 92, 92, 0.1)",
+              color: "#CD5C5C",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 28,
+              margin: "0 auto 16px"
+            }}>
+              <span className="material-symbols-rounded" style={{ fontSize: 32 }}>delete</span>
+            </div>
+            <h3 style={{ margin: "0 0 8px 0", color: "#2D3327", fontSize: 18, fontWeight: "800" }}>XÓA PHƯƠNG TIỆN</h3>
+            <p style={{ margin: "0 0 24px 0", color: "#64748b", fontSize: 14, lineHeight: "20px" }}>
+              Bạn có chắc chắn muốn xóa phương tiện biển số <strong>{vehicleToDelete}</strong> khỏi tài khoản của mình?
+            </p>
+            <div style={{ display: "flex", gap: 12 }}>
+              <button
+                onClick={executeDeleteVehicle}
+                style={{
+                  flex: 1,
+                  padding: "10px 16px",
+                  backgroundColor: "#CD5C5C",
+                  color: "#FFFBF5",
+                  border: "none",
+                  borderRadius: 10,
+                  fontSize: 14,
+                  fontWeight: "700",
+                  cursor: "pointer",
+                  transition: "background-color 0.2s"
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#b04f4f"}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#CD5C5C"}
+              >
+                Xác nhận xóa
+              </button>
+              <button
+                onClick={() => setVehicleToDelete(null)}
+                style={{
+                  flex: 1,
+                  padding: "10px 16px",
+                  backgroundColor: "#F1ECE4",
+                  color: "#5F504B",
+                  border: "1px solid #E4DDD3",
+                  borderRadius: 10,
+                  fontSize: 14,
+                  fontWeight: "700",
+                  cursor: "pointer"
+                }}
+              >
+                Hủy
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {showLogoutConfirm && (
         <div style={{
           position: "fixed",

@@ -388,6 +388,131 @@ const updateMonthlyStatus = async (req, res) => {
   }
 };
 
+const getDetailedRevenueReport = async (req, res) => {
+  try {
+    // 1. Short-term visitor revenue
+    const [[shortTerm]] = await db.query(
+      `SELECT IFNULL(SUM(fee_amount), 0) as totalShortTermRevenue, COUNT(*) as totalShortTermSessions
+       FROM parking_session
+       WHERE status = 'completed' AND fee_amount > 0`
+    );
+
+    // 2. Monthly card active revenue
+    const [[monthly]] = await db.query(
+      `SELECT IFNULL(SUM(pf.monthly_fee), 0) as totalMonthlyRevenue, COUNT(*) as totalMonthlyTickets
+       FROM monthly_parking mp
+       JOIN vehicles v ON mp.plate_number = v.plate_number
+       JOIN parking_fee pf ON v.type_id = pf.type_id
+       WHERE mp.status = 'active'`
+    );
+
+    // 3. Short term stats by vehicle type
+    const [[motoShortTerm]] = await db.query(
+      `SELECT IFNULL(SUM(fee_amount), 0) as revenue, COUNT(*) as count
+       FROM parking_session
+       WHERE status = 'completed' AND type_id = 1 AND fee_amount > 0`
+    );
+
+    const [[carShortTerm]] = await db.query(
+      `SELECT IFNULL(SUM(fee_amount), 0) as revenue, COUNT(*) as count
+       FROM parking_session
+       WHERE status = 'completed' AND type_id = 2 AND fee_amount > 0`
+    );
+
+    // 4. Monthly ticket stats by vehicle type
+    const [[motoMonthly]] = await db.query(
+      `SELECT IFNULL(SUM(pf.monthly_fee), 0) as revenue, COUNT(*) as count
+       FROM monthly_parking mp
+       JOIN vehicles v ON mp.plate_number = v.plate_number
+       JOIN parking_fee pf ON v.type_id = pf.type_id
+       WHERE mp.status = 'active' AND v.type_id = 1`
+    );
+
+    const [[carMonthly]] = await db.query(
+      `SELECT IFNULL(SUM(pf.monthly_fee), 0) as revenue, COUNT(*) as count
+       FROM monthly_parking mp
+       JOIN vehicles v ON mp.plate_number = v.plate_number
+       JOIN parking_fee pf ON v.type_id = pf.type_id
+       WHERE mp.status = 'active' AND v.type_id = 2`
+    );
+
+    // 5. Short term history by month
+    const [shortTermHistory] = await db.query(
+      `SELECT DATE_FORMAT(time_out, '%Y-%m') as month, IFNULL(SUM(fee_amount), 0) as shortTermRevenue
+       FROM parking_session
+       WHERE status = 'completed' AND time_out IS NOT NULL AND fee_amount > 0
+       GROUP BY DATE_FORMAT(time_out, '%Y-%m')`
+    );
+
+    // 6. Monthly ticket history by month
+    const [monthlyHistory] = await db.query(
+      `SELECT DATE_FORMAT(mp.start_date, '%Y-%m') as month, IFNULL(SUM(pf.monthly_fee), 0) as monthlyRevenue
+       FROM monthly_parking mp
+       JOIN vehicles v ON mp.plate_number = v.plate_number
+       JOIN parking_fee pf ON v.type_id = pf.type_id
+       GROUP BY DATE_FORMAT(mp.start_date, '%Y-%m')`
+    );
+
+    // 7. Recent cash-outs
+    const [recentTransactions] = await db.query(
+      `SELECT s.session_id, s.plate_number, s.time_in, s.time_out, s.fee_amount, vt.type_name
+       FROM parking_session s
+       LEFT JOIN vehicle_types vt ON s.type_id = vt.type_id
+       WHERE s.status = 'completed' AND s.fee_amount > 0
+       ORDER BY s.time_out DESC
+       LIMIT 10`
+    );
+
+    // 8. Recent active monthly cards
+    const [recentMonthlyCards] = await db.query(
+      `SELECT mp.monthly_id, mp.plate_number, mp.start_date, mp.end_date, pf.monthly_fee, vt.type_name, r.name as resident_name, r.apartment_number
+       FROM monthly_parking mp
+       JOIN vehicles v ON mp.plate_number = v.plate_number
+       JOIN parking_fee pf ON v.type_id = pf.type_id
+       JOIN vehicle_types vt ON v.type_id = vt.type_id
+       JOIN residents r ON v.resident_id = r.resident_id
+       WHERE mp.status = 'active'
+       ORDER BY mp.start_date DESC
+       LIMIT 10`
+    );
+
+    res.json({
+      summary: {
+        totalShortTermRevenue: parseFloat(shortTerm.totalShortTermRevenue),
+        totalShortTermSessions: parseInt(shortTerm.totalShortTermSessions),
+        totalMonthlyRevenue: parseFloat(monthly.totalMonthlyRevenue),
+        totalMonthlyTickets: parseInt(monthly.totalMonthlyTickets),
+        totalRevenue: parseFloat(shortTerm.totalShortTermRevenue) + parseFloat(monthly.totalMonthlyRevenue)
+      },
+      byVehicleType: {
+        motorcycle: {
+          shortTermRevenue: parseFloat(motoShortTerm.revenue),
+          shortTermCount: parseInt(motoShortTerm.count),
+          monthlyRevenue: parseFloat(motoMonthly.revenue),
+          monthlyCount: parseInt(motoMonthly.count),
+          totalRevenue: parseFloat(motoShortTerm.revenue) + parseFloat(motoMonthly.revenue)
+        },
+        car: {
+          shortTermRevenue: parseFloat(carShortTerm.revenue),
+          shortTermCount: parseInt(carShortTerm.count),
+          monthlyRevenue: parseFloat(carMonthly.revenue),
+          monthlyCount: parseInt(carMonthly.count),
+          totalRevenue: parseFloat(carShortTerm.revenue) + parseFloat(carMonthly.revenue)
+        }
+      },
+      history: {
+        shortTerm: shortTermHistory,
+        monthly: monthlyHistory
+      },
+      recentTransactions,
+      recentMonthlyCards
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Lỗi server" });
+  }
+};
+
 module.exports = { 
   checkIn, 
   checkOut, 
@@ -396,5 +521,6 @@ module.exports = {
   updateFeeConfig,
   getMonthlyParking,
   updateMonthlyStatus,
-  getFinancialSummary 
+  getFinancialSummary,
+  getDetailedRevenueReport
 };
