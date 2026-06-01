@@ -101,10 +101,24 @@ router.post("/vehicles", async (req, res) => {
     if (resident.length === 0) {
       return res.status(404).json({ message: "Không tìm thấy thông tin cư dân" });
     }
-    await db.query(
-      `INSERT INTO vehicles (plate_number, resident_id, type_id, color, status) VALUES (?, ?, ?, ?, 'pending')`,
-      [plate_number, resident[0].resident_id, type_id, color]
-    );
+    // Kiểm tra xe đã tồn tại chưa
+    const [existing] = await db.query(`SELECT status FROM vehicles WHERE plate_number = ?`, [plate_number]);
+    if (existing.length > 0) {
+      if (existing[0].status === 'deleted') {
+        // Đăng ký lại xe đã bị xóa/từ chối
+        await db.query(
+          `UPDATE vehicles SET resident_id = ?, type_id = ?, color = ?, status = 'pending' WHERE plate_number = ?`,
+          [resident[0].resident_id, type_id, color, plate_number]
+        );
+      } else {
+        return res.status(400).json({ message: "Biển số xe đã tồn tại trong hệ thống" });
+      }
+    } else {
+      await db.query(
+        `INSERT INTO vehicles (plate_number, resident_id, type_id, color, status) VALUES (?, ?, ?, ?, 'pending')`,
+        [plate_number, resident[0].resident_id, type_id, color]
+      );
+    }
 
     // Gửi thông báo cho Admin (Role 2)
     try {
@@ -123,9 +137,6 @@ router.post("/vehicles", async (req, res) => {
 
     res.status(201).json({ message: "Đăng ký xe thành công" });
   } catch (err) {
-    if (err.code === "ER_DUP_ENTRY") {
-      return res.status(400).json({ message: "Biển số xe đã tồn tại" });
-    }
     console.error(err);
     res.status(500).json({ message: "Lỗi server" });
   }
@@ -155,6 +166,15 @@ router.put("/vehicles/:plate_number", async (req, res) => {
       return res.status(403).json({ message: "Xe không thuộc quyền sở hữu của bạn" });
     }
     console.log("Vehicle found:", vehicle[0]);
+
+    // Kiểm tra xe có đang trong bãi không
+    const [activeSessions] = await db.query(
+      `SELECT * FROM parking_session WHERE plate_number = ? AND status = 'parking'`,
+      [plate_number]
+    );
+    if (activeSessions.length > 0) {
+      return res.status(400).json({ message: "Không thể cập nhật thông tin vì xe đang đỗ trong bãi. Vui lòng check-out xe trước." });
+    }
 
     const targetPlate = new_plate_number && new_plate_number.trim() ? new_plate_number : plate_number;
 
@@ -201,6 +221,15 @@ router.delete("/vehicles/:plate_number", async (req, res) => {
     // Verify ownership
     const [vehicle] = await db.query(`SELECT plate_number FROM vehicles WHERE plate_number = ? AND resident_id = ?`, [plate_number, resident[0].resident_id]);
     if (vehicle.length === 0) return res.status(403).json({ message: "Xe không thuộc quyền sở hữu của bạn" });
+
+    // Kiểm tra xe có đang trong bãi không
+    const [activeSessions] = await db.query(
+      `SELECT * FROM parking_session WHERE plate_number = ? AND status = 'parking'`,
+      [plate_number]
+    );
+    if (activeSessions.length > 0) {
+      return res.status(400).json({ message: "Không thể xóa xe vì xe đang đỗ trong bãi. Vui lòng check-out xe trước." });
+    }
 
     await db.query(`UPDATE vehicles SET status = 'deleted' WHERE plate_number=? AND resident_id=?`, [plate_number, resident[0].resident_id]);
     res.json({ message: "Xóa xe thành công" });
