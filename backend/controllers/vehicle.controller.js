@@ -36,7 +36,7 @@ const createVehicle = async (req, res) => {
     const [[resident]] = await db.query(`SELECT name, apartment_number FROM residents WHERE resident_id = ?`, [resident_id]);
     if (resident) {
         await NotificationService.notifyRole(
-            [1, 2], 
+            [2], 
             "Yêu cầu duyệt đăng ký xe mới", 
             `Cư dân ${resident.name} (Căn hộ ${resident.apartment_number}) đã đăng ký xe mới biển số ${plate_number}. Vui lòng phê duyệt.`, 
             "VEHICLE_APPROVAL_REQUEST"
@@ -155,6 +155,7 @@ const approveVehicle = async (req, res) => {
       );
     }
 
+
     res.json({ message: "Duyệt đăng ký xe thành công" });
   } catch (err) {
     console.error(err);
@@ -188,6 +189,7 @@ const rejectVehicle = async (req, res) => {
         "VEHICLE_REJECTED"
       );
     }
+
 
     res.json({ message: "Từ chối đăng ký xe thành công" });
   } catch (err) {

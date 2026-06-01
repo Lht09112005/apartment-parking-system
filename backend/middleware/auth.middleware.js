@@ -14,6 +14,26 @@ const verifyToken = (req, res, next) => {
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     req.user = decoded;
+
+    // Check maintenance mode
+    if (decoded.role_id !== 1) {
+      try {
+        const fs = require("fs");
+        const path = require("path");
+        const SETTINGS_FILE = path.join(__dirname, '../data/settings.json');
+        
+        // Use readFileSync for middleware to avoid async/await refactoring if not needed
+        // but verifyToken is not async, so readFileSync is the only way here unless we make it async
+        const data = fs.readFileSync(SETTINGS_FILE, 'utf8');
+        const settings = JSON.parse(data);
+        if (settings.maintenance_mode === true) {
+          return res.status(503).json({ message: "Hệ thống đang bảo trì, vui lòng quay lại sau." });
+        }
+      } catch (e) {
+        // Ignore errors
+      }
+    }
+
     next();
   } catch (err) {
     return res

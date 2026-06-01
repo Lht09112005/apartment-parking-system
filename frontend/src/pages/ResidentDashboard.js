@@ -38,6 +38,14 @@ const ResidentDashboard = () => {
   const [searchSlot, setSearchSlot] = useState("");
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
+  const [showAccountSettings, setShowAccountSettings] = useState(false);
+  const [accountForm, setAccountForm] = useState({
+    currentPassword: "",
+    newUsername: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+
   const fetchProfile = async () => {
     try {
       const r = await axios.get("/resident/profile");
@@ -269,6 +277,27 @@ const ResidentDashboard = () => {
       fetchData();
     } catch (e) {
       showMsg("error", e.response?.data?.message || "Lỗi cập nhật");
+    }
+  };
+
+  const handleChangeAccount = async (e) => {
+    e.preventDefault();
+    if (accountForm.newPassword && accountForm.newPassword !== accountForm.confirmPassword) {
+      showMsg("error", "Mật khẩu mới không khớp!");
+      return;
+    }
+    try {
+      const res = await axios.put("/auth/change-credentials", {
+        currentPassword: accountForm.currentPassword,
+        newUsername: accountForm.newUsername || undefined,
+        newPassword: accountForm.newPassword || undefined,
+      });
+      showMsg("success", res.data.message);
+      setShowAccountSettings(false);
+      setAccountForm({ currentPassword: "", newUsername: "", newPassword: "", confirmPassword: "" });
+      fetchProfile();
+    } catch (err) {
+      showMsg("error", err.response?.data?.message || "Lỗi cập nhật tài khoản");
     }
   };
 
@@ -2298,21 +2327,26 @@ const ResidentDashboard = () => {
                       </div>
                     </div>
 
-                    <button
-                      onClick={() =>
-                        setEditProfile({
-                          name: profile.name,
-                          phone: profile.phone || "",
-                          email: profile.email || "",
-                        })
-                      }
-                      style={{
-                        ...S.primaryBtn,
-                        marginTop: 24,
-                      }}
-                    >
-                      Chỉnh sửa thông tin
-                    </button>
+                    <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
+                      <button
+                        onClick={() =>
+                          setEditProfile({
+                            name: profile.name,
+                            phone: profile.phone || "",
+                            email: profile.email || "",
+                          })
+                        }
+                        style={S.primaryBtn}
+                      >
+                        Chỉnh sửa thông tin
+                      </button>
+                      <button
+                        onClick={() => setShowAccountSettings(true)}
+                        style={{ ...S.cancelBtn, backgroundColor: '#f1f5f9', border: 'none' }}
+                      >
+                        Đổi Mật khẩu / Tên đăng nhập
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -2320,6 +2354,114 @@ const ResidentDashboard = () => {
           </div>
         </div>
       </div>
+
+      {showAccountSettings && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0,0,0,0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+          }}
+          onClick={() => setShowAccountSettings(false)}
+        >
+          <div
+            style={{
+              backgroundColor: "#FFFBF5",
+              borderRadius: 16,
+              width: 500,
+              maxHeight: "90vh",
+              overflow: "auto",
+              boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)",
+              fontFamily: "'Outfit', sans-serif",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                padding: "24px 32px",
+                borderBottom: "1px solid #EAE5D9",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <h3 style={{ margin: 0, fontSize: 20, color: "#202124" }}>
+                Cài đặt tài khoản
+              </h3>
+              <span
+                className="material-symbols-rounded"
+                style={{ cursor: "pointer", color: "#5f6368" }}
+                onClick={() => setShowAccountSettings(false)}
+              >
+                close
+              </span>
+            </div>
+
+            <div style={{ padding: "32px" }}>
+              <form onSubmit={handleChangeAccount}>
+                <div style={S.formGroup}>
+                  <label style={S.label}>Mật khẩu hiện tại (*)</label>
+                  <input
+                    type="password"
+                    style={S.input}
+                    value={accountForm.currentPassword}
+                    onChange={(e) => setAccountForm({ ...accountForm, currentPassword: e.target.value })}
+                    required
+                  />
+                </div>
+                
+                <div style={{ padding: 16, backgroundColor: '#f1f5f9', borderRadius: 8, marginBottom: 20 }}>
+                  <p style={{ margin: 0, fontSize: 13, color: '#475569' }}>
+                    Chỉ điền vào các ô bên dưới nếu bạn muốn thay đổi. Nếu để trống, thông tin đó sẽ được giữ nguyên.
+                  </p>
+                </div>
+
+                <div style={S.formGroup}>
+                  <label style={S.label}>Tên đăng nhập mới (Tùy chọn)</label>
+                  <input
+                    style={S.input}
+                    placeholder={profile?.username}
+                    value={accountForm.newUsername}
+                    onChange={(e) => setAccountForm({ ...accountForm, newUsername: e.target.value })}
+                  />
+                </div>
+
+                <div style={S.formGroup}>
+                  <label style={S.label}>Mật khẩu mới (Tùy chọn)</label>
+                  <input
+                    type="password"
+                    style={S.input}
+                    value={accountForm.newPassword}
+                    onChange={(e) => setAccountForm({ ...accountForm, newPassword: e.target.value })}
+                  />
+                </div>
+
+                <div style={S.formGroup}>
+                  <label style={S.label}>Xác nhận mật khẩu mới</label>
+                  <input
+                    type="password"
+                    style={S.input}
+                    value={accountForm.confirmPassword}
+                    onChange={(e) => setAccountForm({ ...accountForm, confirmPassword: e.target.value })}
+                  />
+                </div>
+
+                <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
+                  <button type="submit" style={S.primaryBtn}>Lưu thay đổi</button>
+                  <button type="button" onClick={() => setShowAccountSettings(false)} style={{...S.cancelBtn, backgroundColor: '#f1f5f9', border: 'none'}}>Hủy</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
 
       {renewVehicle && (
         <div

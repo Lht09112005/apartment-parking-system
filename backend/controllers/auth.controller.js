@@ -115,4 +115,41 @@ const getMe = async (req, res) => {
   }
 };
 
-module.exports = { login, getMe };
+const changeCredentials = async (req, res) => {
+  const { currentPassword, newUsername, newPassword } = req.body;
+  const user_id = req.user.user_id;
+
+  if (!currentPassword) {
+    return res.status(400).json({ message: "Vui lòng nhập mật khẩu hiện tại" });
+  }
+
+  try {
+    const [rows] = await db.query(`SELECT password, username FROM users WHERE user_id = ?`, [user_id]);
+    if (rows.length === 0) return res.status(404).json({ message: "Không tìm thấy người dùng" });
+
+    const isMatch = await bcrypt.compare(currentPassword, rows[0].password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Mật khẩu hiện tại không đúng" });
+    }
+
+    if (newUsername && newUsername !== rows[0].username) {
+      const [existing] = await db.query(`SELECT user_id FROM users WHERE username = ? AND user_id != ?`, [newUsername, user_id]);
+      if (existing.length > 0) {
+        return res.status(400).json({ message: "Tên đăng nhập mới đã tồn tại trong hệ thống" });
+      }
+      await db.query(`UPDATE users SET username = ? WHERE user_id = ?`, [newUsername, user_id]);
+    }
+
+    if (newPassword) {
+      const hashed = await bcrypt.hash(newPassword, 10);
+      await db.query(`UPDATE users SET password = ? WHERE user_id = ?`, [hashed, user_id]);
+    }
+
+    res.json({ message: "Cập nhật tài khoản thành công" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Lỗi server" });
+  }
+};
+
+module.exports = { login, getMe, changeCredentials };

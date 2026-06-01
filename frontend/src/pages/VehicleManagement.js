@@ -19,6 +19,7 @@ const VehicleManagement = () => {
   const [filterPlate, setFilterPlate] = useState("");
   const [sortConfig, setSortConfig] = useState({ key: 'plate_number', direction: 'asc' });
   const [activeTab, setActiveTab] = useState("active");
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, plate_number: null, action: null });
   const [form, setForm] = useState({
     plate_number: "",
     resident_id: "",
@@ -118,8 +119,14 @@ const VehicleManagement = () => {
     }
   };
 
-  const handleReject = async (plate_number) => {
-    if (window.confirm(`Bạn có chắc chắn muốn TỪ CHỐI yêu cầu đăng ký xe ${plate_number}?`)) {
+  const confirmReject = (plate_number) => setConfirmModal({ isOpen: true, plate_number, action: 'reject' });
+  const confirmDelete = (plate_number) => setConfirmModal({ isOpen: true, plate_number, action: 'delete' });
+
+  const executeAction = async () => {
+    const { plate_number, action } = confirmModal;
+    setConfirmModal({ isOpen: false, plate_number: null, action: null });
+    
+    if (action === 'reject') {
       try {
         const res = await axios.put(`/vehicles/${plate_number}/reject`);
         setMessage({ type: "success", text: res.data.message || "Từ chối duyệt xe thành công!" });
@@ -128,18 +135,14 @@ const VehicleManagement = () => {
       } catch (err) {
         setMessage({ type: "error", text: err.response?.data?.message || "Lỗi khi từ chối xe" });
       }
-    }
-  };
-
-  const handleDelete = async (plate_number) => {
-    if (window.confirm("Bạn có chắc chắn muốn xóa xe này?")) {
+    } else if (action === 'delete') {
       try {
         await axios.delete(`/vehicles/${plate_number}`);
         setMessage({ type: "success", text: "Xóa xe thành công!" });
         fetchData();
         setTimeout(() => setMessage({ type: "", text: "" }), 3000);
       } catch (err) {
-        setMessage({ type: "error", text: "Lỗi khi xóa xe" });
+        setMessage({ type: "error", text: "Lỗi xóa xe" });
       }
     }
   };
@@ -185,7 +188,7 @@ const VehicleManagement = () => {
               <div style={{fontSize: 14, fontWeight: '600', color: '#1e293b'}}>Admin: {user?.username}</div>
               <div style={{fontSize: 12, color: '#64748b'}}>QUẢN LÝ PHƯƠNG TIỆN</div>
             </div>
-            <div style={styles.avatar}>🚗</div>
+            <div style={styles.avatar}><span className="material-symbols-rounded" style={{ fontSize: 20 }}>directions_car</span></div>
           </div>
         </div>
 
@@ -419,38 +422,25 @@ const VehicleManagement = () => {
                       </td>
                       <td style={styles.td}>{v.color || "—"}</td>
                       <td style={{...styles.td, textAlign: 'right'}}>
-                        {activeTab === 'active' ? (
+                        {v.status === 'pending' ? (
                           <>
-                            <button
-                              onClick={() => {
-                                setEditData(v);
-                                setShowForm(false);
-                                window.scrollTo({ top: 0, behavior: 'smooth' });
-                              }}
-                              style={styles.actionBtn}
-                            >
-                              Sửa
+                            <button onClick={() => handleApprove(v.plate_number)} style={{...styles.actionBtn, display: 'inline-flex', alignItems: 'center', gap: 4}}>
+                              <span className="material-symbols-rounded" style={{ fontSize: 16 }}>check_circle</span> Duyệt
                             </button>
-                            <button
-                              onClick={() => handleDelete(v.plate_number)}
-                              style={{ ...styles.actionBtn, color: '#ef4444', marginLeft: 8 }}
-                            >
-                              Xóa
+                            <button onClick={() => confirmReject(v.plate_number)} style={{...styles.actionBtn, display: 'inline-flex', alignItems: 'center', gap: 4, backgroundColor: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca', marginLeft: 8}}>
+                              <span className="material-symbols-rounded" style={{ fontSize: 16 }}>cancel</span> Từ chối
                             </button>
                           </>
                         ) : (
                           <>
-                            <button
-                              onClick={() => handleApprove(v.plate_number)}
-                              style={{ ...styles.actionBtn, color: '#10b981' }}
-                            >
-                              Duyệt
+                            <button onClick={() => {
+                              setEditData(v);
+                              setShowForm(true);
+                            }} style={{...styles.actionBtn, display: 'inline-flex', alignItems: 'center', gap: 4}}>
+                              <span className="material-symbols-rounded" style={{ fontSize: 16 }}>edit</span> Sửa
                             </button>
-                            <button
-                              onClick={() => handleReject(v.plate_number)}
-                              style={{ ...styles.actionBtn, color: '#ef4444', marginLeft: 8 }}
-                            >
-                              Từ chối
+                            <button onClick={() => confirmDelete(v.plate_number)} style={{ ...styles.actionBtn, color: '#ef4444', marginLeft: 8, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                              <span className="material-symbols-rounded" style={{ fontSize: 16 }}>delete</span> Xóa
                             </button>
                           </>
                         )}
@@ -468,6 +458,44 @@ const VehicleManagement = () => {
           </div>
         </div>
       </div>
+      
+      {/* Confirm Modal */}
+      {confirmModal.isOpen && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
+        }} onClick={() => setConfirmModal({ isOpen: false, plate_number: null, action: null })}>
+          <div style={{
+            backgroundColor: '#fff', width: '400px', padding: '32px', borderRadius: '16px',
+            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', textAlign: 'center'
+          }} onClick={e => e.stopPropagation()}>
+            <h3 style={{ marginTop: 0, fontSize: 20, color: "#1e293b" }}>Xác nhận thao tác</h3>
+            <p style={{ color: "#64748b", margin: "16px 0 24px 0" }}>
+              Bạn có chắc chắn muốn {confirmModal.action === 'reject' ? "TỪ CHỐI yêu cầu đăng ký xe" : "XÓA xe"} <strong>{confirmModal.plate_number}</strong> không?
+            </p>
+            <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
+              <button 
+                onClick={executeAction} 
+                style={{
+                  padding: '10px 24px', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer',
+                  backgroundColor: '#ef4444', color: '#fff'
+                }}
+              >
+                Xác nhận
+              </button>
+              <button 
+                onClick={() => setConfirmModal({ isOpen: false, plate_number: null, action: null })} 
+                style={{
+                  padding: '10px 24px', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer',
+                  backgroundColor: '#f1f5f9', color: '#475569'
+                }}
+              >
+                Hủy bỏ
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

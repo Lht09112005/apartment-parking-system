@@ -8,6 +8,7 @@ router.use(verifyToken, authorizeRoles('Super Admin'));
 router.get('/', backupController.listBackups);
 router.post('/create', backupController.createBackup);
 router.post('/restore/:filename', backupController.restoreBackup);
+router.get('/download/:filename', backupController.downloadBackup);
 router.delete('/purge', backupController.purgeData);
 
 module.exports = router;
