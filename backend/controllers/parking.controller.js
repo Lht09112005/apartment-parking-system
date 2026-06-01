@@ -49,6 +49,54 @@ const checkIn = async (req, res) => {
       }
     }
 
+    // Kiểm tra dung lượng bãi đỗ TRƯỚC khi cho xe vào
+    try {
+      const [[area]] = await db.query(
+        `SELECT area_name, capacity FROM parking_area WHERE type_id = ? LIMIT 1`,
+        [finalTypeId]
+      );
+      if (area && area.capacity > 0) {
+        const [[{ occupied }]] = await db.query(
+          `SELECT COUNT(*) as occupied FROM parking_session WHERE status = 'parking' AND type_id = ?`,
+          [finalTypeId]
+        );
+        
+        if (occupied >= area.capacity) {
+            return res.status(400).json({ message: `Khu vực ${area.area_name} đã hết chỗ (${occupied}/${area.capacity}). Không thể nhận thêm xe.` });
+        }
+
+        const percent = Math.round(((occupied + 1) / area.capacity) * 100);
+        if (percent >= 90) {
+          await NotificationService.notifyRole(
+            [3], 
+            "Cảnh báo bãi đỗ xe sắp đầy", 
+            `Khu vực ${area.area_name} đã đạt ${percent}% sức chứa (${occupied + 1}/${area.capacity}).`, 
+            "PARKING_FULL_WARNING"
+          );
+        }
+      } else {
+        // Fallback kiểm tra tổng dung lượng nếu không tìm thấy cấu hình khu vực
+        const [[{ total_parking }]] = await db.query(`SELECT COUNT(*) as total_parking FROM parking_session WHERE status = 'parking'`);
+        const MAX_CAPACITY = 500;
+        
+        if (total_parking >= MAX_CAPACITY) {
+            return res.status(400).json({ message: `Bãi đỗ xe đã hết chỗ (${total_parking}/${MAX_CAPACITY}). Không thể nhận thêm xe.` });
+        }
+
+        const percent = Math.round(((total_parking + 1)/MAX_CAPACITY)*100);
+        if (percent >= 90) {
+          await NotificationService.notifyRole(
+            [3], 
+            "Cảnh báo bãi đỗ xe sắp đầy", 
+            `Khu vực đỗ xe đã đạt ${percent}% sức chứa (${total_parking + 1}/${MAX_CAPACITY}).`, 
+            "PARKING_FULL_WARNING"
+          );
+        }
+      }
+    } catch (areaErr) {
+      console.error("Lỗi kiểm tra dung lượng bãi đỗ:", areaErr);
+    }
+
     await db.query(
       `INSERT INTO parking_session (plate_number, staff_id, time_in, status, type_id) VALUES (?, ?, NOW(), 'parking', ?)`,
       [plate_number, staff_id, finalTypeId]
@@ -71,43 +119,6 @@ const checkIn = async (req, res) => {
           "PARKING_CHECKIN"
         );
       }
-    }
-
-    // 2. Cảnh báo bãi đỗ đầy cho Security (Role 3) theo từng khu vực thực tế
-    try {
-      const [[area]] = await db.query(
-        `SELECT area_name, capacity FROM parking_area WHERE type_id = ? LIMIT 1`,
-        [finalTypeId]
-      );
-      if (area && area.capacity > 0) {
-        const [[{ occupied }]] = await db.query(
-          `SELECT COUNT(*) as occupied FROM parking_session WHERE status = 'parking' AND type_id = ?`,
-          [finalTypeId]
-        );
-        const percent = Math.round((occupied / area.capacity) * 100);
-        if (percent >= 90) {
-          await NotificationService.notifyRole(
-            [3], 
-            "Cảnh báo bãi đỗ xe sắp đầy", 
-            `Khu vực ${area.area_name} đã đạt ${percent}% sức chứa (${occupied}/${area.capacity}).`, 
-            "PARKING_FULL_WARNING"
-          );
-        }
-      } else {
-        // Fallback kiểm tra tổng dung lượng nếu không tìm thấy cấu hình khu vực
-        const [[{ total_parking }]] = await db.query(`SELECT COUNT(*) as total_parking FROM parking_session WHERE status = 'parking'`);
-        const MAX_CAPACITY = 500;
-        if (total_parking >= MAX_CAPACITY * 0.9) {
-          await NotificationService.notifyRole(
-            [3], 
-            "Cảnh báo bãi đỗ xe sắp đầy", 
-            `Khu vực đỗ xe đã đạt ${Math.round((total_parking/MAX_CAPACITY)*100)}% sức chứa (${total_parking}/${MAX_CAPACITY}).`, 
-            "PARKING_FULL_WARNING"
-          );
-        }
-      }
-    } catch (areaErr) {
-      console.error("Lỗi kiểm tra dung lượng bãi đỗ:", areaErr);
     }
     res.status(200).json({ message: "Check-in thành công", warning });
   } catch (err) {

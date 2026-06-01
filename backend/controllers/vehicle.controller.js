@@ -57,6 +57,15 @@ const updateVehicle = async (req, res) => {
   const { plate_number } = req.params;
   const { resident_id, type_id, color } = req.body;
   try {
+    // 1. Kiểm tra xe có đang trong bãi không
+    const [activeSessions] = await db.query(
+      `SELECT * FROM parking_session WHERE plate_number = ? AND status = 'parking'`,
+      [plate_number]
+    );
+    if (activeSessions.length > 0) {
+      return res.status(400).json({ message: "Không thể cập nhật thông tin vì xe đang đỗ trong bãi. Vui lòng check-out xe trước." });
+    }
+
     await db.query(
       `UPDATE vehicles SET resident_id=?, type_id=?, color=? WHERE plate_number=?`,
       [resident_id, type_id, color, plate_number]
@@ -72,6 +81,15 @@ const updateVehicle = async (req, res) => {
 const deleteVehicle = async (req, res) => {
   const { plate_number } = req.params;
   try {
+    // 0. Kiểm tra xe có đang trong bãi không
+    const [activeSessions] = await db.query(
+      `SELECT * FROM parking_session WHERE plate_number = ? AND status = 'parking'`,
+      [plate_number]
+    );
+    if (activeSessions.length > 0) {
+      return res.status(400).json({ message: "Không thể xóa xe vì xe đang đỗ trong bãi. Vui lòng check-out xe trước." });
+    }
+
     // 1. Lấy thông tin user_id của cư dân sở hữu xe trước khi xóa
     const [[vehicleInfo]] = await db.query(
       `SELECT r.user_id FROM vehicles v 

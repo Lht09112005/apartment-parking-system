@@ -581,7 +581,11 @@ const ResidentDashboard = () => {
                       fontSize: 24,
                       boxShadow: "inset 0 1px 4px rgba(0,0,0,0.05)"
                     }}>
-                      {v.type_name === "Ô tô" ? "🚗" : "🏍️"}
+                      {v.type_name === "Ô tô" ? (
+                        <span className="material-symbols-rounded" style={{ fontSize: 32, color: "#3F5E4D" }}>directions_car</span>
+                      ) : (
+                        <span className="material-symbols-rounded" style={{ fontSize: 32, color: "#9E826C" }}>motorcycle</span>
+                      )}
                     </div>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 16, fontWeight: "800", color: "#2D3327", letterSpacing: "0.5px" }}>{v.plate_number}</div>
@@ -600,7 +604,13 @@ const ResidentDashboard = () => {
                       color: v.status === "active" ? "#3F5E4D" : "#d97706",
                       fontWeight: "700"
                     }}>
-                      {v.status === "active" ? "✅ ĐÃ PHÊ DUYỆT" : "⏳ CHỜ DUYỆT"}
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        {v.status === "active" ? (
+                          <><span className="material-symbols-rounded" style={{ fontSize: 16 }}>check_circle</span> ĐÃ PHÊ DUYỆT</>
+                        ) : (
+                          <><span className="material-symbols-rounded" style={{ fontSize: 16 }}>pending</span> CHỜ DUYỆT</>
+                        )}
+                      </span>
                     </span>
                     {v.monthly_status === "active" ? (
                       <span style={{
@@ -1653,7 +1663,11 @@ const ResidentDashboard = () => {
                           overflow: "hidden",
                           boxShadow: "inset 0 2px 8px rgba(0,0,0,0.02)"
                         }}>
-                          {v.type_name === "Ô tô" ? "🚗" : "🏍️"}
+                          {v.type_name === "Ô tô" ? (
+                            <span className="material-symbols-rounded" style={{ fontSize: 64, color: "#3F5E4D" }}>directions_car</span>
+                          ) : (
+                            <span className="material-symbols-rounded" style={{ fontSize: 64, color: "#9E826C" }}>motorcycle</span>
+                          )}
                         </div>
 
                         <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
@@ -1681,20 +1695,20 @@ const ResidentDashboard = () => {
                           <div style={{ marginTop: 4, fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
                             <span style={{ color: "#64748b", fontWeight: "500" }}>Trạng thái xe:</span>
                             {v.status === "active" ? (
-                              <span style={{ color: "#3F5E4D", fontWeight: "700" }}>✅ Đã duyệt</span>
+                              <span style={{ color: "#3F5E4D", fontWeight: "700", display: "flex", alignItems: "center", gap: 4 }}><span className="material-symbols-rounded" style={{ fontSize: 16 }}>check_circle</span> Đã duyệt</span>
                             ) : (
-                              <span style={{ color: "#d97706", fontWeight: "700" }}>⏳ Chờ duyệt</span>
+                              <span style={{ color: "#d97706", fontWeight: "700", display: "flex", alignItems: "center", gap: 4 }}><span className="material-symbols-rounded" style={{ fontSize: 16 }}>pending</span> Chờ duyệt</span>
                             )}
                           </div>
 
                           <div style={{ marginTop: 4, fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
                             <span style={{ color: "#64748b", fontWeight: "500" }}>Vé tháng:</span>
                             {v.monthly_status === "active" ? (
-                              <span style={{ color: "#3F5E4D", fontWeight: "700" }}>✅ Đang hoạt động</span>
+                              <span style={{ color: "#3F5E4D", fontWeight: "700", display: "flex", alignItems: "center", gap: 4 }}><span className="material-symbols-rounded" style={{ fontSize: 16 }}>check_circle</span> Đang hoạt động</span>
                             ) : v.monthly_status === "pending" ? (
-                              <span style={{ color: "#d97706", fontWeight: "700" }}>⏳ Chờ duyệt</span>
+                              <span style={{ color: "#d97706", fontWeight: "700", display: "flex", alignItems: "center", gap: 4 }}><span className="material-symbols-rounded" style={{ fontSize: 16 }}>pending</span> Chờ duyệt</span>
                             ) : (
-                              <span style={{ color: "#64748b", fontWeight: "600" }}>Chưa đăng ký</span>
+                              <span style={{ color: "#64748b", fontWeight: "600", display: "flex", alignItems: "center", gap: 4 }}>Chưa đăng ký</span>
                             )}
                           </div>
                         </div>
@@ -1810,7 +1824,11 @@ const ResidentDashboard = () => {
                           overflow: "hidden",
                           boxShadow: "inset 0 2px 8px rgba(0,0,0,0.02)"
                         }}>
-                          {v.type_name === "Ô tô" ? "🚗" : "🏍️"}
+                          {v.type_name === "Ô tô" ? (
+                            <span className="material-symbols-rounded" style={{ fontSize: 64, color: "#3F5E4D" }}>directions_car</span>
+                          ) : (
+                            <span className="material-symbols-rounded" style={{ fontSize: 64, color: "#9E826C" }}>motorcycle</span>
+                          )}
                         </div>
 
                         <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
@@ -1838,9 +1856,9 @@ const ResidentDashboard = () => {
                           <div style={{ marginTop: 4, fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
                             <span style={{ color: "#64748b", fontWeight: "500" }}>Trạng thái xe:</span>
                             {v.status === "active" ? (
-                              <span style={{ color: "#3F5E4D", fontWeight: "700" }}>✅ Đã duyệt</span>
+                              <span style={{ color: "#3F5E4D", fontWeight: "700", display: "flex", alignItems: "center", gap: 4 }}><span className="material-symbols-rounded" style={{ fontSize: 16 }}>check_circle</span> Đã duyệt</span>
                             ) : (
-                              <span style={{ color: "#d97706", fontWeight: "700" }}>⏳ Chờ duyệt</span>
+                              <span style={{ color: "#d97706", fontWeight: "700", display: "flex", alignItems: "center", gap: 4 }}><span className="material-symbols-rounded" style={{ fontSize: 16 }}>pending</span> Chờ duyệt</span>
                             )}
                           </div>
 
