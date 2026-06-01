@@ -54,12 +54,45 @@ const BackupManagement = () => {
     }
   };
 
+  const handleDownload = async (filename) => {
+    try {
+      setMessage({ type: "info", text: "Đang chuẩn bị file tải về..." });
+      const res = await axios.get(`/backup/download/${filename}`, {
+        responseType: 'blob'
+      });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+      setMessage({ type: "success", text: "Đã tải file thành công!" });
+    } catch (err) {
+      setMessage({ type: "error", text: "Lỗi khi tải file." });
+    }
+    setTimeout(() => setMessage({ type: "", text: "" }), 3000);
+  };
+
   const handlePurge = async () => {
     if (!purgeDate) {
       alert("Vui lòng chọn ngày mốc để dọn dẹp.");
       return;
     }
-    if (window.confirm(`Bạn có chắc muốn xóa VĨNH VIỄN các lịch sử gửi xe trước ngày ${purgeDate}?`)) {
+
+    const hasRecentBackup = backups.some(b => {
+      const backupDate = new Date(b.created_at);
+      const now = new Date();
+      return (now - backupDate) < 24 * 60 * 60 * 1000;
+    });
+
+    if (!hasRecentBackup) {
+      if (!window.confirm("⚠️ CẢNH BÁO NGUY HIỂM ⚠️\nBạn CHƯA TẠO BẢN SAO LƯU nào trong 24 giờ qua.\nNếu hệ thống xóa nhầm, dữ liệu sẽ MẤT VĨNH VIỄN không thể khôi phục.\n\nBạn có muốn HỦY thao tác này để ra ngoài ấn 'Tạo bản sao lưu' trước không? (Nhấn Cancel/Hủy để quay lại, OK để tiếp tục xóa)")) {
+        return;
+      }
+    }
+
+    if (window.confirm(`XÁC NHẬN CUỐI CÙNG:\nBạn có chắc muốn xóa VĨNH VIỄN các lịch sử gửi xe, log hệ thống và thông báo cũ trước ngày ${purgeDate}?`)) {
       try {
         const res = await axios.delete("/backup/purge", { data: { before_date: purgeDate } });
         setMessage({ type: "success", text: res.data.message });
@@ -79,7 +112,7 @@ const BackupManagement = () => {
             <h2 style={{margin: 0, fontSize: 20, color: '#1e293b'}}>Quản lý Dữ liệu Hệ thống</h2>
           </div>
           <div style={styles.headerRight}>
-            <div style={styles.avatar}>💾</div>
+            <div style={styles.avatar}><span className="material-symbols-rounded" style={{ fontSize: 20 }}>cloud_upload</span></div>
           </div>
         </div>
 
@@ -134,12 +167,18 @@ const BackupManagement = () => {
                       </td>
                       <td style={styles.td}>{bk.created_by}</td>
                       <td style={styles.td}>{(bk.size_bytes / 1024).toFixed(2)} KB</td>
-                      <td style={styles.td}>
+                      <td style={{...styles.td, display: 'flex', gap: '8px'}}>
                         <button 
                           onClick={() => handleRestore(bk.filename)}
                           style={styles.restoreBtn}
                         >
                           🔄 Phục hồi
+                        </button>
+                        <button 
+                          onClick={() => handleDownload(bk.filename)}
+                          style={styles.downloadBtn}
+                        >
+                          ⬇️ Tải về
                         </button>
                       </td>
                     </tr>
@@ -186,8 +225,38 @@ const styles = {
   toast: { padding: "14px 24px", borderRadius: 12, marginBottom: 20, fontWeight: "600", display: "flex", alignItems: "center", gap: 10, boxShadow: "0 8px 30px rgba(139, 115, 85, 0.04)" },
   
   primaryBtn: { backgroundColor: '#3F5E4D', color: '#FFFBF5', border: 'none', padding: '12px 24px', borderRadius: 10, fontSize: 14, fontWeight: '700', cursor: 'pointer', boxShadow: "0 4px 12px rgba(63, 94, 77, 0.15)" },
-  restoreBtn: { backgroundColor: '#F1ECE4', color: '#5F504B', border: '1px solid #E4DDD3', padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: '600', cursor: 'pointer' },
-  dangerBtn: { backgroundColor: '#CD5C5C', color: '#FFFBF5', border: 'none', padding: '12px 24px', borderRadius: 10, fontSize: 14, fontWeight: '700', cursor: 'pointer', boxShadow: "0 4px 12px rgba(205, 92, 92, 0.15)" },
+  restoreBtn: {
+    padding: '8px 16px',
+    backgroundColor: '#fff',
+    border: '1px solid #e2e8f0',
+    borderRadius: '6px',
+    color: '#0f172a',
+    cursor: 'pointer',
+    fontWeight: '500',
+    fontSize: 14,
+    transition: 'all 0.2s',
+  },
+  downloadBtn: {
+    padding: '8px 16px',
+    backgroundColor: '#f0fdf4',
+    border: '1px solid #bbf7d0',
+    borderRadius: '6px',
+    color: '#166534',
+    cursor: 'pointer',
+    fontWeight: '500',
+    fontSize: 14,
+    transition: 'all 0.2s',
+  },
+  dangerBtn: {
+    padding: '10px 20px',
+    backgroundColor: '#ef4444',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '8px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    boxShadow: '0 4px 6px rgba(239, 68, 68, 0.2)',
+  },
   
   tableCard: { background: "#fff", borderRadius: 20, boxShadow: "0 8px 30px rgba(139, 115, 85, 0.04)", border: "1px solid rgba(139, 115, 85, 0.08)", overflow: "hidden" },
   table: { width: "100%", borderCollapse: "collapse" },

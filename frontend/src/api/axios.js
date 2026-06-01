@@ -21,9 +21,8 @@ instance.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 503) {
-      alert("Hệ thống hiện đang được bảo trì. Vui lòng quay lại sau!");
       localStorage.removeItem("token");
-      window.location.href = "/login";
+      window.dispatchEvent(new Event('maintenanceMode'));
     }
 
     return Promise.reject(error);

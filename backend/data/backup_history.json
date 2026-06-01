@@ -1,1 +1,9 @@
-[]
+[
+  {
+    "backup_id": 1780285289072,
+    "filename": "backup_1780285289072.sql",
+    "size_bytes": 20836,
+    "created_by": "superadmin",
+    "created_at": "2026-06-01T03:41:29.838Z"
+  }
+]

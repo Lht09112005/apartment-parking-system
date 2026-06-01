@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "../api/axios";
 import { useAuth } from "../context/AuthContext";
@@ -9,8 +9,20 @@ const Login = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const { login } = useAuth();
+  const { login, user, token } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (token && user) {
+      if (user.role_id === 1 || user.role_id === 2) {
+        navigate("/admin/dashboard");
+      } else if (user.role_id === 3) {
+        navigate("/security");
+      } else if (user.role_id === 4) {
+        navigate("/resident");
+      }
+    }
+  }, [token, user, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -28,7 +40,9 @@ const Login = () => {
       else if (role === "Security") navigate("/security");
       else navigate("/resident");
     } catch (err) {
-      setError(err.response?.data?.message || "Đăng nhập thất bại");
+      if (err.response?.status !== 503) {
+        setError(err.response?.data?.message || "Đăng nhập thất bại");
+      }
     } finally {
       setLoading(false);
     }

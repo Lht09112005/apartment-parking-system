@@ -106,13 +106,13 @@ router.post("/vehicles", async (req, res) => {
       [plate_number, resident[0].resident_id, type_id, color]
     );
 
-    // Gửi thông báo cho Admin & Super Admin (Role 1 & 2)
+    // Gửi thông báo cho Admin (Role 2)
     try {
       const [[vehicleType]] = await db.query(`SELECT type_name FROM vehicle_types WHERE type_id = ?`, [type_id]);
       const typeName = vehicleType ? vehicleType.type_name : "Chưa xác định";
       const NotificationService = require("../services/notification.service");
       await NotificationService.notifyRole(
-        [1, 2],
+        [2],
         "Yêu cầu duyệt đăng ký xe mới",
         `Cư dân ${resident[0].name} (Căn hộ ${resident[0].apartment_number}) đã đăng ký xe mới biển số ${plate_number}, loại xe ${typeName}. Vui lòng phê duyệt.`,
         "VEHICLE_APPROVAL_REQUEST"
@@ -160,13 +160,13 @@ router.put("/vehicles/:plate_number", async (req, res) => {
 
     await db.query(`UPDATE vehicles SET plate_number=?, type_id=?, color=?, status='pending' WHERE plate_number=? AND resident_id=?`, [targetPlate, type_id, color, plate_number, resident[0].resident_id]);
 
-    // Gửi thông báo cập nhật thông tin xe cho Admin & Super Admin (Role 1 & 2)
+    // Gửi thông báo cập nhật thông tin xe cho Admin (Role 2)
     try {
       const [[vehicleType]] = await db.query(`SELECT type_name FROM vehicle_types WHERE type_id = ?`, [type_id]);
       const typeName = vehicleType ? vehicleType.type_name : "Chưa xác định";
       const NotificationService = require("../services/notification.service");
       await NotificationService.notifyRole(
-        [1, 2],
+        [2],
         "Yêu cầu duyệt đăng ký xe mới",
         `Cư dân ${resident[0].name} (Căn hộ ${resident[0].apartment_number}) đã cập nhật thông tin xe biển số ${targetPlate}, loại xe ${typeName}. Vui lòng phê duyệt.`,
         "VEHICLE_APPROVAL_REQUEST"
@@ -267,11 +267,11 @@ router.post("/monthly", async (req, res) => {
       [plate_number, area_id, startDate, endDate]
     );
 
-    // Gửi thông báo cho Admin & Super Admin (Role 1 & 2)
+    // Gửi thông báo cho Admin (Role 2)
     try {
       const NotificationService = require("../services/notification.service");
       await NotificationService.notifyRole(
-        [1, 2],
+        [2],
         "Yêu cầu duyệt vé tháng",
         `Cư dân ${resident[0].name} (Căn hộ ${resident[0].apartment_number}) đã gửi yêu cầu đăng ký vé tháng cho xe biển số ${plate_number}.`,
         "MONTHLY_APPROVAL_REQUEST"
@@ -436,13 +436,13 @@ router.post("/monthly/renew", async (req, res) => {
       [plate_number, area_id, startDate, endDate]
     );
 
-    // 6. Gửi thông báo cho Admin & Super Admin (Role 1 & 2)
+    // 6. Gửi thông báo cho Admin (Role 2)
     try {
       const formattedStart = startDate.toLocaleDateString("vi-VN");
       const formattedEnd = endDate.toLocaleDateString("vi-VN");
       const NotificationService = require("../services/notification.service");
       await NotificationService.notifyRole(
-        [1, 2],
+        [2],
         "Yêu cầu gia hạn vé tháng",
         `Cư dân ${resident[0].name} (Căn hộ ${resident[0].apartment_number}) đã gửi yêu cầu gia hạn vé tháng cho xe biển số ${plate_number} (Thời hạn mới dự kiến: từ ${formattedStart} đến ${formattedEnd}).`,
         "MONTHLY_RENEW_REQUEST"
@@ -490,11 +490,11 @@ router.post("/vehicles/:plate_number/request-delete", async (req, res) => {
       [plate_number, resident[0].resident_id]
     );
 
-    // 3. Gửi thông báo cho Admin & Super Admin (Role 1 & 2)
+    // 3. Gửi thông báo cho Admin (Role 2)
     try {
       const NotificationService = require("../services/notification.service");
       await NotificationService.notifyRole(
-        [1, 2],
+        [2],
         "Yêu cầu xóa xe & hủy dịch vụ",
         `Cư dân ${resident[0].name} (Căn hộ ${resident[0].apartment_number}) yêu cầu hủy dịch vụ và xóa xe biển số ${plate_number} khỏi hệ thống. Vui lòng đối soát và xử lý.`,
         "VEHICLE_DELETE_REQUEST"

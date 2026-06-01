@@ -1,8 +1,8 @@
 {
   "max_security_accounts": 10,
-  "max_resident_accounts": 501,
+  "max_resident_accounts": 998,
   "maintenance_mode": false,
   "session_timeout_minutes": 480,
-  "data_retention_years": 3,
+  "data_retention_years": 1,
   "system_name": "39°C  "
 }

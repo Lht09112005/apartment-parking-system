@@ -15,13 +15,18 @@ const SystemSettings = () => {
     data_retention_years: 3,
     system_name: "39°C Management System"
   });
+  const [initialSettings, setInitialSettings] = useState(null);
 
   const [message, setMessage] = useState({ type: "", text: "" });
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showInfoModal, setShowInfoModal] = useState(false);
 
   const fetchSettings = useCallback(async () => {
     try {
       const res = await axios.get("/settings");
       setSettings(res.data);
+      setInitialSettings(res.data);
     } catch (err) {
       console.error(err);
       setMessage({ type: "error", text: "Không thể tải cấu hình." });
@@ -32,16 +37,38 @@ const SystemSettings = () => {
     fetchSettings();
   }, [fetchSettings]);
 
+  useEffect(() => {
+    if (initialSettings && settings) {
+      window.__unsavedSettings__ = JSON.stringify(initialSettings) !== JSON.stringify(settings);
+    }
+  }, [settings, initialSettings]);
+
+  useEffect(() => {
+    return () => { window.__unsavedSettings__ = false; };
+  }, []);
+
   useRealtimeRefresh(fetchSettings, ["settings"], {
     intervalMs: 15000,
   });
 
-  const handleSave = async () => {
+  const handleSave = () => {
+    if (JSON.stringify(settings) === JSON.stringify(initialSettings)) {
+      setShowInfoModal(true);
+      return;
+    }
+    setShowConfirmModal(true);
+  };
+
+  const confirmSave = async () => {
+    setShowConfirmModal(false);
     try {
       await axios.put("/settings", { settings });
-      setMessage({ type: "success", text: "Cập nhật cấu hình hệ thống thành công! Vui lòng tải lại trang (F5) để thấy thay đổi." });
+      
+      setShowSuccessModal(true);
+
+      setInitialSettings(settings);
+      window.__unsavedSettings__ = false;
       window.dispatchEvent(new Event('settingsUpdated'));
-      setTimeout(() => setMessage({ type: "", text: "" }), 3000);
     } catch (err) {
       setMessage({ type: "error", text: "Lỗi khi lưu cấu hình." });
       setTimeout(() => setMessage({ type: "", text: "" }), 3000);
@@ -62,7 +89,7 @@ const SystemSettings = () => {
               <div style={{fontSize: 14, fontWeight: '600', color: '#1e293b'}}>Super Admin: {user?.username}</div>
               <div style={{fontSize: 12, color: '#64748b'}}>HỆ THỐNG</div>
             </div>
-            <div style={styles.avatar}>⚙️</div>
+            <div style={styles.avatar}><span className="material-symbols-rounded" style={{ fontSize: 20 }}>settings</span></div>
           </div>
         </div>
 
@@ -156,6 +183,126 @@ const SystemSettings = () => {
           </div>
         </div>
       </div>
+
+      {showConfirmModal && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: "rgba(45, 51, 39, 0.6)", display: "flex", alignItems: "center", justifyContent: "center",
+          zIndex: 2000, backdropFilter: "blur(4px)"
+        }}>
+          <div style={{
+            backgroundColor: "#FFFBF5", borderRadius: 20, width: "90%", maxWidth: 400, padding: 24,
+            boxShadow: "0 20px 45px rgba(0,0,0,0.15)", fontFamily: "'Outfit', sans-serif", textAlign: "center"
+          }}>
+            <div style={{
+              width: 56, height: 56, borderRadius: "50%", backgroundColor: "rgba(205, 92, 92, 0.1)",
+              color: "#CD5C5C", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, margin: "0 auto 16px"
+            }}>
+              <span className="material-symbols-rounded" style={{ fontSize: 32 }}>save</span>
+            </div>
+            <h3 style={{ margin: "0 0 8px 0", color: "#2D3327", fontSize: 18, fontWeight: "800" }}>LƯU CẤU HÌNH HỆ THỐNG</h3>
+            <p style={{ margin: "0 0 24px 0", color: "#64748b", fontSize: 14, lineHeight: "20px" }}>
+              Bạn có chắc chắn muốn áp dụng các thay đổi cấu hình này cho toàn hệ thống không?
+            </p>
+            <div style={{ display: "flex", gap: 12 }}>
+              <button
+                onClick={confirmSave}
+                style={{
+                  flex: 1, padding: "10px 16px", backgroundColor: "#CD5C5C", color: "#FFFBF5", border: "none",
+                  borderRadius: 10, fontSize: 14, fontWeight: "700", cursor: "pointer", transition: "background-color 0.2s"
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#b04f4f"}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#CD5C5C"}
+              >
+                Lưu thay đổi
+              </button>
+              <button
+                onClick={() => setShowConfirmModal(false)}
+                style={{
+                  flex: 1, padding: "10px 16px", backgroundColor: "#F1ECE4", color: "#5F504B", border: "1px solid #E4DDD3",
+                  borderRadius: 10, fontSize: 14, fontWeight: "700", cursor: "pointer"
+                }}
+              >
+                Hủy
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showSuccessModal && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: "rgba(45, 51, 39, 0.6)", display: "flex", alignItems: "center", justifyContent: "center",
+          zIndex: 2000, backdropFilter: "blur(4px)"
+        }}>
+          <div style={{
+            backgroundColor: "#FFFBF5", borderRadius: 20, width: "90%", maxWidth: 400, padding: 24,
+            boxShadow: "0 20px 45px rgba(0,0,0,0.15)", fontFamily: "'Outfit', sans-serif", textAlign: "center"
+          }}>
+            <div style={{
+              width: 56, height: 56, borderRadius: "50%", backgroundColor: "rgba(205, 92, 92, 0.1)",
+              color: "#CD5C5C", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, margin: "0 auto 16px"
+            }}>
+              <span className="material-symbols-rounded" style={{ fontSize: 32 }}>check_circle</span>
+            </div>
+            <h3 style={{ margin: "0 0 8px 0", color: "#2D3327", fontSize: 18, fontWeight: "800" }}>ĐÃ LƯU CẤU HÌNH</h3>
+            <p style={{ margin: "0 0 24px 0", color: "#64748b", fontSize: 14, lineHeight: "20px" }}>
+              Hệ thống đã lưu cấu hình thành công! Vui lòng tải lại trang (F5) để thấy thay đổi (nếu cần).
+            </p>
+            <div style={{ display: "flex", gap: 12 }}>
+              <button
+                onClick={() => setShowSuccessModal(false)}
+                style={{
+                  flex: 1, padding: "10px 16px", backgroundColor: "#CD5C5C", color: "#FFFBF5", border: "none",
+                  borderRadius: 10, fontSize: 14, fontWeight: "700", cursor: "pointer", transition: "background-color 0.2s"
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#b04f4f"}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#CD5C5C"}
+              >
+                Đã hiểu
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showInfoModal && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: "rgba(45, 51, 39, 0.6)", display: "flex", alignItems: "center", justifyContent: "center",
+          zIndex: 2000, backdropFilter: "blur(4px)"
+        }}>
+          <div style={{
+            backgroundColor: "#FFFBF5", borderRadius: 20, width: "90%", maxWidth: 400, padding: 24,
+            boxShadow: "0 20px 45px rgba(0,0,0,0.15)", fontFamily: "'Outfit', sans-serif", textAlign: "center"
+          }}>
+            <div style={{
+              width: 56, height: 56, borderRadius: "50%", backgroundColor: "rgba(205, 92, 92, 0.1)",
+              color: "#CD5C5C", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, margin: "0 auto 16px"
+            }}>
+              <span className="material-symbols-rounded" style={{ fontSize: 32 }}>info</span>
+            </div>
+            <h3 style={{ margin: "0 0 8px 0", color: "#2D3327", fontSize: 18, fontWeight: "800" }}>CHƯA CÓ THAY ĐỔI</h3>
+            <p style={{ margin: "0 0 24px 0", color: "#64748b", fontSize: 14, lineHeight: "20px" }}>
+              Bạn chưa thay đổi thông số nào so với cấu hình hiện tại.
+            </p>
+            <div style={{ display: "flex", gap: 12 }}>
+              <button
+                onClick={() => setShowInfoModal(false)}
+                style={{
+                  flex: 1, padding: "10px 16px", backgroundColor: "#CD5C5C", color: "#FFFBF5", border: "none",
+                  borderRadius: 10, fontSize: 14, fontWeight: "700", cursor: "pointer", transition: "background-color 0.2s"
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#b04f4f"}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#CD5C5C"}
+              >
+                Đã hiểu
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

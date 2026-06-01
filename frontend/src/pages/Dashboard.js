@@ -64,25 +64,25 @@ const Dashboard = () => {
           label: "Tổng cư dân",
           value: stats.totalResidents,
           color: "#3b82f6",
-          icon: "👥"
+          icon: <span className="material-symbols-rounded" style={{ fontSize: 24 }}>group</span>
         },
         {
           label: "Tổng xe đăng ký",
           value: stats.totalVehicles,
           color: "#10b981",
-          icon: "🚗"
+          icon: <span className="material-symbols-rounded" style={{ fontSize: 24 }}>directions_car</span>
         },
         {
           label: "Xe đang trong bãi",
           value: stats.activeSessions,
           color: "#f59e0b",
-          icon: "🅿️"
+          icon: <span className="material-symbols-rounded" style={{ fontSize: 24 }}>local_parking</span>
         },
         {
           label: "Gói tháng còn hạn",
           value: stats.monthlyActive,
           color: "#8b5cf6",
-          icon: "📅"
+          icon: <span className="material-symbols-rounded" style={{ fontSize: 24 }}>event</span>
         },
       ]
     : [];
@@ -106,7 +106,7 @@ const Dashboard = () => {
               </div>
             </div>
             <div style={styles.avatar}>
-              {(user?.username || "A").charAt(0).toUpperCase()}
+              <span className="material-symbols-rounded" style={{ fontSize: 20 }}>grid_view</span>
             </div>
           </div>
         </div>
@@ -263,14 +263,16 @@ const Dashboard = () => {
                 border: "1px solid rgba(139, 115, 85, 0.08)",
                 boxShadow: "0 8px 30px rgba(139, 115, 85, 0.04)"
               }}>
-                <h3 style={{ margin: "0 0 20px 0", color: "#2D3327", fontSize: 15, fontWeight: "800", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                  📊 Công suất & Hoạt động Hầm đỗ
+                <h3 style={{ margin: "0 0 20px 0", color: "#2D3327", fontSize: 15, fontWeight: "800", textTransform: "uppercase", letterSpacing: "0.5px", display: "flex", alignItems: "center" }}>
+                  <span className="material-symbols-rounded" style={{ fontSize: 18, marginRight: 8 }}>bar_chart</span> Công suất & Hoạt động Hầm đỗ
                 </h3>
                 
                 <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
                   <div>
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: "700", color: "#2D3327", marginBottom: 8 }}>
-                      <span>🚗 Bãi đỗ Ô tô (Tầng B1)</span>
+                      <span style={{ display: "flex", alignItems: "center" }}>
+                        <span className="material-symbols-rounded" style={{ fontSize: 16, marginRight: 6 }}>directions_car</span> Bãi đỗ Ô tô (Tầng B1)
+                      </span>
                       <span>
                         {Math.min(100, Math.round((stats.activeSessions || 0) * 0.4))} / 100 xe ({Math.min(100, Math.round((stats.activeSessions || 0) * 0.4)) * 1}%)
                       </span>
@@ -288,7 +290,9 @@ const Dashboard = () => {
 
                   <div>
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: "700", color: "#2D3327", marginBottom: 8 }}>
-                      <span>🏍️ Bãi đỗ Xe máy (Tầng B2)</span>
+                      <span style={{ display: "flex", alignItems: "center" }}>
+                        <span className="material-symbols-rounded" style={{ fontSize: 16, marginRight: 6 }}>two_wheeler</span> Bãi đỗ Xe máy (Tầng B2)
+                      </span>
                       <span>
                         {Math.min(300, Math.round((stats.activeSessions || 0) * 0.6))} / 300 xe ({Math.round(Math.min(300, Math.round((stats.activeSessions || 0) * 0.6)) / 3)}%)
                       </span>
@@ -337,8 +341,8 @@ const Dashboard = () => {
                 display: "flex",
                 flexDirection: "column"
               }}>
-                <h3 style={{ margin: "0 0 20px 0", color: "#2D3327", fontSize: 15, fontWeight: "800", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                  ⏳ Phê duyệt phương tiện nhanh
+                <h3 style={{ margin: "0 0 20px 0", color: "#2D3327", fontSize: 15, fontWeight: "800", textTransform: "uppercase", letterSpacing: "0.5px", display: "flex", alignItems: "center" }}>
+                  <span className="material-symbols-rounded" style={{ fontSize: 18, marginRight: 8 }}>pending</span> Phê duyệt phương tiện nhanh
                 </h3>
 
                 {pendingVehicles.length === 0 ? (
@@ -354,7 +358,7 @@ const Dashboard = () => {
                     borderRadius: 16,
                     backgroundColor: "rgba(139, 115, 85, 0.01)"
                   }}>
-                    <span style={{ fontSize: 32, marginBottom: 12 }}>🎉</span>
+                    <span className="material-symbols-rounded" style={{ fontSize: 48, marginBottom: 12, color: "#10b981" }}>celebration</span>
                     <strong style={{ fontSize: 14, color: "#3F5E4D" }}>Tuyệt vời!</strong>
                     <span style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
                       Không có yêu cầu đăng ký xe nào đang chờ phê duyệt.

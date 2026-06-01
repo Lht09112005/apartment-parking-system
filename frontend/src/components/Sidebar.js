@@ -11,6 +11,8 @@ const Sidebar = () => {
   const [hoveredIndex, setHoveredIndex] = useState(null);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showUnsavedConfirm, setShowUnsavedConfirm] = useState(false);
+  const [pendingAction, setPendingAction] = useState(null);
 
   useEffect(() => {
     const fetchSystemName = async () => {
@@ -34,7 +36,27 @@ const Sidebar = () => {
   }, []);
 
   const handleLogout = () => {
-    setShowLogoutConfirm(true);
+    if (window.__unsavedSettings__) {
+      setPendingAction(() => () => setShowLogoutConfirm(true));
+      setShowUnsavedConfirm(true);
+    } else {
+      setShowLogoutConfirm(true);
+    }
+  };
+
+  const handleNavigate = (path) => {
+    if (window.__unsavedSettings__) {
+      setPendingAction(() => () => navigate(path));
+      setShowUnsavedConfirm(true);
+    } else {
+      navigate(path);
+    }
+  };
+
+  const confirmLeave = () => {
+    window.__unsavedSettings__ = false;
+    setShowUnsavedConfirm(false);
+    if (pendingAction) pendingAction();
   };
 
   const isActive = (path) => location.pathname === path;
@@ -142,7 +164,7 @@ const Sidebar = () => {
                   ...(active ? styles.menuItemActive : {}),
                   ...(hovered && !active ? styles.menuItemHover : {}),
                 }}
-                onClick={() => navigate(item.path)}
+                onClick={() => handleNavigate(item.path)}
                 onMouseEnter={() => setHoveredIndex(index)}
                 onMouseLeave={() => setHoveredIndex(null)}
               >
@@ -265,6 +287,68 @@ const Sidebar = () => {
                 }}
               >
                 Hủy
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showUnsavedConfirm && (
+        <div style={{
+          position: "fixed",
+          top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: "rgba(45, 51, 39, 0.6)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 2000,
+          backdropFilter: "blur(4px)"
+        }}>
+          <div style={{
+            backgroundColor: "#FFFBF5",
+            borderRadius: 20,
+            width: "90%",
+            maxWidth: 400,
+            padding: 24,
+            boxShadow: "0 20px 45px rgba(0,0,0,0.15)",
+            fontFamily: "'Outfit', sans-serif",
+            textAlign: "center"
+          }}>
+            <div style={{
+              width: 56, height: 56, borderRadius: "50%",
+              backgroundColor: "rgba(205, 92, 92, 0.1)", color: "#CD5C5C",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 28, margin: "0 auto 16px"
+            }}>
+              <span className="material-symbols-rounded" style={{ fontSize: 32 }}>warning</span>
+            </div>
+            <h3 style={{ margin: "0 0 8px 0", color: "#2D3327", fontSize: 18, fontWeight: "800" }}>CÓ THAY ĐỔI CHƯA LƯU</h3>
+            <p style={{ margin: "0 0 24px 0", color: "#64748b", fontSize: 14, lineHeight: "20px" }}>
+              Bạn có thay đổi cấu hình nhưng chưa lưu lại. Bạn có chắc chắn muốn rời khỏi trang này không? (Các thay đổi sẽ bị mất)
+            </p>
+            <div style={{ display: "flex", gap: 12 }}>
+              <button
+                onClick={confirmLeave}
+                style={{
+                  flex: 1, padding: "10px 16px", backgroundColor: "#CD5C5C", color: "#FFFBF5", border: "none",
+                  borderRadius: 10, fontSize: 14, fontWeight: "700", cursor: "pointer", transition: "background-color 0.2s"
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#b04f4f"}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#CD5C5C"}
+              >
+                Rời đi
+              </button>
+              <button
+                onClick={() => {
+                  setShowUnsavedConfirm(false);
+                  setPendingAction(null);
+                }}
+                style={{
+                  flex: 1, padding: "10px 16px", backgroundColor: "#F1ECE4", color: "#5F504B", border: "1px solid #E4DDD3",
+                  borderRadius: 10, fontSize: 14, fontWeight: "700", cursor: "pointer"
+                }}
+              >
+                Ở lại
               </button>
             </div>
           </div>

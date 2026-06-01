@@ -124,7 +124,7 @@ const UserManagement = () => {
                 {user?.role_id === 1 ? "TOÀN QUYỀN HỆ THỐNG" : "QUẢN TRỊ VIÊN"}
               </div>
             </div>
-            <div style={styles.avatar}>{user?.role_id === 1 ? "👑" : "🛡️"}</div>
+            <div style={styles.avatar}><span className="material-symbols-rounded" style={{ fontSize: 20 }}>{user?.role_id === 1 ? "admin_panel_settings" : "shield_person"}</span></div>
           </div>
         </div>
 

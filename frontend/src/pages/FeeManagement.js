@@ -63,7 +63,7 @@ const FeeManagement = () => {
               <div style={{fontSize: 14, fontWeight: '600', color: '#1e293b'}}>Admin: {user?.username}</div>
               <div style={{fontSize: 12, color: '#64748b'}}>QUẢN LÝ BẢNG GIÁ</div>
             </div>
-            <div style={styles.avatar}>💰</div>
+            <div style={styles.avatar}><span className="material-symbols-rounded" style={{ fontSize: 20 }}>payments</span></div>
           </div>
         </div>
 

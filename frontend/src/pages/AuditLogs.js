@@ -37,7 +37,7 @@ const AuditLogs = () => {
             <h2 style={{margin: 0, fontSize: 20, color: '#1e293b'}}>Nhật ký kiểm toán hệ thống</h2>
           </div>
           <div style={styles.headerRight}>
-            <div style={styles.avatar}>📋</div>
+            <div style={styles.avatar}><span className="material-symbols-rounded" style={{ fontSize: 20 }}>history</span></div>
           </div>
         </div>
 

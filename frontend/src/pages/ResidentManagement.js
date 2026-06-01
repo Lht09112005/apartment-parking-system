@@ -86,8 +86,28 @@ const ResidentManagement = () => {
     );
     if (sortConfig.key) {
       result.sort((a, b) => {
-        const valA = a[sortConfig.key] || '';
-        const valB = b[sortConfig.key] || '';
+        let valA = a[sortConfig.key] || '';
+        let valB = b[sortConfig.key] || '';
+
+        if (sortConfig.key === 'name' && typeof valA === 'string' && typeof valB === 'string') {
+          const getFirstName = (fullName) => {
+            const parts = fullName.trim().split(' ');
+            return parts[parts.length - 1].toLowerCase();
+          };
+          const nameA = getFirstName(valA);
+          const nameB = getFirstName(valB);
+          
+          if (nameA < nameB) return sortConfig.direction === 'asc' ? -1 : 1;
+          if (nameA > nameB) return sortConfig.direction === 'asc' ? 1 : -1;
+          // Fallback to full name if first names are identical
+          if (valA.toLowerCase() < valB.toLowerCase()) return sortConfig.direction === 'asc' ? -1 : 1;
+          if (valA.toLowerCase() > valB.toLowerCase()) return sortConfig.direction === 'asc' ? 1 : -1;
+          return 0;
+        }
+
+        if (typeof valA === 'string') valA = valA.toLowerCase();
+        if (typeof valB === 'string') valB = valB.toLowerCase();
+
         if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
         if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
         return 0;
@@ -115,7 +135,7 @@ const ResidentManagement = () => {
               <div style={{fontSize: 14, fontWeight: '600', color: '#1e293b'}}>Admin: {user?.username}</div>
               <div style={{fontSize: 12, color: '#64748b'}}>QUẢN LÝ DÂN CƯ</div>
             </div>
-            <div style={styles.avatar}>👥</div>
+            <div style={styles.avatar}><span className="material-symbols-rounded" style={{ fontSize: 20 }}>apartment</span></div>
           </div>
         </div>
 

@@ -27,6 +27,12 @@ const SecurityDashboard = () => {
   const [fees, setFees] = useState([]);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [viewingArea, setViewingArea] = useState(null);
+  const [modalSearch, setModalSearch] = useState("");
+
+  useEffect(() => {
+    setModalSearch("");
+  }, [viewingArea]);
 
   const fetchFees = async () => {
     try {
@@ -417,14 +423,17 @@ const SecurityDashboard = () => {
     }
   };
 
-  const activeMotos = vehicleLogs.filter(
+  const activeMotosList = vehicleLogs.filter(
     (s) => s.status === "parking" && Number(s.type_id) === 1
-  ).length;
+  );
+  const activeMotos = activeMotosList.length;
 
-  const activeCars = vehicleLogs.filter(
+  const activeCarsList = vehicleLogs.filter(
     (s) => s.status === "parking" && Number(s.type_id) === 2
-  ).length;
+  );
+  const activeCars = activeCarsList.length;
 
+  const totalActiveList = vehicleLogs.filter(s => s.status === "parking");
   const totalActive = activeMotos + activeCars;
 
   return (
@@ -707,6 +716,7 @@ const SecurityDashboard = () => {
                     {/* Label removed per user request */}
                     <input
                       autoFocus
+                      maxLength={15}
                       value={plate}
                       onChange={(e) => setPlate(e.target.value.toUpperCase())}
                       style={styles.bigInput}
@@ -1074,41 +1084,55 @@ const SecurityDashboard = () => {
                       </div>
 
                       <div style={styles.logsTable}>
-                        <div style={styles.tableRowHeader}>
-                          <div style={styles.tableCell}>Biển số</div>
-                          <div style={styles.tableCell}>Trạng thái</div>
-                          <div style={styles.tableCell}>Vào</div>
-                          <div style={styles.tableCell}>Ra</div>
-                          <div style={styles.tableCell}>Nhân viên</div>
+                        <div style={{...styles.tableRowHeader, backgroundColor: "#3F5E4D", color: "#FFFBF5", borderBottom: "none", fontSize: 12, letterSpacing: 1}}>
+                          <div style={styles.tableCell}>BIỂN SỐ</div>
+                          <div style={styles.tableCell}>TRẠNG THÁI</div>
+                          <div style={styles.tableCell}>THỜI GIAN VÀO</div>
+                          <div style={styles.tableCell}>THỜI GIAN RA</div>
+                          <div style={styles.tableCell}>NHÂN VIÊN</div>
                         </div>
 
                         {vehicleLogs.length === 0 ? (
-                          <div style={styles.emptyState}>
+                          <div style={{...styles.emptyState, backgroundColor: "#FFFBF5"}}>
                             Chưa có bản ghi nào
                           </div>
                         ) : (
                           vehicleLogs.map((log) => (
-                            <div key={log.session_id} style={styles.tableRow}>
-                              <div style={styles.tableCell}>
+                            <div key={log.session_id} style={{...styles.tableRow, backgroundColor: "#FFFBF5", alignItems: "center"}}>
+                              <div style={{...styles.tableCell, fontWeight: "800", fontSize: 18, color: "#2D3327", fontFamily: "'Outfit', sans-serif"}}>
                                 {log.plate_number}
                               </div>
                               <div style={styles.tableCell}>
-                                {log.status === "parking"
-                                  ? "Đang gửi"
-                                  : "Đã ra"}
+                                {log.status === "parking" ? (
+                                  <span style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: "700", backgroundColor: "#EAE5D9", color: "#9E826C", border: "1px solid #D5CCBE", display: "inline-block" }}>
+                                    Đang trong bãi
+                                  </span>
+                                ) : (
+                                  <span style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: "700", backgroundColor: "rgba(63, 94, 77, 0.1)", color: "#3F5E4D", border: "1px solid rgba(63, 94, 77, 0.2)", display: "inline-block" }}>
+                                    Đã ra khỏi bãi
+                                  </span>
+                                )}
                               </div>
                               <div style={styles.tableCell}>
-                                {log.time_in
-                                  ? new Date(log.time_in).toLocaleString()
-                                  : "-"}
+                                {log.time_in ? (
+                                  <>
+                                    <div style={{ fontWeight: "800", color: "#2D3327", fontSize: 15 }}>{new Date(log.time_in).toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' })}</div>
+                                    <div style={{ fontSize: 12, color: "#9E826C", fontWeight: "600", marginTop: 2 }}>{new Date(log.time_in).toLocaleDateString("vi-VN")}</div>
+                                  </>
+                                ) : <div style={{ color: "#9E826C", fontWeight: "600" }}>---</div>}
                               </div>
                               <div style={styles.tableCell}>
-                                {log.time_out
-                                  ? new Date(log.time_out).toLocaleString()
-                                  : "-"}
+                                {log.time_out ? (
+                                  <>
+                                    <div style={{ fontWeight: "800", color: "#2D3327", fontSize: 15 }}>{new Date(log.time_out).toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' })}</div>
+                                    <div style={{ fontSize: 12, color: "#9E826C", fontWeight: "600", marginTop: 2 }}>{new Date(log.time_out).toLocaleDateString("vi-VN")}</div>
+                                  </>
+                                ) : <div style={{ color: "#9E826C", fontWeight: "600" }}>---</div>}
                               </div>
-                              <div style={styles.tableCell}>
-                                {log.security_name || "N/A"}
+                              <div style={{...styles.tableCell, display: "flex", alignItems: "center", gap: 8, fontWeight: "700", color: "#5F504B"}}>
+                                {log.security_name ? (
+                                  <><span className="material-symbols-rounded" style={{ fontSize: 18, color: "#9E826C" }}>badge</span> {log.security_name}</>
+                                ) : <div style={{ color: "#9E826C" }}>---</div>}
                               </div>
                             </div>
                           ))
@@ -1122,12 +1146,13 @@ const SecurityDashboard = () => {
                       <div
                         style={{
                           display: "flex",
-                          gap: 12,
-                          marginBottom: 24,
+                          gap: 16,
+                          marginBottom: 32,
                           position: "relative",
                         }}
                       >
                         <div style={{ flex: 1, position: "relative" }}>
+                          <span className="material-symbols-rounded" style={{ position: "absolute", left: 20, top: "50%", transform: "translateY(-50%)", color: "#9E826C", fontSize: 24 }}>search</span>
                           <input
                             value={searchPlate}
                             onChange={(e) => {
@@ -1141,13 +1166,18 @@ const SecurityDashboard = () => {
                             placeholder="Nhập biển số xe cần tìm..."
                             style={{
                               width: "100%",
-                              padding: "14px 18px",
-                              border: "2px solid #e2e8f0",
-                              borderRadius: 10,
+                              padding: "16px 20px 16px 56px",
+                              border: "2px solid #EAE5D9",
+                              borderRadius: 16,
                               fontSize: 16,
+                              fontWeight: "600",
                               outline: "none",
-                              backgroundColor: "#f8fafc",
+                              backgroundColor: "#FFFBF5",
+                              color: "#2D3327",
                               boxSizing: "border-box",
+                              fontFamily: "'Outfit', sans-serif",
+                              boxShadow: "0 4px 12px rgba(139, 115, 85, 0.05)",
+                              transition: "all 0.2s"
                             }}
                           />
 
@@ -1160,12 +1190,11 @@ const SecurityDashboard = () => {
                                   top: "100%",
                                   left: 0,
                                   right: 0,
-                                  backgroundColor: "#fff",
-                                  border: "1px solid #e2e8f0",
-                                  borderRadius: 8,
-                                  marginTop: 4,
-                                  boxShadow:
-                                    "0 4px 6px -1px rgba(0,0,0,0.1)",
+                                  backgroundColor: "#FFFBF5",
+                                  border: "2px solid #EAE5D9",
+                                  borderRadius: 12,
+                                  marginTop: 8,
+                                  boxShadow: "0 10px 25px rgba(139, 115, 85, 0.1)",
                                   zIndex: 10,
                                   overflow: "hidden",
                                 }}
@@ -1175,28 +1204,30 @@ const SecurityDashboard = () => {
                                     key={v.plate}
                                     onClick={() => handleSearch(v.plate)}
                                     style={{
-                                      padding: "12px 18px",
+                                      padding: "14px 20px",
                                       cursor: "pointer",
-                                      borderBottom: "1px solid #f1f5f9",
-                                      fontWeight: "600",
-                                      color: "#0f172a",
+                                      borderBottom: "1px solid #F1ECE4",
+                                      fontWeight: "700",
+                                      color: "#2D3327",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      transition: "0.2s"
                                     }}
                                     onMouseEnter={(e) =>
-                                      (e.currentTarget.style.backgroundColor =
-                                        "#f8fafc")
+                                      (e.currentTarget.style.backgroundColor = "#F1ECE4")
                                     }
                                     onMouseLeave={(e) =>
-                                      (e.currentTarget.style.backgroundColor =
-                                        "transparent")
+                                      (e.currentTarget.style.backgroundColor = "transparent")
                                     }
                                   >
+                                    <span className="material-symbols-rounded" style={{ marginRight: 10, color: "#3F5E4D" }}>directions_car</span>
                                     {v.plate}
                                     <span
                                       style={{
-                                        fontSize: 12,
-                                        color: "#64748b",
-                                        fontWeight: "400",
-                                        marginLeft: 8,
+                                        fontSize: 13,
+                                        color: "#9E826C",
+                                        fontWeight: "500",
+                                        marginLeft: 12,
                                       }}
                                     >
                                       {v.name}
@@ -1210,17 +1241,23 @@ const SecurityDashboard = () => {
                         <button
                           onClick={handleSearch}
                           style={{
-                            padding: "14px 28px",
-                            backgroundColor: "#0f172a",
-                            color: "#fff",
+                            padding: "0 32px",
+                            backgroundColor: "#3F5E4D",
+                            color: "#FFFBF5",
                             border: "none",
-                            borderRadius: 10,
-                            fontSize: 15,
-                            fontWeight: "700",
+                            borderRadius: 16,
+                            fontSize: 16,
+                            fontWeight: "800",
                             cursor: "pointer",
+                            fontFamily: "'Outfit', sans-serif",
+                            boxShadow: "0 4px 12px rgba(63, 94, 77, 0.2)",
+                            transition: "all 0.2s",
+                            letterSpacing: 0.5
                           }}
+                          onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                          onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
                         >
-                          Tìm kiếm
+                          TÌM KIẾM
                         </button>
                       </div>
 
@@ -1235,50 +1272,65 @@ const SecurityDashboard = () => {
                         <>
                           <div
                             style={{
-                              backgroundColor: "#f8fafc",
-                              borderRadius: 14,
-                              padding: 24,
-                              border: "1px solid #e2e8f0",
-                              marginBottom: 20,
+                              backgroundColor: "#FFFBF5",
+                              borderRadius: 20,
+                              padding: 32,
+                              border: "2px solid #EAE5D9",
+                              marginBottom: 24,
+                              boxShadow: "0 8px 24px rgba(139, 115, 85, 0.06)",
                             }}
                           >
                             <div
                               style={{
-                                fontSize: 14,
-                                fontWeight: "700",
-                                color: "#64748b",
-                                marginBottom: 16,
-                                textTransform: "uppercase",
-                                letterSpacing: 1,
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 12,
+                                marginBottom: 24,
+                                borderBottom: "2px dashed #EAE5D9",
+                                paddingBottom: 16
                               }}
                             >
-                              Thông tin xe
+                              <span className="material-symbols-rounded" style={{ color: "#9E826C", fontSize: 28 }}>info</span>
+                              <div
+                                style={{
+                                  fontSize: 16,
+                                  fontWeight: "800",
+                                  color: "#9E826C",
+                                  textTransform: "uppercase",
+                                  letterSpacing: 2,
+                                }}
+                              >
+                                THÔNG TIN XE
+                              </div>
                             </div>
 
                             <div
                               style={{
                                 display: "grid",
                                 gridTemplateColumns:
-                                  "repeat(auto-fit, minmax(180px, 1fr))",
-                                gap: 16,
+                                  "repeat(auto-fit, minmax(200px, 1fr))",
+                                gap: 24,
                               }}
                             >
                               <div>
                                 <div
                                   style={{
-                                    fontSize: 12,
-                                    color: "#94a3b8",
-                                    fontWeight: "600",
+                                    fontSize: 13,
+                                    color: "#9E826C",
+                                    fontWeight: "700",
+                                    textTransform: "uppercase",
+                                    letterSpacing: 1
                                   }}
                                 >
                                   BIỂN SỐ
                                 </div>
                                 <div
                                   style={{
-                                    fontSize: 20,
+                                    fontSize: 28,
                                     fontWeight: "900",
-                                    color: "#0f172a",
-                                    marginTop: 4,
+                                    color: "#2D3327",
+                                    marginTop: 8,
+                                    fontFamily: "'Outfit', sans-serif"
                                   }}
                                 >
                                   {searchResult.vehicle.plate_number}
@@ -1288,47 +1340,52 @@ const SecurityDashboard = () => {
                               <div>
                                 <div
                                   style={{
-                                    fontSize: 12,
-                                    color: "#94a3b8",
-                                    fontWeight: "600",
+                                    fontSize: 13,
+                                    color: "#9E826C",
+                                    fontWeight: "700",
+                                    textTransform: "uppercase",
+                                    letterSpacing: 1
                                   }}
                                 >
                                   TRẠNG THÁI
                                 </div>
                                 <div
                                   style={{
-                                    fontSize: 16,
-                                    fontWeight: "600",
-                                    color: "#0f172a",
-                                    marginTop: 4,
+                                    marginTop: 12,
                                   }}
                                 >
                                   {searchResult.latestSession ? (
                                     <span
                                       style={{
-                                        padding: "4px 10px",
-                                        borderRadius: 999,
-                                        fontSize: 12,
-                                        fontWeight: "700",
+                                        padding: "6px 14px",
+                                        borderRadius: 12,
+                                        fontSize: 14,
+                                        fontWeight: "800",
                                         backgroundColor:
                                           searchResult.latestSession.status ===
                                           "parking"
-                                            ? "#dbeafe"
-                                            : "#dcfce7",
+                                            ? "#EAE5D9"
+                                            : "rgba(63, 94, 77, 0.1)",
                                         color:
                                           searchResult.latestSession.status ===
                                           "parking"
-                                            ? "#1e40af"
-                                            : "#166534",
+                                            ? "#9E826C"
+                                            : "#3F5E4D",
+                                        border: searchResult.latestSession.status === "parking" 
+                                          ? "1px solid #D5CCBE" 
+                                          : "1px solid rgba(63, 94, 77, 0.2)",
+                                        display: "inline-flex",
+                                        alignItems: "center",
+                                        gap: 6
                                       }}
                                     >
-                                      {searchResult.latestSession.status ===
-                                      "parking"
-                                        ? "Đang gửi"
-                                        : "Đã ra"}
+                                      {searchResult.latestSession.status === "parking" 
+                                        ? <><span className="material-symbols-rounded" style={{ fontSize: 16 }}>local_parking</span> Đang trong bãi</>
+                                        : <><span className="material-symbols-rounded" style={{ fontSize: 16 }}>logout</span> Đã ra khỏi bãi</>
+                                      }
                                     </span>
                                   ) : (
-                                    <span>Chưa có lịch sử</span>
+                                    <span style={{ color: "#64748b", fontWeight: "600" }}>Chưa có lịch sử</span>
                                   )}
                                 </div>
                               </div>
@@ -1336,19 +1393,21 @@ const SecurityDashboard = () => {
                               <div>
                                 <div
                                   style={{
-                                    fontSize: 12,
-                                    color: "#94a3b8",
-                                    fontWeight: "600",
+                                    fontSize: 13,
+                                    color: "#9E826C",
+                                    fontWeight: "700",
+                                    textTransform: "uppercase",
+                                    letterSpacing: 1
                                   }}
                                 >
-                                  GIỜ VÀO
+                                  GIỜ VÀO GẦN NHẤT
                                 </div>
                                 <div
                                   style={{
-                                    fontSize: 16,
-                                    fontWeight: "600",
-                                    color: "#0f172a",
-                                    marginTop: 4,
+                                    fontSize: 18,
+                                    fontWeight: "700",
+                                    color: "#2D3327",
+                                    marginTop: 8,
                                   }}
                                 >
                                   {searchResult.latestSession?.time_in
@@ -1362,110 +1421,128 @@ const SecurityDashboard = () => {
                               <div>
                                 <div
                                   style={{
-                                    fontSize: 12,
-                                    color: "#94a3b8",
-                                    fontWeight: "600",
+                                    fontSize: 13,
+                                    color: "#9E826C",
+                                    fontWeight: "700",
+                                    textTransform: "uppercase",
+                                    letterSpacing: 1
                                   }}
                                 >
-                                  NHÂN VIÊN
+                                  NHÂN VIÊN GHI NHẬN
                                 </div>
                                 <div
                                   style={{
-                                    fontSize: 16,
-                                    fontWeight: "600",
-                                    color: "#0f172a",
-                                    marginTop: 4,
+                                    fontSize: 18,
+                                    fontWeight: "700",
+                                    color: "#2D3327",
+                                    marginTop: 8,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 8
                                   }}
                                 >
-                                  {searchResult.latestSession?.security_name ||
-                                    "N/A"}
+                                  {searchResult.latestSession?.security_name ? (
+                                    <><span className="material-symbols-rounded" style={{ color: "#3F5E4D", fontSize: 20 }}>badge</span> {searchResult.latestSession.security_name}</>
+                                  ) : (
+                                    "---"
+                                  )}
                                 </div>
                               </div>
 
                               <div>
                                 <div
                                   style={{
-                                    fontSize: 12,
-                                    color: "#94a3b8",
-                                    fontWeight: "600",
+                                    fontSize: 13,
+                                    color: "#9E826C",
+                                    fontWeight: "700",
+                                    textTransform: "uppercase",
+                                    letterSpacing: 1
                                   }}
                                 >
                                   CHỦ XE
                                 </div>
                                 <div
                                   style={{
-                                    fontSize: 16,
-                                    fontWeight: "600",
-                                    color: "#0f172a",
-                                    marginTop: 4,
+                                    fontSize: 18,
+                                    fontWeight: "700",
+                                    color: "#2D3327",
+                                    marginTop: 8,
                                   }}
                                 >
-                                  {searchResult.vehicle.resident_name ||
-                                    "Chưa rõ"}
+                                  {searchResult.vehicle.resident_name || "Khách vãng lai"}
                                 </div>
                               </div>
 
                               <div>
                                 <div
                                   style={{
-                                    fontSize: 12,
-                                    color: "#94a3b8",
-                                    fontWeight: "600",
+                                    fontSize: 13,
+                                    color: "#9E826C",
+                                    fontWeight: "700",
+                                    textTransform: "uppercase",
+                                    letterSpacing: 1
                                   }}
                                 >
                                   CĂN HỘ
                                 </div>
                                 <div
                                   style={{
-                                    fontSize: 16,
-                                    fontWeight: "600",
-                                    color: "#0f172a",
-                                    marginTop: 4,
+                                    fontSize: 18,
+                                    fontWeight: "700",
+                                    color: "#2D3327",
+                                    marginTop: 8,
                                   }}
                                 >
-                                  {searchResult.vehicle.apartment_number ||
-                                    "---"}
+                                  {searchResult.vehicle.apartment_number ? (
+                                    <span style={{ backgroundColor: "#F1ECE4", padding: "4px 10px", borderRadius: 8, border: "1px solid #E4DDD3" }}>
+                                      {searchResult.vehicle.apartment_number}
+                                    </span>
+                                  ) : "---"}
                                 </div>
                               </div>
 
                               <div>
                                 <div
                                   style={{
-                                    fontSize: 12,
-                                    color: "#94a3b8",
-                                    fontWeight: "600",
+                                    fontSize: 13,
+                                    color: "#9E826C",
+                                    fontWeight: "700",
+                                    textTransform: "uppercase",
+                                    letterSpacing: 1
                                   }}
                                 >
                                   LOẠI XE
                                 </div>
                                 <div
                                   style={{
-                                    fontSize: 16,
-                                    fontWeight: "600",
-                                    color: "#0f172a",
-                                    marginTop: 4,
+                                    fontSize: 18,
+                                    fontWeight: "700",
+                                    color: "#2D3327",
+                                    marginTop: 8,
                                   }}
                                 >
-                                  {searchResult.vehicle.type_name}
+                                  {searchResult.vehicle.type_name || "---"}
                                 </div>
                               </div>
 
                               <div>
                                 <div
                                   style={{
-                                    fontSize: 12,
-                                    color: "#94a3b8",
-                                    fontWeight: "600",
+                                    fontSize: 13,
+                                    color: "#9E826C",
+                                    fontWeight: "700",
+                                    textTransform: "uppercase",
+                                    letterSpacing: 1
                                   }}
                                 >
                                   MÀU XE
                                 </div>
                                 <div
                                   style={{
-                                    fontSize: 16,
-                                    fontWeight: "600",
-                                    color: "#0f172a",
-                                    marginTop: 4,
+                                    fontSize: 18,
+                                    fontWeight: "700",
+                                    color: "#2D3327",
+                                    marginTop: 8,
                                   }}
                                 >
                                   {searchResult.vehicle.color || "---"}
@@ -1476,72 +1553,71 @@ const SecurityDashboard = () => {
 
                           <div
                             style={{
-                              fontSize: 14,
-                              fontWeight: "700",
-                              color: "#64748b",
-                              marginBottom: 12,
+                              fontSize: 16,
+                              fontWeight: "800",
+                              color: "#9E826C",
+                              marginBottom: 16,
                               textTransform: "uppercase",
-                              letterSpacing: 1,
+                              letterSpacing: 2,
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 8
                             }}
                           >
-                            Lịch sử gửi xe gần nhất
+                            <span className="material-symbols-rounded" style={{ fontSize: 24 }}>history</span>
+                            LỊCH SỬ RA/VÀO GẦN ĐÂY
                           </div>
 
                           <div style={styles.logsTable}>
-                            <div style={styles.tableRowHeader4}>
-                              <div style={styles.tableCell}>Biển số</div>
-                              <div style={styles.tableCell}>Trạng thái</div>
-                              <div style={styles.tableCell}>Giờ vào</div>
-                              <div style={styles.tableCell}>Nhân viên</div>
+                            <div style={{...styles.tableRowHeader, backgroundColor: "#3F5E4D", color: "#FFFBF5", borderBottom: "none", fontSize: 12, letterSpacing: 1}}>
+                              <div style={styles.tableCell}>BIỂN SỐ</div>
+                              <div style={styles.tableCell}>TRẠNG THÁI</div>
+                              <div style={styles.tableCell}>THỜI GIAN VÀO</div>
+                              <div style={styles.tableCell}>THỜI GIAN RA</div>
+                              <div style={styles.tableCell}>NHÂN VIÊN</div>
                             </div>
 
                             {searchResult.history.length === 0 ? (
-                              <div style={styles.emptyState}>
+                              <div style={{...styles.emptyState, backgroundColor: "#FFFBF5"}}>
                                 Chưa có lịch sử gửi xe
                               </div>
                             ) : (
                               searchResult.history.map((h) => (
-                                <div key={h.session_id} style={styles.tableRow4}>
-                                  <div style={styles.tableCell}>
-                                    <strong style={{ color: "#0f172a" }}>
-                                      {h.plate_number ||
-                                        searchResult.vehicle.plate_number}
-                                    </strong>
+                                <div key={h.session_id} style={{...styles.tableRow, backgroundColor: "#FFFBF5", alignItems: "center"}}>
+                                  <div style={{...styles.tableCell, fontWeight: "800", fontSize: 18, color: "#2D3327", fontFamily: "'Outfit', sans-serif"}}>
+                                    {h.plate_number || searchResult.vehicle.plate_number}
                                   </div>
-
                                   <div style={styles.tableCell}>
-                                    <span
-                                      style={{
-                                        padding: "4px 10px",
-                                        borderRadius: 999,
-                                        fontSize: 12,
-                                        fontWeight: "600",
-                                        backgroundColor:
-                                          h.status === "parking"
-                                            ? "#dbeafe"
-                                            : "#dcfce7",
-                                        color:
-                                          h.status === "parking"
-                                            ? "#1e40af"
-                                            : "#166534",
-                                      }}
-                                    >
-                                      {h.status === "parking"
-                                        ? "Đang gửi"
-                                        : "Đã ra"}
-                                    </span>
+                                    {h.status === "parking" ? (
+                                      <span style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: "700", backgroundColor: "#EAE5D9", color: "#9E826C", border: "1px solid #D5CCBE", display: "inline-block" }}>
+                                        Đang trong bãi
+                                      </span>
+                                    ) : (
+                                      <span style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: "700", backgroundColor: "rgba(63, 94, 77, 0.1)", color: "#3F5E4D", border: "1px solid rgba(63, 94, 77, 0.2)", display: "inline-block" }}>
+                                        Đã ra khỏi bãi
+                                      </span>
+                                    )}
                                   </div>
-
                                   <div style={styles.tableCell}>
-                                    {h.time_in
-                                      ? new Date(h.time_in).toLocaleString(
-                                          "vi-VN"
-                                        )
-                                      : "-"}
+                                    {h.time_in ? (
+                                      <>
+                                        <div style={{ fontWeight: "800", color: "#2D3327", fontSize: 15 }}>{new Date(h.time_in).toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' })}</div>
+                                        <div style={{ fontSize: 12, color: "#9E826C", fontWeight: "600", marginTop: 2 }}>{new Date(h.time_in).toLocaleDateString("vi-VN")}</div>
+                                      </>
+                                    ) : <div style={{ color: "#9E826C", fontWeight: "600" }}>---</div>}
                                   </div>
-
                                   <div style={styles.tableCell}>
-                                    {h.security_name || "N/A"}
+                                    {h.time_out ? (
+                                      <>
+                                        <div style={{ fontWeight: "800", color: "#2D3327", fontSize: 15 }}>{new Date(h.time_out).toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' })}</div>
+                                        <div style={{ fontSize: 12, color: "#9E826C", fontWeight: "600", marginTop: 2 }}>{new Date(h.time_out).toLocaleDateString("vi-VN")}</div>
+                                      </>
+                                    ) : <div style={{ color: "#9E826C", fontWeight: "600" }}>---</div>}
+                                  </div>
+                                  <div style={{...styles.tableCell, display: "flex", alignItems: "center", gap: 8, fontWeight: "700", color: "#5F504B"}}>
+                                    {h.security_name ? (
+                                      <><span className="material-symbols-rounded" style={{ fontSize: 18, color: "#9E826C" }}>badge</span> {h.security_name}</>
+                                    ) : <div style={{ color: "#9E826C" }}>---</div>}
                                   </div>
                                 </div>
                               ))

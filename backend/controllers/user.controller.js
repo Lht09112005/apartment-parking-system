@@ -1,6 +1,7 @@
 const bcrypt = require("bcrypt");
 const db = require("../config/db");
 const { logAudit } = require("../utils/auditLogger");
+const NotificationService = require("../services/notification.service");
 
 const getAllUsers = async (req, res) => {
   try {
@@ -64,6 +65,7 @@ const createUser = async (req, res) => {
       `Tạo tài khoản ${role_id === 2 ? 'Admin' : 'Security'}: ${username}`, 
       req.ip
     );
+
 
     res.status(201).json({ message: "Tạo tài khoản thành công", user_id: result.insertId });
   } catch (err) {
@@ -147,6 +149,7 @@ const updateUser = async (req, res) => {
       req.ip
     );
 
+
     res.json({ message: "Cập nhật tài khoản thành công" });
   } catch (err) {
     if (err.code === "ER_DUP_ENTRY") {
@@ -195,6 +198,7 @@ const resetPassword = async (req, res) => {
       `Reset mật khẩu cho user_id ${id}`, 
       req.ip
     );
+
 
     res.json({ message: "Đặt lại mật khẩu thành công" });
   } catch (err) {

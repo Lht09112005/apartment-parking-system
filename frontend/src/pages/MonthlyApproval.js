@@ -41,18 +41,23 @@ const MonthlyApproval = () => {
     intervalMs: 10000,
   });
 
-  const handleUpdateStatus = async (monthly_id, status) => {
-    const confirmMsg = status === 'active' ? "Xác nhận DUYỆT vé tháng này?" : "Xác nhận TỪ CHỐI vé tháng này?";
-    if (window.confirm(confirmMsg)) {
-      try {
-        await axios.put(`/parking/monthly/${monthly_id}`, { status });
-        setMessage({ type: "success", text: status === 'active' ? "Đã duyệt thành công!" : "Đã từ chối yêu cầu!" });
-        setDetail(null);
-        fetchData();
-        setTimeout(() => setMessage({ type: "", text: "" }), 3000);
-      } catch (err) {
-        setMessage({ type: "error", text: "Lỗi cập nhật trạng thái" });
-      }
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, monthly_id: null, status: null });
+
+  const confirmUpdateStatus = (monthly_id, status) => {
+    setConfirmModal({ isOpen: true, monthly_id, status });
+  };
+
+  const handleUpdateStatus = async () => {
+    const { monthly_id, status } = confirmModal;
+    try {
+      await axios.put(`/parking/monthly/${monthly_id}`, { status });
+      setMessage({ type: "success", text: status === 'active' ? "Đã duyệt thành công!" : "Đã từ chối yêu cầu!" });
+      setDetail(null);
+      setConfirmModal({ isOpen: false, monthly_id: null, status: null });
+      fetchData();
+      setTimeout(() => setMessage({ type: "", text: "" }), 3000);
+    } catch (err) {
+      setMessage({ type: "error", text: "Lỗi cập nhật trạng thái" });
     }
   };
 
@@ -87,22 +92,31 @@ const MonthlyApproval = () => {
               <div style={{ fontSize: 14, fontWeight: '600', color: '#1e293b' }}>Admin: {user?.username}</div>
               <div style={{ fontSize: 12, color: '#64748b' }}>XÉT DUYỆT ĐĂNG KÝ</div>
             </div>
-            <div style={styles.avatar}>📑</div>
+            <div style={styles.avatar}><span className="material-symbols-rounded" style={{ fontSize: 20 }}>calendar_month</span></div>
           </div>
         </div>
 
         <div style={styles.contentBody}>
           {/* Summary Cards */}
           <div style={styles.summaryRow}>
-            <div style={{ ...styles.summaryCard, borderLeftColor: '#f59e0b' }}>
+            <div 
+              onClick={() => setFilterStatus('pending')}
+              style={{ ...styles.summaryCard, borderLeftColor: '#f59e0b', cursor: 'pointer', transform: filterStatus === 'pending' ? 'scale(1.02)' : 'scale(1)', transition: 'all 0.2s', boxShadow: filterStatus === 'pending' ? '0 12px 40px rgba(245, 158, 11, 0.15)' : '0 8px 30px rgba(139, 115, 85, 0.04)' }}
+            >
               <div style={styles.summaryLabel}>Chờ duyệt</div>
               <div style={{ ...styles.summaryValue, color: '#f59e0b' }}>{pendingCount}</div>
             </div>
-            <div style={{ ...styles.summaryCard, borderLeftColor: '#059669' }}>
+            <div 
+              onClick={() => setFilterStatus('active')}
+              style={{ ...styles.summaryCard, borderLeftColor: '#059669', cursor: 'pointer', transform: filterStatus === 'active' ? 'scale(1.02)' : 'scale(1)', transition: 'all 0.2s', boxShadow: filterStatus === 'active' ? '0 12px 40px rgba(5, 150, 105, 0.15)' : '0 8px 30px rgba(139, 115, 85, 0.04)' }}
+            >
               <div style={styles.summaryLabel}>Đang hoạt động</div>
               <div style={{ ...styles.summaryValue, color: '#059669' }}>{activeCount}</div>
             </div>
-            <div style={{ ...styles.summaryCard, borderLeftColor: '#3b82f6' }}>
+            <div 
+              onClick={() => setFilterStatus('all')}
+              style={{ ...styles.summaryCard, borderLeftColor: '#3b82f6', cursor: 'pointer', transform: filterStatus === 'all' ? 'scale(1.02)' : 'scale(1)', transition: 'all 0.2s', boxShadow: filterStatus === 'all' ? '0 12px 40px rgba(59, 130, 246, 0.15)' : '0 8px 30px rgba(139, 115, 85, 0.04)' }}
+            >
               <div style={styles.summaryLabel}>Tổng đăng ký</div>
               <div style={{ ...styles.summaryValue, color: '#3b82f6' }}>{registrations.length}</div>
             </div>
@@ -195,15 +209,22 @@ const MonthlyApproval = () => {
                           backgroundColor: reg.status === 'active' ? '#ecfdf5' : reg.status === 'pending' ? '#fffbeb' : '#fef2f2',
                           color: reg.status === 'active' ? '#059669' : reg.status === 'pending' ? '#d97706' : '#dc2626'
                         }}>
-                          {reg.status === 'active' ? '✅ Đã duyệt' : reg.status === 'pending' ? '⏳ Chờ duyệt' : '❌ Đã hủy'}
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <span className="material-symbols-rounded" style={{ fontSize: 16 }}>
+                              {reg.status === 'active' ? 'check_circle' : reg.status === 'pending' ? 'pending' : 'cancel'}
+                            </span>
+                            {reg.status === 'active' ? 'Đã duyệt' : reg.status === 'pending' ? 'Chờ duyệt' : 'Đã hủy'}
+                          </span>
                         </span>
                       </td>
                       <td style={{ ...styles.td, textAlign: 'right' }}>
-                        <button onClick={() => setDetail(reg)} style={{ ...styles.detailBtn }}>📋 Chi tiết</button>
+                        <button onClick={() => setDetail(reg)} style={{ ...styles.detailBtn, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          <span className="material-symbols-rounded" style={{ fontSize: 16 }}>visibility</span> Chi tiết
+                        </button>
                         {reg.status === 'pending' && (
                           <>
-                            <button onClick={() => handleUpdateStatus(reg.monthly_id, 'active')} style={{ ...styles.actionBtn, color: '#059669', marginLeft: 8 }}>Duyệt</button>
-                            <button onClick={() => handleUpdateStatus(reg.monthly_id, 'canceled')} style={{ ...styles.actionBtn, color: '#ef4444', marginLeft: 4 }}>Từ chối</button>
+                            <button onClick={() => confirmUpdateStatus(reg.monthly_id, 'active')} style={{ ...styles.actionBtn, color: '#059669', marginLeft: 8 }}>Duyệt</button>
+                            <button onClick={() => confirmUpdateStatus(reg.monthly_id, 'canceled')} style={{ ...styles.actionBtn, color: '#ef4444', marginLeft: 4 }}>Từ chối</button>
                           </>
                         )}
                       </td>
@@ -264,7 +285,12 @@ const MonthlyApproval = () => {
                       backgroundColor: detail.status === 'active' ? '#dcfce7' : detail.status === 'pending' ? '#fef3c7' : '#fee2e2',
                       color: detail.status === 'active' ? '#059669' : detail.status === 'pending' ? '#d97706' : '#dc2626'
                     }}>
-                      {detail.status === 'active' ? '✅ Đã duyệt' : detail.status === 'pending' ? '⏳ Chờ duyệt' : '❌ Đã hủy'}
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <span className="material-symbols-rounded" style={{ fontSize: 16 }}>
+                          {detail.status === 'active' ? 'check_circle' : detail.status === 'pending' ? 'pending' : 'cancel'}
+                        </span>
+                        {detail.status === 'active' ? 'Đã duyệt' : detail.status === 'pending' ? 'Chờ duyệt' : 'Đã hủy'}
+                      </span>
                     </span>
                   </div>
                 </div>
@@ -277,24 +303,61 @@ const MonthlyApproval = () => {
               {/* Action buttons */}
               {detail.status === 'pending' && (
                 <div style={styles.modalActions}>
-                  <button onClick={() => handleUpdateStatus(detail.monthly_id, 'active')}
+                  <button onClick={() => confirmUpdateStatus(detail.monthly_id, 'active')}
                     style={{ ...styles.modalBtn, backgroundColor: '#059669', color: '#fff' }}>
-                    ✅ Chấp nhận duyệt
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}>
+                      <span className="material-symbols-rounded" style={{ fontSize: 18 }}>check_circle</span> Chấp nhận duyệt
+                    </div>
                   </button>
-                  <button onClick={() => handleUpdateStatus(detail.monthly_id, 'canceled')}
+                  <button onClick={() => confirmUpdateStatus(detail.monthly_id, 'canceled')}
                     style={{ ...styles.modalBtn, backgroundColor: '#fee2e2', color: '#dc2626' }}>
-                    ❌ Từ chối
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}>
+                      <span className="material-symbols-rounded" style={{ fontSize: 18 }}>cancel</span> Từ chối
+                    </div>
                   </button>
                 </div>
               )}
               {detail.status === 'active' && (
                 <div style={styles.modalActions}>
-                  <button onClick={() => handleUpdateStatus(detail.monthly_id, 'canceled')}
+                  <button onClick={() => confirmUpdateStatus(detail.monthly_id, 'canceled')}
                     style={{ ...styles.modalBtn, backgroundColor: '#fee2e2', color: '#dc2626' }}>
-                    🔒 Hủy / Khóa vé tháng
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}>
+                      <span className="material-symbols-rounded" style={{ fontSize: 18 }}>lock</span> Hủy / Khóa vé tháng
+                    </div>
                   </button>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Confirm Modal */}
+      {confirmModal.isOpen && (
+        <div style={styles.overlay} onClick={() => setConfirmModal({ isOpen: false, monthly_id: null, status: null })}>
+          <div style={{...styles.modal, width: '400px', padding: '32px', textAlign: 'center'}} onClick={e => e.stopPropagation()}>
+            <h3 style={{ marginTop: 0, fontSize: 20, color: "#1e293b" }}>Xác nhận thao tác</h3>
+            <p style={{ color: "#64748b", margin: "16px 0 24px 0" }}>
+              Bạn có chắc chắn muốn <strong>{confirmModal.status === 'active' ? "DUYỆT" : "TỪ CHỐI"}</strong> yêu cầu này không?
+            </p>
+            <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
+              <button 
+                onClick={handleUpdateStatus} 
+                style={{
+                  padding: '10px 24px', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer',
+                  backgroundColor: confirmModal.status === 'active' ? '#10b981' : '#ef4444', color: '#fff'
+                }}
+              >
+                Xác nhận
+              </button>
+              <button 
+                onClick={() => setConfirmModal({ isOpen: false, monthly_id: null, status: null })} 
+                style={{
+                  padding: '10px 24px', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer',
+                  backgroundColor: '#f1f5f9', color: '#475569'
+                }}
+              >
+                Hủy bỏ
+              </button>
             </div>
           </div>
         </div>
