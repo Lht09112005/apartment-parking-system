@@ -2,6 +2,7 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const db = require("../config/db");
 const { JWT_SECRET, JWT_EXPIRES_IN } = require("../config/auth");
+const { logAudit } = require("../utils/auditLogger");
 const fs = require("fs").promises;
 const path = require("path");
 
@@ -144,6 +145,19 @@ const changeCredentials = async (req, res) => {
       const hashed = await bcrypt.hash(newPassword, 10);
       await db.query(`UPDATE users SET password = ? WHERE user_id = ?`, [hashed, user_id]);
     }
+
+    // Ghi log audit hoạt động tự cập nhật tài khoản/mật khẩu
+    await logAudit(
+      user_id,
+      rows[0].username,
+      "UPDATE_CREDENTIALS",
+      "user",
+      user_id,
+      null,
+      { username_changed: !!(newUsername && newUsername !== rows[0].username), password_changed: !!newPassword },
+      `Người dùng ${rows[0].username} tự cập nhật thông tin tài khoản đăng nhập (đổi mật khẩu)`,
+      req.ip
+    );
 
     res.json({ message: "Cập nhật tài khoản thành công" });
   } catch (err) {

@@ -37,6 +37,7 @@ const ResidentDashboard = () => {
   const [modalLevel, setModalLevel] = useState("B1");
   const [searchSlot, setSearchSlot] = useState("");
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [vehicleToDelete, setVehicleToDelete] = useState(null);
 
   const [showAccountSettings, setShowAccountSettings] = useState(false);
   const [accountForm, setAccountForm] = useState({
@@ -215,8 +216,14 @@ const ResidentDashboard = () => {
     }
   };
 
-  const handleDeleteVehicle = async (plate) => {
-    if (!window.confirm(`Bạn có chắc muốn xóa xe ${plate}?`)) return;
+  const handleDeleteVehicle = (plate) => {
+    setVehicleToDelete(plate);
+  };
+
+  const executeDeleteVehicle = async () => {
+    if (!vehicleToDelete) return;
+    const plate = vehicleToDelete;
+    setVehicleToDelete(null);
 
     try {
       await axios.delete(`/resident/vehicles/${plate}`);
@@ -251,6 +258,7 @@ const ResidentDashboard = () => {
       });
 
       showMsg("success", r.data.message);
+      setRenewVehicle(null);
       fetchData();
     } catch (e) {
       showMsg("error", e.response?.data?.message || "Lỗi đăng ký vé tháng");
@@ -1736,7 +1744,7 @@ const ResidentDashboard = () => {
                             </button>
                           ) : (
                             <button
-                              onClick={() => handleRegisterMonthly(v.plate_number)}
+                              onClick={() => setRenewVehicle(v)}
                               disabled={v.status !== "active"}
                               style={{
                                 ...S.smallBtn,
@@ -1971,7 +1979,7 @@ const ResidentDashboard = () => {
 
                           {!v.monthly_status && (
                             <button
-                              onClick={() => handleRegisterMonthly(v.plate_number)}
+                              onClick={() => setRenewVehicle(v)}
                               disabled={v.status !== "active"}
                               style={{
                                 ...S.primaryBtn,
@@ -2538,7 +2546,7 @@ const ResidentDashboard = () => {
               }}
             >
               <h3 style={{ margin: 0, color: "#fff", fontSize: 18, fontWeight: "600" }}>
-                📑 GIA HẠN VÉ GỬI XE THÁNG
+                {renewVehicle.monthly_status ? "📑 GIA HẠN VÉ GỬI XE THÁNG" : "📑 ĐĂNG KÝ VÉ GỬI XE THÁNG"}
               </h3>
               <button
                 onClick={() => setRenewVehicle(null)}
@@ -2569,7 +2577,7 @@ const ResidentDashboard = () => {
                   paddingBottom: 16,
                 }}
               >
-                BIỂU MẪU GIA HẠN GỬI XE CD_BM2
+                {renewVehicle.monthly_status ? "BIỂU MẪU GIA HẠN GỬI XE CD_BM2" : "BIỂU MẪU ĐĂNG KÝ GỬI XE CD_BM1"}
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
@@ -2589,7 +2597,7 @@ const ResidentDashboard = () => {
                 </div>
 
                 <div style={{ padding: "10px 12px", backgroundColor: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0" }}>
-                  <div style={{ fontSize: 10, fontWeight: "700", color: "#94a3b8", textTransform: "uppercase", marginBottom: 4 }}>Phí tháng tới</div>
+                  <div style={{ fontSize: 10, fontWeight: "700", color: "#94a3b8", textTransform: "uppercase", marginBottom: 4 }}>Phí gửi tháng</div>
                   <div style={{ fontSize: 14, fontWeight: "700", color: "#2563eb" }}>
                     {getVehicleMonthlyFee(renewVehicle.type_id).toLocaleString()} VNĐ
                   </div>
@@ -2659,7 +2667,7 @@ const ResidentDashboard = () => {
                 • <strong>Số tài khoản:</strong> <span style={{ fontFamily: "monospace", fontWeight: "700", fontSize: 14 }}>1234567890</span><br />
                 • <strong>Tên tài khoản:</strong> BAN QUAN LY CHUNG CU PARKING SYSTEM<br />
                 • <strong>Số tiền:</strong> <span style={{ fontWeight: "700", color: "#b45309" }}>{getVehicleMonthlyFee(renewVehicle.type_id).toLocaleString()} VNĐ</span><br />
-                • <strong>Nội dung chuyển khoản:</strong> <span style={{ fontFamily: "monospace", backgroundColor: "#fffbeb", padding: "2px 6px", border: "1px solid #fcd34d", borderRadius: 4, fontWeight: "700" }}>{renewVehicle.plate_number} GIA HAN VE THANG</span>
+                • <strong>Nội dung chuyển khoản:</strong> <span style={{ fontFamily: "monospace", backgroundColor: "#fffbeb", padding: "2px 6px", border: "1px solid #fcd34d", borderRadius: 4, fontWeight: "700" }}>{renewVehicle.plate_number} {renewVehicle.monthly_status ? "GIA HAN VE THANG" : "DANG KY VE THANG"}</span>
               </div>
 
               <div
@@ -2671,13 +2679,19 @@ const ResidentDashboard = () => {
                   fontStyle: "italic",
                 }}
               >
-                * Sau khi chuyển khoản thành công, hãy bấm nút Xác nhận bên dưới để gửi yêu cầu gia hạn đến Ban Quản Lý đối soát.
+                * Sau khi chuyển khoản thành công, hãy bấm nút Xác nhận bên dưới để gửi yêu cầu đến Ban Quản Lý đối soát.
               </div>
 
               {/* Actions */}
               <div style={{ display: "flex", gap: 12 }}>
                 <button
-                  onClick={() => handleRenewMonthly(renewVehicle.plate_number)}
+                  onClick={() => {
+                    if (renewVehicle.monthly_status) {
+                      handleRenewMonthly(renewVehicle.plate_number);
+                    } else {
+                      handleRegisterMonthly(renewVehicle.plate_number);
+                    }
+                  }}
                   style={{
                     flex: 1,
                     padding: "12px 20px",
@@ -2716,6 +2730,85 @@ const ResidentDashboard = () => {
         </div>
       )}
       {showMapModal && renderMapModal()}
+      {vehicleToDelete && (
+        <div style={{
+          position: "fixed",
+          top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: "rgba(45, 51, 39, 0.6)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 2000,
+          backdropFilter: "blur(4px)"
+        }}>
+          <div style={{
+            backgroundColor: "#FFFBF5",
+            borderRadius: 20,
+            width: "90%",
+            maxWidth: 400,
+            padding: 24,
+            boxShadow: "0 20px 45px rgba(0,0,0,0.15)",
+            fontFamily: "'Outfit', sans-serif",
+            textAlign: "center"
+          }}>
+            <div style={{
+              width: 56,
+              height: 56,
+              borderRadius: "50%",
+              backgroundColor: "rgba(205, 92, 92, 0.1)",
+              color: "#CD5C5C",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 28,
+              margin: "0 auto 16px"
+            }}>
+              <span className="material-symbols-rounded" style={{ fontSize: 32 }}>delete</span>
+            </div>
+            <h3 style={{ margin: "0 0 8px 0", color: "#2D3327", fontSize: 18, fontWeight: "800" }}>XÓA PHƯƠNG TIỆN</h3>
+            <p style={{ margin: "0 0 24px 0", color: "#64748b", fontSize: 14, lineHeight: "20px" }}>
+              Bạn có chắc chắn muốn xóa phương tiện biển số <strong>{vehicleToDelete}</strong> khỏi tài khoản của mình?
+            </p>
+            <div style={{ display: "flex", gap: 12 }}>
+              <button
+                onClick={executeDeleteVehicle}
+                style={{
+                  flex: 1,
+                  padding: "10px 16px",
+                  backgroundColor: "#CD5C5C",
+                  color: "#FFFBF5",
+                  border: "none",
+                  borderRadius: 10,
+                  fontSize: 14,
+                  fontWeight: "700",
+                  cursor: "pointer",
+                  transition: "background-color 0.2s"
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#b04f4f"}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#CD5C5C"}
+              >
+                Xác nhận xóa
+              </button>
+              <button
+                onClick={() => setVehicleToDelete(null)}
+                style={{
+                  flex: 1,
+                  padding: "10px 16px",
+                  backgroundColor: "#F1ECE4",
+                  color: "#5F504B",
+                  border: "1px solid #E4DDD3",
+                  borderRadius: 10,
+                  fontSize: 14,
+                  fontWeight: "700",
+                  cursor: "pointer"
+                }}
+              >
+                Hủy
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {showLogoutConfirm && (
         <div style={{
           position: "fixed",

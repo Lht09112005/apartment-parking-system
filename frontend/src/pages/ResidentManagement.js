@@ -12,6 +12,7 @@ const ResidentManagement = () => {
   const [sortConfig, setSortConfig] = useState({ key: 'resident_id', direction: 'asc' });
   const [message, setMessage] = useState({ type: "", text: "" });
   const [editData, setEditData] = useState(null);
+  const [confirmTarget, setConfirmTarget] = useState(null);
   const [form, setForm] = useState({
     username: "",
     password: "",
@@ -73,6 +74,33 @@ const ResidentManagement = () => {
       setTimeout(() => setMessage({ type: "", text: "" }), 3000);
     } catch (err) {
       setMessage({ type: "error", text: "Lỗi cập nhật" });
+    }
+  };
+
+  const handleToggleStatus = (r) => {
+    setConfirmTarget({ resident: r, action: r.status === "active" ? "locked" : "active" });
+  };
+
+  const executeToggleStatus = async () => {
+    if (!confirmTarget) return;
+    const { resident, action } = confirmTarget;
+    setConfirmTarget(null);
+
+    try {
+      await axios.put(`/residents/${resident.resident_id}`, {
+        name: resident.name,
+        apartment_number: resident.apartment_number,
+        phone: resident.phone,
+        email: resident.email,
+        status: action
+      });
+      setMessage({ type: "success", text: `${action === "locked" ? "Khóa" : "Mở khóa"} tài khoản cư dân thành công!` });
+      fetchResidents();
+      setTimeout(() => setMessage({ type: "", text: "" }), 3000);
+    } catch (err) {
+      console.error(err);
+      setMessage({ type: "error", text: "Lỗi thay đổi trạng thái tài khoản" });
+      setTimeout(() => setMessage({ type: "", text: "" }), 3000);
     }
   };
 
@@ -347,16 +375,29 @@ const ResidentManagement = () => {
                         </span>
                       </td>
                       <td style={{...styles.td, textAlign: 'right'}}>
-                        <button
-                          onClick={() => {
-                            setEditData(r);
-                            setShowForm(false);
-                            window.scrollTo({ top: 0, behavior: 'smooth' });
-                          }}
-                          style={styles.actionBtn}
-                        >
-                          ✎ Sửa
-                        </button>
+                        <div style={{ display: 'inline-flex', gap: '8px' }}>
+                          <button
+                            onClick={() => {
+                              setEditData(r);
+                              setShowForm(false);
+                              window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }}
+                            style={styles.actionBtn}
+                          >
+                            ✎ Sửa
+                          </button>
+                          <button
+                            onClick={() => handleToggleStatus(r)}
+                            style={{
+                              ...styles.actionBtn,
+                              backgroundColor: r.status === "active" ? "#fee2e2" : "#dcfce7",
+                              color: r.status === "active" ? "#ef4444" : "#10b981",
+                              border: `1px solid ${r.status === "active" ? "#fecaca" : "#bbf7d0"}`
+                            }}
+                          >
+                            {r.status === "active" ? "Khóa" : "Mở khóa"}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -366,6 +407,91 @@ const ResidentManagement = () => {
           </div>
         </div>
       </div>
+
+      {confirmTarget && (
+        <div style={{
+          position: "fixed",
+          top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: "rgba(45, 51, 39, 0.6)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 2000,
+          backdropFilter: "blur(4px)"
+        }}>
+          <div style={{
+            backgroundColor: "#FFFBF5",
+            borderRadius: 20,
+            width: "90%",
+            maxWidth: 400,
+            padding: 24,
+            boxShadow: "0 20px 45px rgba(0,0,0,0.15)",
+            fontFamily: "'Outfit', sans-serif",
+            textAlign: "center"
+          }}>
+            <div style={{
+              width: 56,
+              height: 56,
+              borderRadius: "50%",
+              backgroundColor: confirmTarget.action === "locked" ? "rgba(205, 92, 92, 0.1)" : "rgba(63, 94, 77, 0.1)",
+              color: confirmTarget.action === "locked" ? "#CD5C5C" : "#3F5E4D",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 28,
+              margin: "0 auto 16px"
+            }}>
+              <span className="material-symbols-rounded" style={{ fontSize: 32 }}>
+                {confirmTarget.action === "locked" ? "lock" : "lock_open"}
+              </span>
+            </div>
+            <h3 style={{ margin: "0 0 8px 0", color: "#2D3327", fontSize: 18, fontWeight: "800" }}>
+              {confirmTarget.action === "locked" ? "KHÓA TÀI KHOẢN" : "MỞ KHÓA TÀI KHOẢN"}
+            </h3>
+            <p style={{ margin: "0 0 24px 0", color: "#64748b", fontSize: 14, lineHeight: "20px" }}>
+              Bạn có chắc chắn muốn {confirmTarget.action === "locked" ? "KHÓA" : "MỞ KHÓA"} tài khoản của cư dân{" "}
+              <strong>{confirmTarget.resident.name}</strong> (Căn hộ {confirmTarget.resident.apartment_number})?
+            </p>
+            <div style={{ display: "flex", gap: 12 }}>
+              <button
+                onClick={executeToggleStatus}
+                style={{
+                  flex: 1,
+                  padding: "10px 16px",
+                  backgroundColor: confirmTarget.action === "locked" ? "#CD5C5C" : "#3F5E4D",
+                  color: "#FFFBF5",
+                  border: "none",
+                  borderRadius: 10,
+                  fontSize: 14,
+                  fontWeight: "700",
+                  cursor: "pointer",
+                  transition: "background-color 0.2s"
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = confirmTarget.action === "locked" ? "#b04f4f" : "#2d4437"}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = confirmTarget.action === "locked" ? "#CD5C5C" : "#3F5E4D"}
+              >
+                Xác nhận
+              </button>
+              <button
+                onClick={() => setConfirmTarget(null)}
+                style={{
+                  flex: 1,
+                  padding: "10px 16px",
+                  backgroundColor: "#F1ECE4",
+                  color: "#5F504B",
+                  border: "1px solid #E4DDD3",
+                  borderRadius: 10,
+                  fontSize: 14,
+                  fontWeight: "700",
+                  cursor: "pointer"
+                }}
+              >
+                Hủy
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

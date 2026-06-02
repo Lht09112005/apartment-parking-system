@@ -68,16 +68,31 @@ const createResident = async (req, res) => {
 // PUT /api/residents/:id
 const updateResident = async (req, res) => {
   const { id } = req.params;
-  const { name, apartment_number, phone, email } = req.body;
+  const { name, apartment_number, phone, email, status } = req.body;
+  const conn = await db.getConnection();
   try {
-    await db.query(
+    await conn.beginTransaction();
+
+    await conn.query(
       `UPDATE residents SET name=?, apartment_number=?, phone=?, email=? WHERE resident_id=?`,
       [name, apartment_number, phone, email, id],
     );
+
+    if (status) {
+      const [[resRow]] = await conn.query(`SELECT user_id FROM residents WHERE resident_id = ?`, [id]);
+      if (resRow && resRow.user_id) {
+        await conn.query(`UPDATE users SET status = ? WHERE user_id = ?`, [status, resRow.user_id]);
+      }
+    }
+
+    await conn.commit();
     res.json({ message: "Cập nhật thành công" });
   } catch (err) {
+    await conn.rollback();
     console.error(err);
     res.status(500).json({ message: "Lỗi server" });
+  } finally {
+    conn.release();
   }
 };
 

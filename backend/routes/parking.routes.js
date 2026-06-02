@@ -12,6 +12,7 @@ router.get("/fees", verifyToken, authorizeRoles("Security", "Admin", "Super Admi
 router.get("/report/summary", verifyToken, authorizeRoles("Security", "Admin", "Super Admin"), parkingController.getFinancialSummary);
 
 // Admin only
+router.get("/report/revenue", verifyToken, authorizeRoles("Admin", "Super Admin"), parkingController.getDetailedRevenueReport);
 router.put("/fees", verifyToken, authorizeRoles("Admin", "Super Admin"), parkingController.updateFeeConfig);
 router.get("/monthly", verifyToken, authorizeRoles("Admin", "Super Admin"), parkingController.getMonthlyParking);
 router.put("/monthly/:monthly_id", verifyToken, authorizeRoles("Admin", "Super Admin"), parkingController.updateMonthlyStatus);

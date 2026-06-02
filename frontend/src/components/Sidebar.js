@@ -13,6 +13,10 @@ const Sidebar = () => {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showUnsavedConfirm, setShowUnsavedConfirm] = useState(false);
   const [pendingAction, setPendingAction] = useState(null);
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const [pwdForm, setPwdForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
+  const [pwdMessage, setPwdMessage] = useState({ type: "", text: "" });
+  const [pwdLoading, setPwdLoading] = useState(false);
 
   useEffect(() => {
     const fetchSystemName = async () => {
@@ -61,6 +65,43 @@ const Sidebar = () => {
 
   const isActive = (path) => location.pathname === path;
 
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
+    setPwdMessage({ type: "", text: "" });
+
+    if (pwdForm.newPassword.length < 6) {
+      setPwdMessage({ type: "error", text: "Mật khẩu mới phải có ít nhất 6 ký tự." });
+      return;
+    }
+
+    if (pwdForm.newPassword !== pwdForm.confirmPassword) {
+      setPwdMessage({ type: "error", text: "Mật khẩu mới và xác nhận mật khẩu không khớp." });
+      return;
+    }
+
+    setPwdLoading(true);
+    try {
+      await axios.put("/auth/change-credentials", {
+        currentPassword: pwdForm.currentPassword,
+        newPassword: pwdForm.newPassword
+      });
+
+      setPwdMessage({ type: "success", text: "Đổi mật khẩu thành công!" });
+      setPwdForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      
+      setTimeout(() => {
+        setShowChangePasswordModal(false);
+      }, 2000);
+    } catch (err) {
+      setPwdMessage({
+        type: "error",
+        text: err.response?.data?.message || "Lỗi khi đổi mật khẩu."
+      });
+    } finally {
+      setPwdLoading(false);
+    }
+  };
+
   // Đóng sidebar khi chuyển trang trên mobile
   useEffect(() => {
     setIsMobileOpen(false);
@@ -69,6 +110,7 @@ const Sidebar = () => {
   const menuItems = user?.role_id === 1
     ? [
         { label: "Tổng quan", icon: "grid_view", path: "/admin/dashboard" },
+        { label: "Báo cáo doanh thu", icon: "leaderboard", path: "/admin/revenue" },
         { label: "Quản lý Admin", icon: "admin_panel_settings", path: "/admin/users" },
         { label: "Quản lý Dữ liệu", icon: "cloud_upload", path: "/admin/backup" },
         { label: "Nhật ký kiểm toán", icon: "history", path: "/admin/audit" },
@@ -76,6 +118,7 @@ const Sidebar = () => {
       ]
     : [
         { label: "Tổng quan", icon: "grid_view", path: "/admin/dashboard" },
+        { label: "Báo cáo doanh thu", icon: "leaderboard", path: "/admin/revenue" },
         { label: "Quản lý Cư dân", icon: "apartment", path: "/admin/residents" },
         { label: "Quản lý Xe cộ", icon: "directions_car", path: "/admin/vehicles" },
         { label: "Quản lý Bảo vệ", icon: "shield_person", path: "/admin/users" },
@@ -196,6 +239,23 @@ const Sidebar = () => {
                 {user?.role_id === 1 ? "Super Admin" : "Admin"}
               </div>
             </div>
+          </div>
+          <div
+            style={{
+              ...styles.logoutBtn,
+              borderColor: "rgba(255, 251, 245, 0.2)",
+              color: "#FFFBF5",
+            }}
+            onClick={() => {
+              setPwdForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+              setPwdMessage({ type: "", text: "" });
+              setShowChangePasswordModal(true);
+            }}
+            onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)'}
+            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+          >
+            <span className="material-symbols-rounded" style={{ fontSize: 18, color: '#FFFBF5' }}>lock</span>
+            <span style={{ color: '#FFFBF5' }}>Đổi mật khẩu</span>
           </div>
           <div
             style={styles.logoutBtn}
@@ -354,6 +414,139 @@ const Sidebar = () => {
           </div>
         </div>
       )}
+
+      {showChangePasswordModal && (
+        <div style={{
+          position: "fixed",
+          top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: "rgba(45, 51, 39, 0.6)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 2000,
+          backdropFilter: "blur(4px)"
+        }}>
+          <div style={{
+            backgroundColor: "#FFFBF5",
+            borderRadius: 20,
+            width: "90%",
+            maxWidth: 400,
+            padding: 30,
+            boxShadow: "0 20px 45px rgba(0,0,0,0.15)",
+            fontFamily: "'Outfit', sans-serif"
+          }}>
+            <div style={{
+              width: 56,
+              height: 56,
+              borderRadius: "50%",
+              backgroundColor: "rgba(63, 94, 77, 0.1)",
+              color: "#3F5E4D",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 28,
+              margin: "0 auto 16px"
+            }}>
+              <span className="material-symbols-rounded" style={{ fontSize: 32 }}>lock</span>
+            </div>
+            <h3 style={{ margin: "0 0 8px 0", color: "#2D3327", fontSize: 18, fontWeight: "800", textAlign: "center" }}>ĐỔI MẬT KHẨU TÀI KHOẢN</h3>
+            <p style={{ margin: "0 0 24px 0", color: "#64748b", fontSize: 13, lineHeight: "18px", textAlign: "center" }}>
+              Vui lòng nhập mật khẩu hiện tại và mật khẩu mới để thay đổi bảo mật.
+            </p>
+
+            <form onSubmit={handlePasswordChange}>
+              <div style={{ marginBottom: 16 }}>
+                <label style={modalStyles.label}>Mật khẩu hiện tại *</label>
+                <input
+                  type="password"
+                  required
+                  style={modalStyles.input}
+                  value={pwdForm.currentPassword}
+                  onChange={e => setPwdForm({ ...pwdForm, currentPassword: e.target.value })}
+                />
+              </div>
+
+              <div style={{ marginBottom: 16 }}>
+                <label style={modalStyles.label}>Mật khẩu mới *</label>
+                <input
+                  type="password"
+                  required
+                  style={modalStyles.input}
+                  value={pwdForm.newPassword}
+                  onChange={e => setPwdForm({ ...pwdForm, newPassword: e.target.value })}
+                />
+              </div>
+
+              <div style={{ marginBottom: 20 }}>
+                <label style={modalStyles.label}>Xác nhận mật khẩu mới *</label>
+                <input
+                  type="password"
+                  required
+                  style={modalStyles.input}
+                  value={pwdForm.confirmPassword}
+                  onChange={e => setPwdForm({ ...pwdForm, confirmPassword: e.target.value })}
+                />
+              </div>
+
+              {pwdMessage.text && (
+                <div style={{
+                  padding: "10px 14px",
+                  borderRadius: 10,
+                  fontSize: 13,
+                  fontWeight: "600",
+                  marginBottom: 20,
+                  backgroundColor: pwdMessage.type === "success" ? "#dcfce7" : "#fee2e2",
+                  color: pwdMessage.type === "success" ? "#166534" : "#991b1b",
+                  border: `1px solid ${pwdMessage.type === "success" ? "rgba(22, 101, 52, 0.1)" : "rgba(153, 27, 27, 0.1)"}`
+                }}>
+                  {pwdMessage.type === "success" ? "✅" : "❌"} {pwdMessage.text}
+                </div>
+              )}
+
+              <div style={{ display: "flex", gap: 12 }}>
+                <button
+                  type="submit"
+                  disabled={pwdLoading}
+                  style={{
+                    flex: 1,
+                    padding: "12px 16px",
+                    backgroundColor: "#3F5E4D",
+                    color: "#FFFBF5",
+                    border: "none",
+                    borderRadius: 10,
+                    fontSize: 14,
+                    fontWeight: "700",
+                    cursor: pwdLoading ? "not-allowed" : "pointer",
+                    boxShadow: "0 4px 12px rgba(63, 94, 77, 0.15)",
+                    transition: "all 0.2s"
+                  }}
+                  onMouseEnter={(e) => { if(!pwdLoading) e.currentTarget.style.backgroundColor = "#2d4437" }}
+                  onMouseLeave={(e) => { if(!pwdLoading) e.currentTarget.style.backgroundColor = "#3F5E4D" }}
+                >
+                  {pwdLoading ? "ĐANG XỬ LÝ..." : "Cập nhật"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowChangePasswordModal(false)}
+                  style={{
+                    flex: 1,
+                    padding: "12px 16px",
+                    backgroundColor: "#F1ECE4",
+                    color: "#5F504B",
+                    border: "1px solid #E4DDD3",
+                    borderRadius: 10,
+                    fontSize: 14,
+                    fontWeight: "700",
+                    cursor: "pointer"
+                  }}
+                >
+                  Hủy
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </>
   );
 };
@@ -502,6 +695,30 @@ const styles = {
     color: "#FFD1D1",
     border: "1px solid rgba(255, 209, 209, 0.2)",
   },
+};
+
+const modalStyles = {
+  label: {
+    display: "block",
+    marginBottom: 6,
+    fontWeight: "700",
+    fontSize: 11,
+    color: "#64748b",
+    textTransform: "uppercase",
+    letterSpacing: "1px"
+  },
+  input: {
+    width: "100%",
+    padding: "10px 14px",
+    border: "2px solid #EAE5D9",
+    borderRadius: 8,
+    fontSize: 14,
+    boxSizing: "border-box",
+    outline: "none",
+    backgroundColor: "#FFFBF5",
+    color: "#2D3327",
+    fontFamily: "'Outfit', sans-serif"
+  }
 };
 
 export default Sidebar;
