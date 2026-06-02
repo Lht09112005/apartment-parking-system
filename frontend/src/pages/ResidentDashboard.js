@@ -258,6 +258,7 @@ const ResidentDashboard = () => {
       });
 
       showMsg("success", r.data.message);
+      setRenewVehicle(null);
       fetchData();
     } catch (e) {
       showMsg("error", e.response?.data?.message || "Lỗi đăng ký vé tháng");
@@ -1743,7 +1744,7 @@ const ResidentDashboard = () => {
                             </button>
                           ) : (
                             <button
-                              onClick={() => handleRegisterMonthly(v.plate_number)}
+                              onClick={() => setRenewVehicle(v)}
                               disabled={v.status !== "active"}
                               style={{
                                 ...S.smallBtn,
@@ -1978,7 +1979,7 @@ const ResidentDashboard = () => {
 
                           {!v.monthly_status && (
                             <button
-                              onClick={() => handleRegisterMonthly(v.plate_number)}
+                              onClick={() => setRenewVehicle(v)}
                               disabled={v.status !== "active"}
                               style={{
                                 ...S.primaryBtn,
@@ -2545,7 +2546,7 @@ const ResidentDashboard = () => {
               }}
             >
               <h3 style={{ margin: 0, color: "#fff", fontSize: 18, fontWeight: "600" }}>
-                📑 GIA HẠN VÉ GỬI XE THÁNG
+                {renewVehicle.monthly_status ? "📑 GIA HẠN VÉ GỬI XE THÁNG" : "📑 ĐĂNG KÝ VÉ GỬI XE THÁNG"}
               </h3>
               <button
                 onClick={() => setRenewVehicle(null)}
@@ -2576,7 +2577,7 @@ const ResidentDashboard = () => {
                   paddingBottom: 16,
                 }}
               >
-                BIỂU MẪU GIA HẠN GỬI XE CD_BM2
+                {renewVehicle.monthly_status ? "BIỂU MẪU GIA HẠN GỬI XE CD_BM2" : "BIỂU MẪU ĐĂNG KÝ GỬI XE CD_BM1"}
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
@@ -2596,7 +2597,7 @@ const ResidentDashboard = () => {
                 </div>
 
                 <div style={{ padding: "10px 12px", backgroundColor: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0" }}>
-                  <div style={{ fontSize: 10, fontWeight: "700", color: "#94a3b8", textTransform: "uppercase", marginBottom: 4 }}>Phí tháng tới</div>
+                  <div style={{ fontSize: 10, fontWeight: "700", color: "#94a3b8", textTransform: "uppercase", marginBottom: 4 }}>Phí gửi tháng</div>
                   <div style={{ fontSize: 14, fontWeight: "700", color: "#2563eb" }}>
                     {getVehicleMonthlyFee(renewVehicle.type_id).toLocaleString()} VNĐ
                   </div>
@@ -2666,7 +2667,7 @@ const ResidentDashboard = () => {
                 • <strong>Số tài khoản:</strong> <span style={{ fontFamily: "monospace", fontWeight: "700", fontSize: 14 }}>1234567890</span><br />
                 • <strong>Tên tài khoản:</strong> BAN QUAN LY CHUNG CU PARKING SYSTEM<br />
                 • <strong>Số tiền:</strong> <span style={{ fontWeight: "700", color: "#b45309" }}>{getVehicleMonthlyFee(renewVehicle.type_id).toLocaleString()} VNĐ</span><br />
-                • <strong>Nội dung chuyển khoản:</strong> <span style={{ fontFamily: "monospace", backgroundColor: "#fffbeb", padding: "2px 6px", border: "1px solid #fcd34d", borderRadius: 4, fontWeight: "700" }}>{renewVehicle.plate_number} GIA HAN VE THANG</span>
+                • <strong>Nội dung chuyển khoản:</strong> <span style={{ fontFamily: "monospace", backgroundColor: "#fffbeb", padding: "2px 6px", border: "1px solid #fcd34d", borderRadius: 4, fontWeight: "700" }}>{renewVehicle.plate_number} {renewVehicle.monthly_status ? "GIA HAN VE THANG" : "DANG KY VE THANG"}</span>
               </div>
 
               <div
@@ -2678,13 +2679,19 @@ const ResidentDashboard = () => {
                   fontStyle: "italic",
                 }}
               >
-                * Sau khi chuyển khoản thành công, hãy bấm nút Xác nhận bên dưới để gửi yêu cầu gia hạn đến Ban Quản Lý đối soát.
+                * Sau khi chuyển khoản thành công, hãy bấm nút Xác nhận bên dưới để gửi yêu cầu đến Ban Quản Lý đối soát.
               </div>
 
               {/* Actions */}
               <div style={{ display: "flex", gap: 12 }}>
                 <button
-                  onClick={() => handleRenewMonthly(renewVehicle.plate_number)}
+                  onClick={() => {
+                    if (renewVehicle.monthly_status) {
+                      handleRenewMonthly(renewVehicle.plate_number);
+                    } else {
+                      handleRegisterMonthly(renewVehicle.plate_number);
+                    }
+                  }}
                   style={{
                     flex: 1,
                     padding: "12px 20px",
