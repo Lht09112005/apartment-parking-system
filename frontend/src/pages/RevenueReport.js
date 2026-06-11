@@ -482,7 +482,7 @@ const RevenueReport = () => {
             </div>
 
             {activeSubTab === "transactions" ? (
-              <div style={{ overflowX: "auto" }}>
+              <div style={{ overflowX: "auto", overflowY: "auto", maxHeight: "400px" }}>
                 <table style={styles.table}>
                   <thead>
                     <tr style={styles.thead}>
@@ -522,7 +522,7 @@ const RevenueReport = () => {
                 </table>
               </div>
             ) : (
-              <div style={{ overflowX: "auto" }}>
+              <div style={{ overflowX: "auto", overflowY: "auto", maxHeight: "400px" }}>
                 <table style={styles.table}>
                   <thead>
                     <tr style={styles.thead}>
@@ -671,7 +671,7 @@ const styles = {
   
   table: { width: "100%", borderCollapse: "collapse" },
   thead: { backgroundColor: "#EAE5D9", borderBottom: "1px solid #F1ECE4" },
-  th: { padding: "16px 20px", textAlign: "left", fontWeight: "700", fontSize: 11, color: "#2D3327", textTransform: "uppercase", letterSpacing: 0.5 },
+  th: { padding: "16px 20px", textAlign: "left", fontWeight: "700", fontSize: 11, color: "#2D3327", textTransform: "uppercase", letterSpacing: 0.5, position: "sticky", top: 0, backgroundColor: "#EAE5D9", zIndex: 1 },
   tr: { borderBottom: "1px solid #F1ECE4", transition: "background-color 0.15s" },
   td: { padding: "16px 20px", fontSize: 13, color: "#2D3327" },
   

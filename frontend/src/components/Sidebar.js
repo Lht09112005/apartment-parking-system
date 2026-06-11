@@ -110,7 +110,6 @@ const Sidebar = () => {
   const menuItems = user?.role_id === 1
     ? [
         { label: "Tổng quan", icon: "grid_view", path: "/admin/dashboard" },
-        { label: "Báo cáo doanh thu", icon: "leaderboard", path: "/admin/revenue" },
         { label: "Quản lý Admin", icon: "admin_panel_settings", path: "/admin/users" },
         { label: "Quản lý Dữ liệu", icon: "cloud_upload", path: "/admin/backup" },
         { label: "Nhật ký kiểm toán", icon: "history", path: "/admin/audit" },
@@ -119,6 +118,8 @@ const Sidebar = () => {
     : [
         { label: "Tổng quan", icon: "grid_view", path: "/admin/dashboard" },
         { label: "Báo cáo doanh thu", icon: "leaderboard", path: "/admin/revenue" },
+        { label: "Lịch sử gửi xe", icon: "history", path: "/admin/parking-history" },
+        { label: "Cấu hình bãi đỗ xe", icon: "garage", path: "/admin/parking-areas" },
         { label: "Quản lý Cư dân", icon: "apartment", path: "/admin/residents" },
         { label: "Quản lý Xe cộ", icon: "directions_car", path: "/admin/vehicles" },
         { label: "Quản lý Bảo vệ", icon: "shield_person", path: "/admin/users" },

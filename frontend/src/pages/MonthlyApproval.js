@@ -388,10 +388,10 @@ const styles = {
   select: { padding: "10px 16px", border: "2px solid #EAE5D9", borderRadius: 10, fontSize: 13, outline: "none", backgroundColor: "#FFFBF5", cursor: "pointer", color: "#2D3327", fontFamily: "'Outfit', sans-serif" },
 
   toast: { padding: "14px 24px", borderRadius: 12, marginBottom: 20, fontWeight: "600", display: "flex", alignItems: "center", gap: 10, boxShadow: "0 8px 30px rgba(139, 115, 85, 0.04)" },
-  tableCard: { background: "#fff", borderRadius: 20, boxShadow: "0 8px 30px rgba(139, 115, 85, 0.04)", border: "1px solid rgba(139, 115, 85, 0.08)", overflow: "hidden" },
+  tableCard: { background: "#fff", borderRadius: 20, boxShadow: "0 8px 30px rgba(139, 115, 85, 0.04)", border: "1px solid rgba(139, 115, 85, 0.08)", overflowY: "auto", maxHeight: "550px" },
   table: { width: "100%", borderCollapse: "collapse" },
   thead: { backgroundColor: "#EAE5D9", borderBottom: "1px solid #F1ECE4" },
-  th: { padding: "16px 20px", textAlign: "left", fontWeight: "700", fontSize: 12, color: "#2D3327", textTransform: "uppercase", letterSpacing: 0.5 },
+  th: { padding: "16px 20px", textAlign: "left", fontWeight: "700", fontSize: 12, color: "#2D3327", textTransform: "uppercase", letterSpacing: 0.5, position: "sticky", top: 0, backgroundColor: "#EAE5D9", zIndex: 1 },
   tr: { borderBottom: "1px solid #F1ECE4", transition: "background-color 0.15s" },
   td: { padding: "16px 20px", fontSize: 14, color: "#2D3327" },
   statusTag: { padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: "700" },

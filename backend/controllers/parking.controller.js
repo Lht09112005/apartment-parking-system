@@ -56,12 +56,32 @@ const checkIn = async (req, res) => {
         [finalTypeId]
       );
       if (area && area.capacity > 0) {
-        const [[{ occupied }]] = await db.query(
-          `SELECT COUNT(*) as occupied FROM parking_session WHERE status = 'parking' AND type_id = ?`,
+        // Đếm xe vé tháng active cho loại xe này
+        const [[{ monthly_count }]] = await db.query(
+          `SELECT COUNT(DISTINCT mp.plate_number) as monthly_count 
+           FROM monthly_parking mp
+           JOIN vehicles v ON mp.plate_number = v.plate_number
+           WHERE v.type_id = ? AND mp.status = 'active' AND mp.end_date >= CURDATE()`,
           [finalTypeId]
         );
-        
+        // Đếm xe vãng lai đang đỗ (không có vé tháng)
+        const [[{ visitor_count }]] = await db.query(
+          `SELECT COUNT(*) as visitor_count FROM parking_session 
+           WHERE status = 'parking' AND type_id = ?
+           AND plate_number NOT IN (
+             SELECT mp2.plate_number FROM monthly_parking mp2
+             WHERE mp2.status = 'active' AND mp2.end_date >= CURDATE()
+           )`,
+          [finalTypeId]
+        );
+        const occupied = monthly_count + visitor_count;
         if (occupied >= area.capacity) {
+            await NotificationService.notifyRole(
+              [3], 
+              "Cảnh báo bãi đỗ xe ĐÃ ĐẦY", 
+              `Khu vực ${area.area_name} đã ĐẦY sức chứa (${occupied}/${area.capacity}). Không thể nhận thêm xe.`, 
+              "PARKING_FULL_WARNING"
+            );
             return res.status(400).json({ message: `Khu vực ${area.area_name} đã hết chỗ (${occupied}/${area.capacity}). Không thể nhận thêm xe.` });
         }
 
@@ -80,6 +100,12 @@ const checkIn = async (req, res) => {
         const MAX_CAPACITY = 500;
         
         if (total_parking >= MAX_CAPACITY) {
+            await NotificationService.notifyRole(
+              [3], 
+              "Cảnh báo bãi đỗ xe ĐÃ ĐẦY", 
+              `Bãi đỗ xe đã ĐẦY sức chứa (${total_parking}/${MAX_CAPACITY}). Không thể nhận thêm xe.`, 
+              "PARKING_FULL_WARNING"
+            );
             return res.status(400).json({ message: `Bãi đỗ xe đã hết chỗ (${total_parking}/${MAX_CAPACITY}). Không thể nhận thêm xe.` });
         }
 
@@ -251,11 +277,42 @@ const checkOut = async (req, res) => {
 // GET /api/parking/sessions
 const getAllSessions = async (req, res) => {
     try {
+        const { date_from, date_to, plate_number, type_id } = req.query;
+
+        let conditions = [];
+        let params = [];
+
+        if (date_from) {
+            conditions.push("DATE(s.time_in) >= ?");
+            params.push(date_from);
+        }
+        if (date_to) {
+            conditions.push("DATE(s.time_in) <= ?");
+            params.push(date_to);
+        }
+        if (plate_number) {
+            conditions.push("s.plate_number LIKE ?");
+            params.push(`%${plate_number}%`);
+        }
+        if (type_id) {
+            conditions.push("s.type_id = ?");
+            params.push(type_id);
+        }
+
+        const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+
         const [rows] = await db.query(
-          `SELECT s.session_id, s.plate_number, s.time_in, s.time_out, s.status, s.type_id, sec.name as security_name
+          `SELECT s.session_id, s.plate_number, s.time_in, s.time_out, s.status,
+                  s.type_id, s.fee_amount,
+                  vt.type_name,
+                  sec.name as security_name
            FROM parking_session s
            LEFT JOIN security sec ON s.staff_id = sec.staff_id
-           ORDER BY s.time_in DESC`
+           LEFT JOIN vehicle_types vt ON s.type_id = vt.type_id
+           ${whereClause}
+           ORDER BY s.time_in DESC
+           LIMIT 500`,
+          params
         );
         res.json(rows);
     } catch (err) {
@@ -513,6 +570,60 @@ const getDetailedRevenueReport = async (req, res) => {
   }
 };
 
+// GET /api/parking/areas — Lấy danh sách bãi đỗ xe và sức chứa
+const getParkingAreas = async (req, res) => {
+  try {
+    const [areas] = await db.query(
+      `SELECT pa.area_id, pa.area_name, pa.capacity, pa.available_slots,
+              pa.type_id, vt.type_name,
+              (SELECT COUNT(DISTINCT mp.plate_number) FROM monthly_parking mp
+               JOIN vehicles v ON mp.plate_number = v.plate_number
+               WHERE v.type_id = pa.type_id 
+               AND mp.status = 'active'
+               AND mp.end_date >= CURDATE()) as monthly_count,
+              (SELECT COUNT(*) FROM parking_session ps
+               WHERE ps.type_id = pa.type_id AND ps.status = 'parking'
+               AND ps.plate_number NOT IN (
+                 SELECT mp2.plate_number FROM monthly_parking mp2
+                 WHERE mp2.status = 'active' AND mp2.end_date >= CURDATE()
+               )) as visitor_parked_count
+       FROM parking_area pa
+       LEFT JOIN vehicle_types vt ON pa.type_id = vt.type_id
+       ORDER BY pa.area_id`
+    );
+    // current_count = monthly reserved + visitor currently parked (non-monthly)
+    const result = areas.map(a => ({
+      ...a,
+      current_count: (a.monthly_count || 0) + (a.visitor_parked_count || 0)
+    }));
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Lỗi server" });
+  }
+};
+
+// PUT /api/parking/areas/:area_id — Cập nhật sức chứa bãi đỗ xe
+const updateParkingArea = async (req, res) => {
+  const { area_id } = req.params;
+  const { area_name, capacity } = req.body;
+
+  if (!area_name || !capacity || capacity < 1) {
+    return res.status(400).json({ message: "Tên bãi và sức chứa không hợp lệ" });
+  }
+
+  try {
+    await db.query(
+      `UPDATE parking_area SET area_name = ?, capacity = ? WHERE area_id = ?`,
+      [area_name, capacity, area_id]
+    );
+    res.json({ message: "Cập nhật sức chứa bãi đỗ xe thành công" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Lỗi server" });
+  }
+};
+
 module.exports = { 
   checkIn, 
   checkOut, 
@@ -522,5 +633,7 @@ module.exports = {
   getMonthlyParking,
   updateMonthlyStatus,
   getFinancialSummary,
-  getDetailedRevenueReport
+  getDetailedRevenueReport,
+  getParkingAreas,
+  updateParkingArea
 };
