@@ -14,6 +14,8 @@ import SystemSettings from "./pages/SystemSettings";
 import AuditLogs from "./pages/AuditLogs";
 import BackupManagement from "./pages/BackupManagement";
 import RevenueReport from "./pages/RevenueReport";
+import ParkingHistory from "./pages/ParkingHistory";
+import ParkingAreaConfig from "./pages/ParkingAreaConfig";
 const PrivateRoute = ({ children, roles }) => {
   const { token, user } = useAuth();
   
@@ -185,6 +187,22 @@ function App() {
             element={
               <PrivateRoute roles={[2]}>
                 <MonthlyApproval />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/admin/parking-history"
+            element={
+              <PrivateRoute roles={[2]}>
+                <ParkingHistory />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/admin/parking-areas"
+            element={
+              <PrivateRoute roles={[2]}>
+                <ParkingAreaConfig />
               </PrivateRoute>
             }
           />

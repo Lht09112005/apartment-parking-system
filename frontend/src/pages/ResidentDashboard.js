@@ -2019,51 +2019,53 @@ const ResidentDashboard = () => {
                       <div style={S.tCell}>Trạng thái</div>
                     </div>
 
-                    {history.map((h) => (
-                      <div key={h.session_id} style={S.tRow}>
-                        <div style={{ ...S.tCell, fontWeight: "700" }}>
-                          {h.plate_number}
-                        </div>
+                    <div style={{ maxHeight: "350px", overflowY: "auto" }}>
+                      {history.map((h) => (
+                        <div key={h.session_id} style={S.tRow}>
+                          <div style={{ ...S.tCell, fontWeight: "700" }}>
+                            {h.plate_number}
+                          </div>
 
-                        <div style={S.tCell}>{h.type_name || "---"}</div>
+                          <div style={S.tCell}>{h.type_name || "---"}</div>
 
-                        <div style={S.tCell}>
-                          {h.time_in
-                            ? new Date(h.time_in).toLocaleString("vi-VN")
-                            : "-"}
-                        </div>
+                          <div style={S.tCell}>
+                            {h.time_in
+                              ? new Date(h.time_in).toLocaleString("vi-VN")
+                              : "-"}
+                          </div>
 
-                        <div style={S.tCell}>
-                          {h.time_out
-                            ? new Date(h.time_out).toLocaleString("vi-VN")
-                            : "-"}
-                        </div>
+                          <div style={S.tCell}>
+                            {h.time_out
+                              ? new Date(h.time_out).toLocaleString("vi-VN")
+                              : "-"}
+                          </div>
 
-                        <div style={S.tCell}>
-                          {h.status === "parking" ? (
-                            <span
-                              style={{
-                                ...S.badge,
-                                background: "#dbeafe",
-                                color: "#1e40af",
-                              }}
-                            >
-                              Đang gửi
-                            </span>
-                          ) : (
-                            <span
-                              style={{
-                                ...S.badge,
-                                background: "#dcfce7",
-                                color: "#166534",
-                              }}
-                            >
-                              Đã ra
-                            </span>
-                          )}
+                          <div style={S.tCell}>
+                            {h.status === "parking" ? (
+                              <span
+                                style={{
+                                  ...S.badge,
+                                  background: "#dbeafe",
+                                  color: "#1e40af",
+                                }}
+                              >
+                                Đang gửi
+                              </span>
+                            ) : (
+                              <span
+                                style={{
+                                  ...S.badge,
+                                  background: "#dcfce7",
+                                  color: "#166534",
+                                }}
+                              >
+                                Đã ra
+                              </span>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -2082,23 +2084,28 @@ const ResidentDashboard = () => {
 
                   <div style={S.tableWrap}>
                     <div style={S.tHeader}>
-                      <div style={S.tCell}>Loại xe</div>
-                      <div style={S.tCell}>Giá/giờ</div>
-                      <div style={S.tCell}>Vé tháng</div>
+                      <div style={{ ...S.tCell, flex: 1.2 }}>Loại xe</div>
+                      <div style={{ ...S.tCell, flex: 1.5 }}>Giá lượt ngày</div>
+                      <div style={{ ...S.tCell, flex: 1.5 }}>Giá lượt đêm</div>
+                      <div style={{ ...S.tCell, flex: 1.5 }}>Vé tháng</div>
                     </div>
 
                     {feesData.feeConfig.map((f) => (
                       <div key={f.type_id} style={S.tRow}>
-                        <div style={{ ...S.tCell, fontWeight: "700" }}>
+                        <div style={{ ...S.tCell, flex: 1.2, fontWeight: "700" }}>
                           {f.type_name}
                         </div>
 
-                        <div style={S.tCell}>
-                          {parseFloat(f.price_per_hour).toLocaleString()} VNĐ
+                        <div style={{ ...S.tCell, flex: 1.5 }}>
+                          {parseFloat(f.day_block_price || 0).toLocaleString()} VNĐ / {f.block_hours}h
                         </div>
 
-                        <div style={S.tCell}>
-                          {parseFloat(f.monthly_fee).toLocaleString()} VNĐ
+                        <div style={{ ...S.tCell, flex: 1.5 }}>
+                          {parseFloat(f.night_block_price || 0).toLocaleString()} VNĐ / {f.block_hours}h
+                        </div>
+
+                        <div style={{ ...S.tCell, flex: 1.5 }}>
+                          {parseFloat(f.monthly_fee || 0).toLocaleString()} VNĐ
                         </div>
                       </div>
                     ))}
@@ -2123,61 +2130,63 @@ const ResidentDashboard = () => {
                         <div style={S.tCell}>Trạng thái</div>
                       </div>
 
-                      {feesData.monthlyRegistrations.map((m) => (
-                        <div key={m.monthly_id} style={S.tRow}>
-                          <div style={{ ...S.tCell, fontWeight: "700" }}>
-                            {m.plate_number}
-                          </div>
+                      <div style={{ maxHeight: "350px", overflowY: "auto" }}>
+                        {feesData.monthlyRegistrations.map((m) => (
+                          <div key={m.monthly_id} style={S.tRow}>
+                            <div style={{ ...S.tCell, fontWeight: "700" }}>
+                              {m.plate_number}
+                            </div>
 
-                          <div style={S.tCell}>{m.type_name}</div>
+                            <div style={S.tCell}>{m.type_name}</div>
 
-                          <div style={S.tCell}>
-                            {parseFloat(m.monthly_fee).toLocaleString()} VNĐ
-                          </div>
+                            <div style={S.tCell}>
+                              {parseFloat(m.monthly_fee).toLocaleString()} VNĐ
+                            </div>
 
-                          <div style={S.tCell}>
-                            {new Date(m.start_date).toLocaleDateString("vi-VN")}
-                          </div>
+                            <div style={S.tCell}>
+                              {new Date(m.start_date).toLocaleDateString("vi-VN")}
+                            </div>
 
-                          <div style={S.tCell}>
-                            {new Date(m.end_date).toLocaleDateString("vi-VN")}
-                          </div>
+                            <div style={S.tCell}>
+                              {new Date(m.end_date).toLocaleDateString("vi-VN")}
+                            </div>
 
-                          <div style={S.tCell}>
-                            {m.status === "active" ? (
-                              <span
-                                style={{
-                                  ...S.badge,
-                                  background: "#dcfce7",
-                                  color: "#166534",
-                                }}
-                              >
-                                Hoạt động
-                              </span>
-                            ) : m.status === "pending" ? (
-                              <span
-                                style={{
-                                  ...S.badge,
-                                  background: "#fef3c7",
-                                  color: "#92400e",
-                                }}
-                              >
-                                Chờ duyệt
-                              </span>
-                            ) : (
-                              <span
-                                style={{
-                                  ...S.badge,
-                                  background: "#fee2e2",
-                                  color: "#991b1b",
-                                }}
-                              >
-                                Hết hạn
-                              </span>
-                            )}
+                            <div style={S.tCell}>
+                              {m.status === "active" ? (
+                                <span
+                                  style={{
+                                    ...S.badge,
+                                    background: "#dcfce7",
+                                    color: "#166534",
+                                  }}
+                                >
+                                  Hoạt động
+                                </span>
+                              ) : m.status === "pending" ? (
+                                <span
+                                  style={{
+                                    ...S.badge,
+                                    background: "#fef3c7",
+                                    color: "#92400e",
+                                  }}
+                                >
+                                  Chờ duyệt
+                                </span>
+                              ) : (
+                                <span
+                                  style={{
+                                    ...S.badge,
+                                    background: "#fee2e2",
+                                    color: "#991b1b",
+                                  }}
+                                >
+                                  Hết hạn
+                                </span>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -2899,9 +2908,10 @@ const ResidentDashboard = () => {
 const S = {
   container: {
     display: "flex",
-    minHeight: "100vh",
+    height: "100vh",
     fontFamily: "'Outfit', -apple-system, sans-serif",
     backgroundColor: "#FAF8F5", // Warm Cream
+    overflow: "hidden",
   },
   sidebar: {
     width: 256,
@@ -2910,6 +2920,7 @@ const S = {
     display: "flex",
     flexDirection: "column",
     flexShrink: 0,
+    height: "100%",
   },
   sidebarHeader: {
     padding: "24px 20px 20px",

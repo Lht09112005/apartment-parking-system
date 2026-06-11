@@ -27,12 +27,10 @@ const SecurityDashboard = () => {
   const [fees, setFees] = useState([]);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [viewingArea, setViewingArea] = useState(null);
-  const [modalSearch, setModalSearch] = useState("");
+  const [activeSearchPlate, setActiveSearchPlate] = useState("");
+  const [activeSearchType, setActiveSearchType] = useState("");
 
-  useEffect(() => {
-    setModalSearch("");
-  }, [viewingArea]);
+  const [areas, setAreas] = useState([]);
 
   const fetchFees = async () => {
     try {
@@ -82,11 +80,21 @@ const SecurityDashboard = () => {
     }
   };
 
+  const fetchAreas = async () => {
+    try {
+      const res = await axios.get("/parking/areas");
+      setAreas(res.data || []);
+    } catch (err) {
+      console.error("Lỗi lấy danh sách bãi đỗ:", err);
+    }
+  };
+
   const refreshSecurityData = () => {
     fetchVehicleTypes();
     fetchVehicles();
     fetchVehicleLogs();
     fetchFees();
+    fetchAreas();
   };
 
   // Fetch dữ liệu lần đầu khi mở trang
@@ -98,7 +106,7 @@ const SecurityDashboard = () => {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const viewParam = params.get("view");
-    if (viewParam && ["gate", "logs", "search"].includes(viewParam)) {
+    if (viewParam && ["gate", "active", "logs", "search"].includes(viewParam)) {
       setViewMode(viewParam);
     }
   }, [location]);
@@ -106,14 +114,14 @@ const SecurityDashboard = () => {
   // Realtime: khi backend có thay đổi xe / phiên gửi xe / phí thì tự cập nhật lại
   useRealtimeRefresh(
     refreshSecurityData,
-    ["vehicles", "parkingSessions", "fees"],
+    ["vehicles", "parkingSessions", "fees", "areas"],
     {
       intervalMs: 7000,
     }
   );
 
   useEffect(() => {
-    if (viewMode === "logs") {
+    if (viewMode === "logs" || viewMode === "active") {
       fetchVehicleLogs();
     }
 
@@ -406,6 +414,7 @@ const SecurityDashboard = () => {
 
   const menuItems = [
     { key: "gate", label: "Ghi nhận xe", icon: "directions_car" },
+    { key: "active", label: "Xe trong bãi", icon: "local_parking" },
     { key: "logs", label: "Lịch sử gửi xe", icon: "history" },
     { key: "search", label: "Tìm kiếm xe", icon: "search" },
   ];
@@ -414,6 +423,8 @@ const SecurityDashboard = () => {
     switch (viewMode) {
       case "gate":
         return "Ghi nhận xe";
+      case "active":
+        return "Danh sách xe đang trong bãi";
       case "logs":
         return "Lịch sử gửi xe";
       case "search":
@@ -426,15 +437,28 @@ const SecurityDashboard = () => {
   const activeMotosList = vehicleLogs.filter(
     (s) => s.status === "parking" && Number(s.type_id) === 1
   );
-  const activeMotos = activeMotosList.length;
+  const activeMotosParked = activeMotosList.length;
 
   const activeCarsList = vehicleLogs.filter(
     (s) => s.status === "parking" && Number(s.type_id) === 2
   );
-  const activeCars = activeCarsList.length;
+  const activeCarsParked = activeCarsList.length;
 
-  const totalActiveList = vehicleLogs.filter(s => s.status === "parking");
+  const motoArea = areas.find(a => a.type_id === 1);
+  const carArea = areas.find(a => a.type_id === 2);
+
+  const motoCapacity = motoArea ? motoArea.capacity : 1200;
+  const carCapacity = carArea ? carArea.capacity : 150;
+
+  // Sử dụng current_count từ API (bao gồm vé tháng + xe vãng lai đang đỗ)
+  const activeMotos = motoArea ? (motoArea.current_count || 0) : activeMotosParked;
+  const activeCars = carArea ? (carArea.current_count || 0) : activeCarsParked;
   const totalActive = activeMotos + activeCars;
+
+  const motoPct = motoCapacity > 0 ? Math.round((activeMotos / motoCapacity) * 100) : 0;
+  const carPct = carCapacity > 0 ? Math.round((activeCars / carCapacity) * 100) : 0;
+  const totalCapacity = motoCapacity + carCapacity;
+  const totalPct = totalCapacity > 0 ? Math.round((totalActive / totalCapacity) * 100) : 0;
 
   return (
     <>
@@ -618,60 +642,166 @@ const SecurityDashboard = () => {
           </div>
 
           <div style={styles.contentBody}>
-            {(activeMotos >= 1200 * 0.9 || activeCars >= 150 * 0.9) && (
-              <div style={{ padding: '12px 16px', backgroundColor: '#fef2f2', borderLeft: '4px solid #ef4444', color: '#991b1b', marginBottom: '20px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold' }}>
-                <span className="material-symbols-rounded" style={{ color: '#ef4444' }}>warning</span>
-                Cảnh báo bãi đỗ xe sắp đầy! 
-                {activeMotos >= 1200 * 0.9 && " Khu A (Xe máy) sắp đầy."}
-                {activeCars >= 150 * 0.9 && " Khu B (Ô tô) sắp đầy."}
-              </div>
-            )}
             <div style={styles.capacityRow}>
-              <div style={{ ...styles.capacityCard, borderColor: "#3F5E4D" }}>
+              {/* Card 1: Xe máy */}
+              <div style={{
+                ...styles.capacityCard,
+                borderColor: motoPct >= 100 ? "#ef4444" : motoPct >= 90 ? "#f59e0b" : "#3F5E4D",
+                borderLeftColor: motoPct >= 100 ? "#ef4444" : motoPct >= 90 ? "#f59e0b" : "#3F5E4D"
+              }}>
                 <div style={{ flex: 1 }}>
                   <div style={styles.cardLabel}>KHU A - XE MÁY</div>
-                  <div style={styles.cardNumber}>{activeMotos}/1200</div>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                    <span style={styles.cardNumber}>{activeMotos}/{motoCapacity}</span>
+                    <span style={{ fontSize: 13, fontWeight: "600", color: motoPct >= 100 ? "#ef4444" : motoPct >= 90 ? "#f59e0b" : "#64748b" }}>
+                      ({motoPct}%)
+                    </span>
+                  </div>
+
+                  {/* Progress Bar */}
+                  <div style={{ width: '90%', height: 6, backgroundColor: '#EAE5D9', borderRadius: 3, marginTop: 8, overflow: 'hidden' }}>
+                    <div style={{
+                      width: `${Math.min(100, motoPct)}%`,
+                      height: '100%',
+                      backgroundColor: motoPct >= 100 ? "#ef4444" : motoPct >= 90 ? "#f59e0b" : "#3F5E4D",
+                      borderRadius: 3,
+                      transition: 'width 0.3s ease'
+                    }} />
+                  </div>
+
+                  {/* Status/Warning text */}
+                  {motoPct >= 100 ? (
+                    <div style={{ marginTop: 8, fontSize: 11, fontWeight: "800", color: "#ef4444", display: "flex", alignItems: "center", gap: 4 }}>
+                      <span className="material-symbols-rounded" style={{ fontSize: 14 }}>block</span>
+                      ĐẦY! KHÔNG CHO XE VÃNG LAI VÀO
+                    </div>
+                  ) : motoPct >= 90 ? (
+                    <div style={{ marginTop: 8, fontSize: 11, fontWeight: "700", color: "#f59e0b", display: "flex", alignItems: "center", gap: 4 }}>
+                      <span className="material-symbols-rounded" style={{ fontSize: 14 }}>warning</span>
+                      SẮP ĐẦY SỨ CHỨA
+                    </div>
+                  ) : (
+                    <div style={{ marginTop: 8, fontSize: 11, fontWeight: "600", color: "#9E826C" }}>
+                      Còn trống {Math.max(0, motoCapacity - activeMotos)} chỗ
+                    </div>
+                  )}
                 </div>
 
                 <div
                   style={{
                     ...styles.cardIcon,
-                    background: "rgba(63, 94, 77, 0.12)",
-                    color: "#3F5E4D",
+                    background: motoPct >= 100 ? "rgba(239, 68, 68, 0.12)" : motoPct >= 90 ? "rgba(245, 158, 11, 0.12)" : "rgba(63, 94, 77, 0.12)",
+                    color: motoPct >= 100 ? "#ef4444" : motoPct >= 90 ? "#f59e0b" : "#3F5E4D",
                   }}
                 >
                   <span className="material-symbols-rounded" style={{ fontSize: 26 }}>motorcycle</span>
                 </div>
               </div>
 
-              <div style={{ ...styles.capacityCard, borderColor: "#CD5C5C" }}>
+              {/* Card 2: Ô tô */}
+              <div style={{
+                ...styles.capacityCard,
+                borderColor: carPct >= 100 ? "#ef4444" : carPct >= 90 ? "#f59e0b" : "#CD5C5C",
+                borderLeftColor: carPct >= 100 ? "#ef4444" : carPct >= 90 ? "#f59e0b" : "#CD5C5C"
+              }}>
                 <div style={{ flex: 1 }}>
                   <div style={styles.cardLabel}>KHU B - Ô TÔ</div>
-                  <div style={styles.cardNumber}>{activeCars}/150</div>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                    <span style={styles.cardNumber}>{activeCars}/{carCapacity}</span>
+                    <span style={{ fontSize: 13, fontWeight: "600", color: carPct >= 100 ? "#ef4444" : carPct >= 90 ? "#f59e0b" : "#64748b" }}>
+                      ({carPct}%)
+                    </span>
+                  </div>
+
+                  {/* Progress Bar */}
+                  <div style={{ width: '90%', height: 6, backgroundColor: '#EAE5D9', borderRadius: 3, marginTop: 8, overflow: 'hidden' }}>
+                    <div style={{
+                      width: `${Math.min(100, carPct)}%`,
+                      height: '100%',
+                      backgroundColor: carPct >= 100 ? "#ef4444" : carPct >= 90 ? "#f59e0b" : "#CD5C5C",
+                      borderRadius: 3,
+                      transition: 'width 0.3s ease'
+                    }} />
+                  </div>
+
+                  {/* Status/Warning text */}
+                  {carPct >= 100 ? (
+                    <div style={{ marginTop: 8, fontSize: 11, fontWeight: "800", color: "#ef4444", display: "flex", alignItems: "center", gap: 4 }}>
+                      <span className="material-symbols-rounded" style={{ fontSize: 14 }}>block</span>
+                      ĐẦY! KHÔNG CHO XE VÃNG LAI VÀO
+                    </div>
+                  ) : carPct >= 90 ? (
+                    <div style={{ marginTop: 8, fontSize: 11, fontWeight: "700", color: "#f59e0b", display: "flex", alignItems: "center", gap: 4 }}>
+                      <span className="material-symbols-rounded" style={{ fontSize: 14 }}>warning</span>
+                      SẮP ĐẦY SỨ CHỨA
+                    </div>
+                  ) : (
+                    <div style={{ marginTop: 8, fontSize: 11, fontWeight: "600", color: "#9E826C" }}>
+                      Còn trống {Math.max(0, carCapacity - activeCars)} chỗ
+                    </div>
+                  )}
                 </div>
 
                 <div
                   style={{
                     ...styles.cardIcon,
-                    background: "rgba(205, 92, 92, 0.12)",
-                    color: "#CD5C5C",
+                    background: carPct >= 100 ? "rgba(239, 68, 68, 0.12)" : carPct >= 90 ? "rgba(245, 158, 11, 0.12)" : "rgba(205, 92, 92, 0.12)",
+                    color: carPct >= 100 ? "#ef4444" : carPct >= 90 ? "#f59e0b" : "#CD5C5C",
                   }}
                 >
                   <span className="material-symbols-rounded" style={{ fontSize: 26 }}>directions_car</span>
                 </div>
               </div>
 
-              <div style={{ ...styles.capacityCard, borderColor: "#C39A6B" }}>
+              {/* Card 3: Tổng bãi */}
+              <div style={{
+                ...styles.capacityCard,
+                borderColor: totalPct >= 100 ? "#ef4444" : totalPct >= 90 ? "#f59e0b" : "#C39A6B",
+                borderLeftColor: totalPct >= 100 ? "#ef4444" : totalPct >= 90 ? "#f59e0b" : "#C39A6B"
+              }}>
                 <div style={{ flex: 1 }}>
                   <div style={styles.cardLabel}>TỔNG BÃI</div>
-                  <div style={styles.cardNumber}>{totalActive}/1350</div>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                    <span style={styles.cardNumber}>{totalActive}/{totalCapacity}</span>
+                    <span style={{ fontSize: 13, fontWeight: "600", color: totalPct >= 100 ? "#ef4444" : totalPct >= 90 ? "#f59e0b" : "#64748b" }}>
+                      ({totalPct}%)
+                    </span>
+                  </div>
+
+                  {/* Progress Bar */}
+                  <div style={{ width: '90%', height: 6, backgroundColor: '#EAE5D9', borderRadius: 3, marginTop: 8, overflow: 'hidden' }}>
+                    <div style={{
+                      width: `${Math.min(100, totalPct)}%`,
+                      height: '100%',
+                      backgroundColor: totalPct >= 100 ? "#ef4444" : totalPct >= 90 ? "#f59e0b" : "#C39A6B",
+                      borderRadius: 3,
+                      transition: 'width 0.3s ease'
+                    }} />
+                  </div>
+
+                  {/* Status/Warning text */}
+                  {totalPct >= 100 ? (
+                    <div style={{ marginTop: 8, fontSize: 11, fontWeight: "800", color: "#ef4444", display: "flex", alignItems: "center", gap: 4 }}>
+                      <span className="material-symbols-rounded" style={{ fontSize: 14 }}>block</span>
+                      TOÀN BỘ BÃI XE ĐÃ ĐẦY
+                    </div>
+                  ) : totalPct >= 90 ? (
+                    <div style={{ marginTop: 8, fontSize: 11, fontWeight: "700", color: "#f59e0b", display: "flex", alignItems: "center", gap: 4 }}>
+                      <span className="material-symbols-rounded" style={{ fontSize: 14 }}>warning</span>
+                      TỔNG THỂ SẮP ĐẦY
+                    </div>
+                  ) : (
+                    <div style={{ marginTop: 8, fontSize: 11, fontWeight: "600", color: "#9E826C" }}>
+                      Còn trống {Math.max(0, totalCapacity - totalActive)} chỗ
+                    </div>
+                  )}
                 </div>
 
                 <div
                   style={{
                     ...styles.cardIcon,
-                    background: "rgba(195, 154, 107, 0.12)",
-                    color: "#C39A6B",
+                    background: totalPct >= 100 ? "rgba(239, 68, 68, 0.12)" : totalPct >= 90 ? "rgba(245, 158, 11, 0.12)" : "rgba(195, 154, 107, 0.12)",
+                    color: totalPct >= 100 ? "#ef4444" : totalPct >= 90 ? "#f59e0b" : "#C39A6B",
                   }}
                 >
                   <span className="material-symbols-rounded" style={{ fontSize: 26 }}>analytics</span>
@@ -721,7 +851,6 @@ const SecurityDashboard = () => {
                       onChange={(e) => setPlate(e.target.value.toUpperCase())}
                       style={styles.bigInput}
                       placeholder="--- ---"
-                      maxLength={15}
                     />
 
                     <div style={styles.inputUnderline}></div>
@@ -1045,8 +1174,154 @@ const SecurityDashboard = () => {
                   <div style={styles.sectionHeader}>
                     {viewMode === "logs"
                       ? "Lịch sử gửi xe"
+                      : viewMode === "active"
+                      ? "Danh sách xe đang trong bãi"
+                      : viewMode === "notifications"
+                      ? "Thông báo từ hệ thống"
                       : "Tìm kiếm thông tin xe"}
                   </div>
+
+                  {viewMode === "active" && (
+                    <>
+                      <div style={styles.sectionSummaryRow}>
+                        <div style={styles.summaryCard}>
+                          <div style={styles.summaryLabel}>Xe đang gửi</div>
+                          <div style={styles.summaryValue}>{totalActive}</div>
+                        </div>
+                        <div style={styles.summaryCard}>
+                          <div style={styles.summaryLabel}>Xe máy</div>
+                          <div style={styles.summaryValue}>{activeMotos}</div>
+                        </div>
+                        <div style={styles.summaryCard}>
+                          <div style={styles.summaryLabel}>Ô tô</div>
+                          <div style={styles.summaryValue}>{activeCars}</div>
+                        </div>
+                      </div>
+
+                      {/* Filter / Search Bar */}
+                      <div style={{ display: "flex", gap: 16, marginBottom: 20, flexWrap: "wrap", alignItems: "center" }}>
+                        <div style={{ position: "relative", flex: 1, minWidth: 200 }}>
+                          <span className="material-symbols-rounded" style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#9E826C", fontSize: 20 }}>search</span>
+                          <input
+                            placeholder="Tìm kiếm biển số xe..."
+                            value={activeSearchPlate}
+                            onChange={(e) => setActiveSearchPlate(e.target.value.toUpperCase())}
+                            style={{
+                              width: "100%",
+                              padding: "10px 12px 10px 40px",
+                              border: "2px solid #EAE5D9",
+                              borderRadius: 10,
+                              fontSize: 14,
+                              outline: "none",
+                              backgroundColor: "#FFFBF5",
+                              color: "#2D3327",
+                              boxSizing: "border-box"
+                            }}
+                          />
+                        </div>
+                        <div style={{ minWidth: 150 }}>
+                          <select
+                            value={activeSearchType}
+                            onChange={(e) => setActiveSearchType(e.target.value)}
+                            style={{
+                              width: "100%",
+                              padding: "10px 12px",
+                              border: "2px solid #EAE5D9",
+                              borderRadius: 10,
+                              fontSize: 14,
+                              outline: "none",
+                              backgroundColor: "#FFFBF5",
+                              color: "#2D3327",
+                              fontWeight: "600"
+                            }}
+                          >
+                            <option value="">Tất cả phương tiện</option>
+                            <option value="Xe máy">Xe máy</option>
+                            <option value="Ô tô">Ô tô</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Active Parking Table */}
+                      <div style={styles.logsTable}>
+                        <div style={{...styles.tableRowHeader, backgroundColor: "#3F5E4D", color: "#FFFBF5", borderBottom: "none", fontSize: 12, letterSpacing: 1}}>
+                          <div style={styles.tableCell}>BIỂN SỐ</div>
+                          <div style={styles.tableCell}>LOẠI XE</div>
+                          <div style={styles.tableCell}>THỜI GIAN VÀO</div>
+                          <div style={styles.tableCell}>THỜI GIAN ĐÃ ĐỖ</div>
+                          <div style={styles.tableCell}>NHÂN VIÊN VÀO</div>
+                        </div>
+
+                        <div style={{ maxHeight: "400px", overflowY: "auto" }}>
+                          {(() => {
+                            const filteredActiveLogs = vehicleLogs
+                              .filter((log) => log.status === "parking")
+                              .filter((log) => {
+                                const matchesPlate = !activeSearchPlate.trim() || log.plate_number.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().includes(activeSearchPlate.replace(/[^a-zA-Z0-9]/g, "").toUpperCase());
+                                const matchesType = !activeSearchType || (log.type_name || "").toLowerCase().includes(activeSearchType.toLowerCase());
+                                return matchesPlate && matchesType;
+                              });
+
+                            if (filteredActiveLogs.length === 0) {
+                              return (
+                                <div style={{...styles.emptyState, backgroundColor: "#FFFBF5"}}>
+                                  Không tìm thấy xe nào đang ở trong bãi
+                                </div>
+                              );
+                            }
+
+                            return filteredActiveLogs.map((log) => {
+                              const timeIn = new Date(log.time_in);
+                              const now = new Date();
+                              const diffMs = now - timeIn;
+                              const diffMins = Math.floor(diffMs / 60000);
+                              const hours = Math.floor(diffMins / 60);
+                              const mins = diffMins % 60;
+                              const durationStr = hours > 0 ? `${hours}g ${mins}p` : `${mins} phút`;
+
+                              return (
+                                <div key={log.session_id} style={{...styles.tableRow, backgroundColor: "#FFFBF5", alignItems: "center"}}>
+                                  <div style={{...styles.tableCell, fontWeight: "800", fontSize: 18, color: "#2D3327", fontFamily: "'Outfit', sans-serif"}}>
+                                    {log.plate_number}
+                                  </div>
+                                  <div style={styles.tableCell}>
+                                    <span style={{ 
+                                      padding: "6px 12px", 
+                                      borderRadius: 8, 
+                                      fontSize: 12, 
+                                      fontWeight: "700", 
+                                      backgroundColor: log.type_name?.toLowerCase().includes("máy") ? "rgba(63, 94, 77, 0.1)" : "rgba(205, 92, 92, 0.1)", 
+                                      color: log.type_name?.toLowerCase().includes("máy") ? "#3F5E4D" : "#CD5C5C", 
+                                      border: log.type_name?.toLowerCase().includes("máy") ? "1px solid rgba(63, 94, 77, 0.2)" : "1px solid rgba(205, 92, 92, 0.2)",
+                                      display: "inline-block" 
+                                    }}>
+                                      {log.type_name}
+                                    </span>
+                                  </div>
+                                  <div style={styles.tableCell}>
+                                    {log.time_in ? (
+                                      <>
+                                        <div style={{ fontWeight: "800", color: "#2D3327", fontSize: 15 }}>{new Date(log.time_in).toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' })}</div>
+                                        <div style={{ fontSize: 12, color: "#9E826C", fontWeight: "600", marginTop: 2 }}>{new Date(log.time_in).toLocaleDateString("vi-VN")}</div>
+                                      </>
+                                    ) : <div style={{ color: "#9E826C", fontWeight: "600" }}>---</div>}
+                                  </div>
+                                  <div style={{...styles.tableCell, fontWeight: "700", color: "#3F5E4D"}}>
+                                    {durationStr}
+                                  </div>
+                                  <div style={{...styles.tableCell, display: "flex", alignItems: "center", gap: 8, fontWeight: "700", color: "#5F504B"}}>
+                                    {log.security_name ? (
+                                      <><span className="material-symbols-rounded" style={{ fontSize: 18, color: "#9E826C" }}>badge</span> {log.security_name}</>
+                                    ) : <div style={{ color: "#9E826C" }}>---</div>}
+                                  </div>
+                                </div>
+                              );
+                            });
+                          })()}
+                        </div>
+                      </div>
+                    </>
+                  )}
 
                   {viewMode === "logs" && (
                     <>
@@ -1092,51 +1367,53 @@ const SecurityDashboard = () => {
                           <div style={styles.tableCell}>NHÂN VIÊN</div>
                         </div>
 
-                        {vehicleLogs.length === 0 ? (
-                          <div style={{...styles.emptyState, backgroundColor: "#FFFBF5"}}>
-                            Chưa có bản ghi nào
-                          </div>
-                        ) : (
-                          vehicleLogs.map((log) => (
-                            <div key={log.session_id} style={{...styles.tableRow, backgroundColor: "#FFFBF5", alignItems: "center"}}>
-                              <div style={{...styles.tableCell, fontWeight: "800", fontSize: 18, color: "#2D3327", fontFamily: "'Outfit', sans-serif"}}>
-                                {log.plate_number}
-                              </div>
-                              <div style={styles.tableCell}>
-                                {log.status === "parking" ? (
-                                  <span style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: "700", backgroundColor: "#EAE5D9", color: "#9E826C", border: "1px solid #D5CCBE", display: "inline-block" }}>
-                                    Đang trong bãi
-                                  </span>
-                                ) : (
-                                  <span style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: "700", backgroundColor: "rgba(63, 94, 77, 0.1)", color: "#3F5E4D", border: "1px solid rgba(63, 94, 77, 0.2)", display: "inline-block" }}>
-                                    Đã ra khỏi bãi
-                                  </span>
-                                )}
-                              </div>
-                              <div style={styles.tableCell}>
-                                {log.time_in ? (
-                                  <>
-                                    <div style={{ fontWeight: "800", color: "#2D3327", fontSize: 15 }}>{new Date(log.time_in).toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' })}</div>
-                                    <div style={{ fontSize: 12, color: "#9E826C", fontWeight: "600", marginTop: 2 }}>{new Date(log.time_in).toLocaleDateString("vi-VN")}</div>
-                                  </>
-                                ) : <div style={{ color: "#9E826C", fontWeight: "600" }}>---</div>}
-                              </div>
-                              <div style={styles.tableCell}>
-                                {log.time_out ? (
-                                  <>
-                                    <div style={{ fontWeight: "800", color: "#2D3327", fontSize: 15 }}>{new Date(log.time_out).toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' })}</div>
-                                    <div style={{ fontSize: 12, color: "#9E826C", fontWeight: "600", marginTop: 2 }}>{new Date(log.time_out).toLocaleDateString("vi-VN")}</div>
-                                  </>
-                                ) : <div style={{ color: "#9E826C", fontWeight: "600" }}>---</div>}
-                              </div>
-                              <div style={{...styles.tableCell, display: "flex", alignItems: "center", gap: 8, fontWeight: "700", color: "#5F504B"}}>
-                                {log.security_name ? (
-                                  <><span className="material-symbols-rounded" style={{ fontSize: 18, color: "#9E826C" }}>badge</span> {log.security_name}</>
-                                ) : <div style={{ color: "#9E826C" }}>---</div>}
-                              </div>
+                        <div style={{ maxHeight: "400px", overflowY: "auto" }}>
+                          {vehicleLogs.length === 0 ? (
+                            <div style={{...styles.emptyState, backgroundColor: "#FFFBF5"}}>
+                              Chưa có bản ghi nào
                             </div>
-                          ))
-                        )}
+                          ) : (
+                            vehicleLogs.map((log) => (
+                              <div key={log.session_id} style={{...styles.tableRow, backgroundColor: "#FFFBF5", alignItems: "center"}}>
+                                <div style={{...styles.tableCell, fontWeight: "800", fontSize: 18, color: "#2D3327", fontFamily: "'Outfit', sans-serif"}}>
+                                  {log.plate_number}
+                                </div>
+                                <div style={styles.tableCell}>
+                                  {log.status === "parking" ? (
+                                    <span style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: "700", backgroundColor: "#EAE5D9", color: "#9E826C", border: "1px solid #D5CCBE", display: "inline-block" }}>
+                                      Đang trong bãi
+                                    </span>
+                                  ) : (
+                                    <span style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: "700", backgroundColor: "rgba(63, 94, 77, 0.1)", color: "#3F5E4D", border: "1px solid rgba(63, 94, 77, 0.2)", display: "inline-block" }}>
+                                      Đã ra khỏi bãi
+                                    </span>
+                                  )}
+                                </div>
+                                <div style={styles.tableCell}>
+                                  {log.time_in ? (
+                                    <>
+                                      <div style={{ fontWeight: "800", color: "#2D3327", fontSize: 15 }}>{new Date(log.time_in).toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' })}</div>
+                                      <div style={{ fontSize: 12, color: "#9E826C", fontWeight: "600", marginTop: 2 }}>{new Date(log.time_in).toLocaleDateString("vi-VN")}</div>
+                                    </>
+                                  ) : <div style={{ color: "#9E826C", fontWeight: "600" }}>---</div>}
+                                </div>
+                                <div style={styles.tableCell}>
+                                  {log.time_out ? (
+                                    <>
+                                      <div style={{ fontWeight: "800", color: "#2D3327", fontSize: 15 }}>{new Date(log.time_out).toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' })}</div>
+                                      <div style={{ fontSize: 12, color: "#9E826C", fontWeight: "600", marginTop: 2 }}>{new Date(log.time_out).toLocaleDateString("vi-VN")}</div>
+                                    </>
+                                  ) : <div style={{ color: "#9E826C", fontWeight: "600" }}>---</div>}
+                                </div>
+                                <div style={{...styles.tableCell, display: "flex", alignItems: "center", gap: 8, fontWeight: "700", color: "#5F504B"}}>
+                                  {log.security_name ? (
+                                    <><span className="material-symbols-rounded" style={{ fontSize: 18, color: "#9E826C" }}>badge</span> {log.security_name}</>
+                                  ) : <div style={{ color: "#9E826C" }}>---</div>}
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
                       </div>
                     </>
                   )}
@@ -1577,51 +1854,53 @@ const SecurityDashboard = () => {
                               <div style={styles.tableCell}>NHÂN VIÊN</div>
                             </div>
 
-                            {searchResult.history.length === 0 ? (
-                              <div style={{...styles.emptyState, backgroundColor: "#FFFBF5"}}>
-                                Chưa có lịch sử gửi xe
-                              </div>
-                            ) : (
-                              searchResult.history.map((h) => (
-                                <div key={h.session_id} style={{...styles.tableRow, backgroundColor: "#FFFBF5", alignItems: "center"}}>
-                                  <div style={{...styles.tableCell, fontWeight: "800", fontSize: 18, color: "#2D3327", fontFamily: "'Outfit', sans-serif"}}>
-                                    {h.plate_number || searchResult.vehicle.plate_number}
-                                  </div>
-                                  <div style={styles.tableCell}>
-                                    {h.status === "parking" ? (
-                                      <span style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: "700", backgroundColor: "#EAE5D9", color: "#9E826C", border: "1px solid #D5CCBE", display: "inline-block" }}>
-                                        Đang trong bãi
-                                      </span>
-                                    ) : (
-                                      <span style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: "700", backgroundColor: "rgba(63, 94, 77, 0.1)", color: "#3F5E4D", border: "1px solid rgba(63, 94, 77, 0.2)", display: "inline-block" }}>
-                                        Đã ra khỏi bãi
-                                      </span>
-                                    )}
-                                  </div>
-                                  <div style={styles.tableCell}>
-                                    {h.time_in ? (
-                                      <>
-                                        <div style={{ fontWeight: "800", color: "#2D3327", fontSize: 15 }}>{new Date(h.time_in).toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' })}</div>
-                                        <div style={{ fontSize: 12, color: "#9E826C", fontWeight: "600", marginTop: 2 }}>{new Date(h.time_in).toLocaleDateString("vi-VN")}</div>
-                                      </>
-                                    ) : <div style={{ color: "#9E826C", fontWeight: "600" }}>---</div>}
-                                  </div>
-                                  <div style={styles.tableCell}>
-                                    {h.time_out ? (
-                                      <>
-                                        <div style={{ fontWeight: "800", color: "#2D3327", fontSize: 15 }}>{new Date(h.time_out).toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' })}</div>
-                                        <div style={{ fontSize: 12, color: "#9E826C", fontWeight: "600", marginTop: 2 }}>{new Date(h.time_out).toLocaleDateString("vi-VN")}</div>
-                                      </>
-                                    ) : <div style={{ color: "#9E826C", fontWeight: "600" }}>---</div>}
-                                  </div>
-                                  <div style={{...styles.tableCell, display: "flex", alignItems: "center", gap: 8, fontWeight: "700", color: "#5F504B"}}>
-                                    {h.security_name ? (
-                                      <><span className="material-symbols-rounded" style={{ fontSize: 18, color: "#9E826C" }}>badge</span> {h.security_name}</>
-                                    ) : <div style={{ color: "#9E826C" }}>---</div>}
-                                  </div>
+                            <div style={{ maxHeight: "400px", overflowY: "auto" }}>
+                              {searchResult.history.length === 0 ? (
+                                <div style={{...styles.emptyState, backgroundColor: "#FFFBF5"}}>
+                                  Chưa có lịch sử gửi xe
                                 </div>
-                              ))
-                            )}
+                              ) : (
+                                searchResult.history.map((h) => (
+                                  <div key={h.session_id} style={{...styles.tableRow, backgroundColor: "#FFFBF5", alignItems: "center"}}>
+                                    <div style={{...styles.tableCell, fontWeight: "800", fontSize: 18, color: "#2D3327", fontFamily: "'Outfit', sans-serif"}}>
+                                      {h.plate_number || searchResult.vehicle.plate_number}
+                                    </div>
+                                    <div style={styles.tableCell}>
+                                      {h.status === "parking" ? (
+                                        <span style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: "700", backgroundColor: "#EAE5D9", color: "#9E826C", border: "1px solid #D5CCBE", display: "inline-block" }}>
+                                          Đang trong bãi
+                                        </span>
+                                      ) : (
+                                        <span style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: "700", backgroundColor: "rgba(63, 94, 77, 0.1)", color: "#3F5E4D", border: "1px solid rgba(63, 94, 77, 0.2)", display: "inline-block" }}>
+                                          Đã ra khỏi bãi
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div style={styles.tableCell}>
+                                      {h.time_in ? (
+                                        <>
+                                          <div style={{ fontWeight: "800", color: "#2D3327", fontSize: 15 }}>{new Date(h.time_in).toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' })}</div>
+                                          <div style={{ fontSize: 12, color: "#9E826C", fontWeight: "600", marginTop: 2 }}>{new Date(h.time_in).toLocaleDateString("vi-VN")}</div>
+                                        </>
+                                      ) : <div style={{ color: "#9E826C", fontWeight: "600" }}>---</div>}
+                                    </div>
+                                    <div style={styles.tableCell}>
+                                      {h.time_out ? (
+                                        <>
+                                          <div style={{ fontWeight: "800", color: "#2D3327", fontSize: 15 }}>{new Date(h.time_out).toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' })}</div>
+                                          <div style={{ fontSize: 12, color: "#9E826C", fontWeight: "600", marginTop: 2 }}>{new Date(h.time_out).toLocaleDateString("vi-VN")}</div>
+                                        </>
+                                      ) : <div style={{ color: "#9E826C", fontWeight: "600" }}>---</div>}
+                                    </div>
+                                    <div style={{...styles.tableCell, display: "flex", alignItems: "center", gap: 8, fontWeight: "700", color: "#5F504B"}}>
+                                      {h.security_name ? (
+                                        <><span className="material-symbols-rounded" style={{ fontSize: 18, color: "#9E826C" }}>badge</span> {h.security_name}</>
+                                      ) : <div style={{ color: "#9E826C" }}>---</div>}
+                                    </div>
+                                  </div>
+                                ))
+                              )}
+                            </div>
                           </div>
                         </>
                       )}
@@ -1737,6 +2016,7 @@ const styles = {
     display: "flex",
     flexDirection: "column",
     flexShrink: 0,
+    height: "100%",
   },
   sidebarHeader: {
     padding: "24px 20px 20px",

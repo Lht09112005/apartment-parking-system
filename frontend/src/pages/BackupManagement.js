@@ -258,10 +258,10 @@ const styles = {
     boxShadow: '0 4px 6px rgba(239, 68, 68, 0.2)',
   },
   
-  tableCard: { background: "#fff", borderRadius: 20, boxShadow: "0 8px 30px rgba(139, 115, 85, 0.04)", border: "1px solid rgba(139, 115, 85, 0.08)", overflow: "hidden" },
+  tableCard: { background: "#fff", borderRadius: 20, boxShadow: "0 8px 30px rgba(139, 115, 85, 0.04)", border: "1px solid rgba(139, 115, 85, 0.08)", overflowY: "auto", maxHeight: "550px" },
   table: { width: "100%", borderCollapse: "collapse" },
   thead: { backgroundColor: "#EAE5D9", borderBottom: "1px solid #F1ECE4" },
-  th: { padding: "16px 20px", textAlign: "left", fontWeight: "700", fontSize: 12, color: "#2D3327", textTransform: "uppercase", letterSpacing: 0.5 },
+  th: { padding: "16px 20px", textAlign: "left", fontWeight: "700", fontSize: 12, color: "#2D3327", textTransform: "uppercase", letterSpacing: 0.5, position: "sticky", top: 0, backgroundColor: "#EAE5D9", zIndex: 1 },
   tr: { borderBottom: "1px solid #F1ECE4", transition: "background-color 0.15s" },
   td: { padding: "16px 20px", fontSize: 14, color: "#2D3327" },
   

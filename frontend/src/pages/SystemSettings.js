@@ -15,6 +15,7 @@ const SystemSettings = () => {
     data_retention_years: 3,
     system_name: "39°C Management System"
   });
+
   const [initialSettings, setInitialSettings] = useState(null);
 
   const [message, setMessage] = useState({ type: "", text: "" });
@@ -328,7 +329,8 @@ const styles = {
   toggleCircle: { width: 20, height: 20, borderRadius: '50%', backgroundColor: '#fff', position: 'absolute', top: 2, left: 2, transition: 'transform 0.3s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' },
   
   input: { padding: '8px 16px', borderRadius: 10, border: '2px solid #EAE5D9', fontSize: 15, width: 200, textAlign: 'left', outline: 'none', backgroundColor: "#FFFBF5", color: "#2D3327", fontFamily: "'Outfit', sans-serif" },
-  saveBtn: { backgroundColor: '#3F5E4D', color: '#FFFBF5', border: 'none', padding: '12px 24px', borderRadius: 10, fontSize: 15, fontWeight: '700', cursor: 'pointer', boxShadow: "0 4px 12px rgba(63, 94, 77, 0.15)", transition: "all 0.2s" }
+  saveBtn: { backgroundColor: '#3F5E4D', color: '#FFFBF5', border: 'none', padding: '12px 24px', borderRadius: 10, fontSize: 15, fontWeight: '700', cursor: 'pointer', boxShadow: "0 4px 12px rgba(63, 94, 77, 0.15)", transition: "all 0.2s" },
+  fieldLabel: { display: "block", fontSize: 11, fontWeight: "700", color: "#9E826C", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 6 }
 };
 
 export default SystemSettings;

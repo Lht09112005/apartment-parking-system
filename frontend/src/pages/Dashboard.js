@@ -445,27 +445,7 @@ const Dashboard = () => {
             </div>
           )}
 
-          <div style={{ marginTop: 32 }}>
-            <h4 style={{ color: '#2D3327', marginBottom: 16, fontSize: 15, fontWeight: '800', textTransform: "uppercase", letterSpacing: "0.5px" }}>Lối tắt nhanh</h4>
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-              {user?.role_id === 1 ? (
-                <>
-                  <button style={styles.quickActionBtn} onClick={() => navigate("/admin/users")}>Quản lý Admin</button>
-                  <button style={styles.quickActionBtn} onClick={() => navigate("/admin/backup")}>Quản lý Dữ liệu</button>
-                  <button style={styles.quickActionBtn} onClick={() => navigate("/admin/audit")}>Nhật ký kiểm toán</button>
-                  <button style={styles.quickActionBtn} onClick={() => navigate("/admin/settings")}>Cấu hình hệ thống</button>
-                </>
-              ) : (
-                <>
-                  <button style={styles.quickActionBtn} onClick={() => navigate("/admin/residents")}>Quản lý Cư dân</button>
-                  <button style={styles.quickActionBtn} onClick={() => navigate("/admin/vehicles")}>Quản lý Xe cộ</button>
-                  <button style={styles.quickActionBtn} onClick={() => navigate("/admin/users")}>Quản lý Bảo vệ</button>
-                  <button style={styles.quickActionBtn} onClick={() => navigate("/admin/monthly")}>Duyệt vé tháng</button>
-                  <button style={styles.quickActionBtn} onClick={() => navigate("/admin/fees")}>Phí gửi xe</button>
-                </>
-              )}
-            </div>
-          </div>
+
         </div>
       </div>
     </div>
@@ -519,19 +499,6 @@ const styles = {
   iconContainer: { width: 44, height: 44, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 },
   cardLabel: { fontSize: 12, color: "#64748b", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 4 },
   cardValue: { fontSize: 32, fontWeight: "800", color: "#2D3327" },
-
-  quickActionBtn: {
-    backgroundColor: "#3F5E4D",
-    color: "#FFFBF5",
-    border: "none",
-    padding: "12px 24px",
-    borderRadius: 10,
-    cursor: "pointer",
-    fontWeight: "600",
-    fontSize: 14,
-    boxShadow: "0 4px 12px rgba(63, 94, 77, 0.15)",
-    transition: "all 0.2s"
-  },
 };
 
 export default Dashboard;

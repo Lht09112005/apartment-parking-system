@@ -91,12 +91,12 @@ const Login = () => {
         <div style={{ position: "relative", zIndex: 2, display: "flex", flexDirection: "column", height: "100%", justifyContent: "space-between" }}>
           <div style={styles.brandContainer}>
             <h1 style={styles.brandLogo}>39°C</h1>
-            <h2 style={styles.brandTitle}>Central Operations</h2>
-            <p style={styles.brandSubtitle}>Intelligent Parking Management System</p>
+            <h2 style={styles.brandTitle}>Trung tâm Vận hành</h2>
+            <p style={styles.brandSubtitle}>Hệ thống Quản lý Bãi đỗ xe Thông minh</p>
           </div>
           <div style={styles.brandFooter}>
             <div style={styles.onlineStatus}>
-               <span style={styles.onlineDot}></span> System Online - Secure Connection
+               <span style={styles.onlineDot}></span> Hệ thống trực tuyến — Kết nối bảo mật
             </div>
           </div>
         </div>
@@ -105,16 +105,16 @@ const Login = () => {
       {/* Right Login Panel */}
       <div style={styles.rightPanel}>
         <div style={styles.loginBox}>
-          <h2 style={styles.loginTitle}>Welcome Back</h2>
-          <p style={styles.loginSubtitle}>Please enter your credentials to access the system</p>
+          <h2 style={styles.loginTitle}>Chào mừng trở lại</h2>
+          <p style={styles.loginSubtitle}>Vui lòng nhập thông tin tài khoản để truy cập hệ thống</p>
 
           <form onSubmit={handleSubmit}>
             <div style={styles.formGroup}>
-              <label style={styles.label}>Username</label>
+              <label style={styles.label}>Tên đăng nhập</label>
               <input
                 style={styles.input}
                 type="text"
-                placeholder="Enter username"
+                placeholder="Nhập tên đăng nhập"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
@@ -122,11 +122,11 @@ const Login = () => {
             </div>
 
             <div style={styles.formGroup}>
-              <label style={styles.label}>Password</label>
+              <label style={styles.label}>Mật khẩu</label>
               <input
                 style={styles.input}
                 type="password"
-                placeholder="Enter password"
+                placeholder="Nhập mật khẩu"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -136,12 +136,12 @@ const Login = () => {
             {error && <div style={styles.errorBox}>❌ {error}</div>}
 
             <button style={styles.button} type="submit" disabled={loading}>
-              {loading ? "AUTHENTICATING..." : "LOGIN TO SYSTEM"}
+              {loading ? "ĐANG XÁC THỰC..." : "ĐĂNG NHẬP HỆ THỐNG"}
             </button>
           </form>
 
           <div style={styles.demoSection}>
-            <p style={styles.demoTitle}>QUICK LOGIN (DEMO)</p>
+            <p style={styles.demoTitle}>ĐĂNG NHẬP NHANH (DEMO)</p>
             <div style={styles.demoButtons}>
               <button type="button" onClick={() => fillDemoAccount("superadmin", "123456")} style={styles.demoBtn}>👑 Super Admin</button>
               <button type="button" onClick={() => fillDemoAccount("admin", "123456")} style={styles.demoBtn}>🛠️ Admin</button>
@@ -150,7 +150,7 @@ const Login = () => {
             </div>
           </div>
           
-          <p style={styles.helpText}>Need help? Contact the IT Helpdesk at support@39c.vn</p>
+          <p style={styles.helpText}>Cần hỗ trợ? Liên hệ bộ phận IT tại support@39c.vn</p>
         </div>
       </div>
     </div>
