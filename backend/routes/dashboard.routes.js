@@ -7,7 +7,7 @@ const {
 } = require("../middleware/auth.middleware");
 
 router.use(verifyToken);
-router.use(authorizeRoles("Admin"));
+router.use(authorizeRoles("Super Admin", "Admin"));
 
 router.get("/stats", getStats);
 

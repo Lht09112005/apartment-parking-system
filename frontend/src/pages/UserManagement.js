@@ -15,6 +15,16 @@ const UserManagement = () => {
   const [confirmTarget, setConfirmTarget] = useState(null);
   
   const { user } = useAuth();
+  const isSuperAdmin = user?.role_id === 1;
+
+  const canEditUser = (targetUser) =>
+    user?.role_id === 2 || (isSuperAdmin && targetUser.role_id === 2);
+
+  const canToggleUserStatus = (targetUser) => {
+    if (targetUser.username === "superadmin") return false;
+    if (isSuperAdmin) return targetUser.role_id === 2;
+    return targetUser.role_id === 3;
+  };
 
   const fetchUsers = async () => {
     try {
@@ -60,6 +70,12 @@ const UserManagement = () => {
   };
 
   const handleEdit = (u) => {
+    if (!canEditUser(u)) {
+      setMessage({ type: "error", text: "Super Admin chỉ được sửa tài khoản Admin" });
+      setTimeout(() => setMessage({ type: "", text: "" }), 3000);
+      return;
+    }
+
     setEditingUser(u);
     setForm({ 
       username: u.username, 
@@ -73,6 +89,12 @@ const UserManagement = () => {
   };
 
   const handleToggleStatus = (u) => {
+    if (!canToggleUserStatus(u)) {
+      setMessage({ type: "error", text: isSuperAdmin ? "Super Admin chỉ được khóa/mở khóa tài khoản Admin" : "Admin chỉ được khóa/mở khóa tài khoản Security" });
+      setTimeout(() => setMessage({ type: "", text: "" }), 3000);
+      return;
+    }
+
     setConfirmTarget({ user: u, action: u.status === "active" ? "locked" : "active" });
   };
 
@@ -91,13 +113,13 @@ const UserManagement = () => {
       setTimeout(() => setMessage({ type: "", text: "" }), 3000);
     } catch (err) {
       console.error(err);
-      setMessage({ type: "error", text: "Lỗi thay đổi trạng thái tài khoản" });
+      setMessage({ type: "error", text: err.response?.data?.message || "Lỗi thay đổi trạng thái tài khoản" });
       setTimeout(() => setMessage({ type: "", text: "" }), 3000);
     }
   };
 
   const sortedUsers = React.useMemo(() => {
-    let result = [...users];
+    let result = isSuperAdmin ? users.filter((u) => u.role_id === 2) : [...users];
     if (sortConfig.key) {
       result.sort((a, b) => {
         const valA = a[sortConfig.key] || '';
@@ -108,7 +130,7 @@ const UserManagement = () => {
       });
     }
     return result;
-  }, [users, sortConfig]);
+  }, [users, sortConfig, isSuperAdmin]);
 
   return (
     <div style={styles.container}>
@@ -143,10 +165,10 @@ const UserManagement = () => {
           <div style={styles.titleRow}>
             <div>
                <h3 style={{ margin: 0, fontSize: 24, color: '#0f172a' }}>
-                 {user?.role_id === 1 ? "Danh sách tài khoản Admin" : "Quản lý tài khoản Bảo vệ"}
+                 {isSuperAdmin ? "Danh sách tài khoản Admin" : "Quản lý tài khoản Bảo vệ"}
                </h3>
                <p style={{ margin: '4px 0 0 0', color: '#64748b', fontSize: 14 }}>
-                 {user?.role_id === 1 ? "Cấp quyền truy cập cho nhân viên quản trị hệ thống." : "Quản lý nhân sự đội ngũ an ninh tòa nhà."}
+                 {isSuperAdmin ? "Cấp quyền truy cập cho nhân viên quản trị hệ thống." : "Quản lý nhân sự đội ngũ an ninh tòa nhà."}
                </p>
             </div>
             <button
@@ -289,6 +311,7 @@ const UserManagement = () => {
                   <tr style={styles.thead}>
                     <th style={styles.th}>ID</th>
                     <th style={styles.th}>Tên đăng nhập</th>
+                    {isSuperAdmin && <th style={styles.th}>Vai trò</th>}
                     {user?.role_id === 2 && <th style={styles.th}>Họ và tên</th>}
                     {user?.role_id === 2 && <th style={styles.th}>Số điện thoại</th>}
                     <th style={styles.th}>Trạng thái</th>
@@ -306,6 +329,7 @@ const UserManagement = () => {
                            <strong style={{ color: '#0f172a' }}>{u.username}</strong>
                         </div>
                       </td>
+                      {isSuperAdmin && <td style={styles.td}>{u.role_name}</td>}
                       {user?.role_id === 2 && <td style={styles.td}>{u.staff_name || "—"}</td>}
                       {user?.role_id === 2 && <td style={styles.td}>{u.staff_phone || "—"}</td>}
 
@@ -325,30 +349,36 @@ const UserManagement = () => {
                         {new Date(u.created_at).toLocaleDateString("vi-VN")}
                       </td>
                       <td style={{...styles.td, textAlign: 'right'}}>
-                        {u.username !== "superadmin" && (
+                        {(canEditUser(u) || canToggleUserStatus(u)) ? (
                           <div style={{ display: "inline-flex", gap: "8px" }}>
-                            <button
-                              onClick={() => handleEdit(u)}
-                              style={{
-                                ...styles.actionBtn,
-                                backgroundColor: "#F1ECE4",
-                                color: "#5F504B",
-                                border: "1px solid #E4DDD3"
-                              }}
-                            >
-                              ✎ Sửa
-                            </button>
-                            <button
-                              onClick={() => handleToggleStatus(u)}
-                              style={{
-                                ...styles.actionBtn,
-                                backgroundColor: u.status === "active" ? "#fee2e2" : "#dcfce7",
-                                color: u.status === "active" ? "#ef4444" : "#10b981",
-                              }}
-                            >
-                              {u.status === "active" ? "Khóa" : "Mở khóa"}
-                            </button>
+                            {canEditUser(u) && (
+                              <button
+                                onClick={() => handleEdit(u)}
+                                style={{
+                                  ...styles.actionBtn,
+                                  backgroundColor: "#F1ECE4",
+                                  color: "#5F504B",
+                                  border: "1px solid #E4DDD3"
+                                }}
+                              >
+                                ✎ Sửa
+                              </button>
+                            )}
+                            {canToggleUserStatus(u) && (
+                              <button
+                                onClick={() => handleToggleStatus(u)}
+                                style={{
+                                  ...styles.actionBtn,
+                                  backgroundColor: u.status === "active" ? "#fee2e2" : "#dcfce7",
+                                  color: u.status === "active" ? "#ef4444" : "#10b981",
+                                }}
+                              >
+                                {u.status === "active" ? "Khóa" : "Mở khóa"}
+                              </button>
+                            )}
                           </div>
+                        ) : (
+                          <span style={{ color: "#94a3b8" }}>—</span>
                         )}
                       </td>
                     </tr>

@@ -14,8 +14,8 @@ const SecurityDashboard = () => {
   const [mode, setMode] = useState("IN");
 
   const [plate, setPlate] = useState("");
-  const [typeId, setTypeId] = useState(1);
-  const [areaId, setAreaId] = useState("A");
+  const [typeId, setTypeId] = useState("");
+  const [areaId, setAreaId] = useState("");
 
   const [vehicleTypes, setVehicleTypes] = useState([]);
   const [vehicles, setVehicles] = useState([]);
@@ -48,15 +48,7 @@ const SecurityDashboard = () => {
     try {
       const res = await axios.get("/vehicles/types");
 
-      const filteredTypes = res.data.filter(
-        (t) => t.type_name.toLowerCase() !== "xe điện"
-      );
-
-      setVehicleTypes(filteredTypes);
-
-      if (filteredTypes.length > 0) {
-        setTypeId((prevTypeId) => prevTypeId || filteredTypes[0].type_id);
-      }
+      setVehicleTypes(res.data || []);
     } catch (err) {
       console.error("Lỗi tải loại phương tiện:", err);
     }
@@ -136,18 +128,28 @@ const SecurityDashboard = () => {
   }, [viewMode]);
 
   useEffect(() => {
-    const selectedType = vehicleTypes.find((vt) => vt.type_id === typeId);
+    const configuredTypeIds = new Set(areas.map((area) => Number(area.type_id)));
+    const availableTypes = vehicleTypes.filter((vt) =>
+      configuredTypeIds.has(Number(vt.type_id))
+    );
 
-    if (selectedType) {
-      const normalized = selectedType.type_name.toLowerCase();
-
-      if (normalized.includes("xe máy") || normalized.includes("xe điện")) {
-        setAreaId("A");
-      } else {
-        setAreaId("B");
-      }
+    if (availableTypes.length === 0) {
+      setTypeId("");
+      setAreaId("");
+      return;
     }
-  }, [typeId, vehicleTypes]);
+
+    const selectedType = availableTypes.find(
+      (vt) => Number(vt.type_id) === Number(typeId)
+    );
+    const nextTypeId = selectedType ? selectedType.type_id : availableTypes[0].type_id;
+    const selectedArea = areas.find((area) => Number(area.type_id) === Number(nextTypeId));
+
+    if (Number(typeId) !== Number(nextTypeId)) {
+      setTypeId(nextTypeId);
+    }
+    setAreaId(selectedArea?.area_id || "");
+  }, [typeId, vehicleTypes, areas]);
 
   const normalizePlate = (p) =>
     (p || "").replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
@@ -244,9 +246,28 @@ const SecurityDashboard = () => {
 
   const currentVehicle = plate.trim()
     ? vehicles.find(
-        (v) => normalizePlate(v.plate_number) === normalizePlate(plate)
+        (v) =>
+          normalizePlate(v.plate_number) === normalizePlate(plate) &&
+          (v.status || "active") === "active"
       )
     : null;
+
+  const configuredTypeIds = new Set(areas.map((area) => Number(area.type_id)));
+  const configuredVehicleTypes = vehicleTypes.filter((vt) =>
+    configuredTypeIds.has(Number(vt.type_id))
+  );
+  const effectiveTypeId = currentVehicle ? currentVehicle.type_id : typeId;
+  const selectedArea = areas.find((area) => Number(area.type_id) === Number(effectiveTypeId));
+  const getVehicleIcon = (typeName = "") => {
+    const normalized = typeName.toLowerCase();
+    if (normalized.includes("ô") || normalized.includes("oto") || normalized.includes("car")) {
+      return "directions_car";
+    }
+    if (normalized.includes("điện") || normalized.includes("dien") || normalized.includes("electric")) {
+      return "electric_scooter";
+    }
+    return "motorcycle";
+  };
 
   // Auto-switch mode based on whether the vehicle is already parking
   useEffect(() => {
@@ -643,6 +664,61 @@ const SecurityDashboard = () => {
 
           <div style={styles.contentBody}>
             <div style={styles.capacityRow}>
+              {areas.map((area) => {
+                const occupied = area.current_count || 0;
+                const capacity = area.capacity || 0;
+                const pct = capacity > 0 ? Math.round((occupied / capacity) * 100) : 0;
+                const statusColor = pct >= 100 ? "#ef4444" : pct >= 90 ? "#f59e0b" : "#3F5E4D";
+
+                return (
+                  <div
+                    key={area.area_id}
+                    style={{
+                      ...styles.capacityCard,
+                      borderColor: statusColor,
+                      borderLeftColor: statusColor,
+                    }}
+                  >
+                    <div style={{ flex: 1 }}>
+                      <div style={styles.cardLabel}>{area.area_name}</div>
+                      <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                        <span style={styles.cardNumber}>{occupied}/{capacity}</span>
+                        <span style={{ fontSize: 13, fontWeight: "600", color: statusColor }}>
+                          ({pct}%)
+                        </span>
+                      </div>
+                      <div style={{ width: "90%", height: 6, backgroundColor: "#EAE5D9", borderRadius: 3, marginTop: 8, overflow: "hidden" }}>
+                        <div
+                          style={{
+                            width: `${Math.min(100, pct)}%`,
+                            height: "100%",
+                            backgroundColor: statusColor,
+                            borderRadius: 3,
+                            transition: "width 0.3s ease",
+                          }}
+                        />
+                      </div>
+                      <div style={{ marginTop: 8, fontSize: 11, fontWeight: "700", color: statusColor }}>
+                        {area.type_name} - con trong {Math.max(0, capacity - occupied)} cho
+                      </div>
+                    </div>
+                    <div
+                      style={{
+                        ...styles.cardIcon,
+                        background: `${statusColor}1f`,
+                        color: statusColor,
+                      }}
+                    >
+                      <span className="material-symbols-rounded" style={{ fontSize: 26 }}>
+                        {getVehicleIcon(area.type_name)}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div style={{ ...styles.capacityRow, display: "none" }}>
               {/* Card 1: Xe máy */}
               <div style={{
                 ...styles.capacityCard,
@@ -861,7 +937,7 @@ const SecurityDashboard = () => {
                       <div style={styles.selectorTitle}>Loại Phương Tiện</div>
 
                       <div style={styles.cardsWrap}>
-                        {vehicleTypes.map((vt) => (
+                        {configuredVehicleTypes.map((vt) => (
                           <div
                             key={vt.type_id}
                             onClick={() => {
@@ -879,11 +955,9 @@ const SecurityDashboard = () => {
                             }}
                           >
                             <div style={{ fontSize: 24, marginBottom: 4, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                              {vt.type_name === "Ô tô" ? (
-                                <span className="material-symbols-rounded" style={{ fontSize: 28 }}>directions_car</span>
-                              ) : (
-                                <span className="material-symbols-rounded" style={{ fontSize: 28 }}>motorcycle</span>
-                              )}
+                              <span className="material-symbols-rounded" style={{ fontSize: 28 }}>
+                                {getVehicleIcon(vt.type_name)}
+                              </span>
                             </div>
                             <div>{vt.type_name}</div>
                           </div>
@@ -895,6 +969,25 @@ const SecurityDashboard = () => {
                       <div style={styles.selectorTitle}>Khu Vực Đỗ</div>
 
                       <div style={styles.cardsWrap}>
+                        <div
+                          style={{
+                            ...styles.selectCard,
+                            backgroundColor: selectedArea ? "#3F5E4D" : "#FFFBF5",
+                            border: selectedArea ? "2px solid #3F5E4D" : "2px solid #EAE5D9",
+                            color: selectedArea ? "#FFFBF5" : "#2D3327",
+                            cursor: "default",
+                          }}
+                        >
+                          <div style={{ fontSize: 20, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 4 }}>
+                            <span className="material-symbols-rounded" style={{ fontSize: 26 }}>
+                              {getVehicleIcon(selectedArea?.type_name)}
+                            </span>
+                          </div>
+                          <div>{selectedArea?.area_name || "Chua cau hinh"}</div>
+                        </div>
+                      </div>
+
+                      <div style={{ ...styles.cardsWrap, display: "none" }}>
                         <div
                           style={{
                             ...styles.selectCard,
@@ -933,6 +1026,10 @@ const SecurityDashboard = () => {
                       </div>
 
                       <div style={styles.areaHint}>
+                        Khu do duoc lay tu cau hinh bai do xe cua Admin theo loai phuong tien dang chon.
+                      </div>
+
+                      <div style={{ ...styles.areaHint, display: "none" }}>
                         Khu A dành cho xe máy, khu B dành cho ô tô. Chức năng
                         được chọn tự động theo loại phương tiện.
                       </div>

@@ -30,26 +30,34 @@ const checkIn = async (req, res) => {
       }
     }
 
-    // Check if resident vehicle
-    const [vehicles] = await db.query(`SELECT plate_number, type_id, status FROM vehicles WHERE plate_number = ? AND status != 'deleted'`, [plate_number]);
+    // Only active vehicles in admin vehicle management are treated as resident vehicles.
+    const [vehicles] = await db.query(`SELECT plate_number, type_id, status FROM vehicles WHERE plate_number = ? AND status = 'active'`, [plate_number]);
     const isResident = vehicles.length > 0;
-    const isPending = isResident && vehicles[0].status === 'pending';
+    const [[pendingVehicle]] = await db.query(`SELECT status FROM vehicles WHERE plate_number = ? AND status = 'pending'`, [plate_number]);
     
     let warning = null;
     let finalTypeId = type_id;
 
-    if (isResident && !isPending) {
+    if (isResident) {
       finalTypeId = vehicles[0].type_id;
     } else {
       if (!finalTypeId) {
         return res.status(400).json({ message: "Vui lòng chọn loại xe cho khách vãng lai" });
       }
-      if (isPending) {
+      if (pendingVehicle) {
         warning = "Xe chưa được duyệt, tạm thời thu phí vãng lai";
       }
     }
 
     // Kiểm tra dung lượng bãi đỗ TRƯỚC khi cho xe vào
+    const [[configuredArea]] = await db.query(
+      `SELECT area_id, area_name FROM parking_area WHERE type_id = ? LIMIT 1`,
+      [finalTypeId]
+    );
+    if (!configuredArea) {
+      return res.status(400).json({ message: "Loai xe nay chua co khu vuc do trong cau hinh cua Admin" });
+    }
+
     try {
       const [[area]] = await db.query(
         `SELECT area_name, capacity FROM parking_area WHERE type_id = ? LIMIT 1`,
@@ -165,7 +173,7 @@ const checkOut = async (req, res) => {
     const [sessions] = await db.query(
       `SELECT s.*, v.plate_number as is_resident, IFNULL(v.type_id, s.type_id) as session_type_id 
        FROM parking_session s
-       LEFT JOIN vehicles v ON s.plate_number = v.plate_number AND v.status != 'deleted' AND v.status != 'pending'
+       LEFT JOIN vehicles v ON s.plate_number = v.plate_number AND v.status = 'active'
        WHERE s.plate_number = ? AND s.status = 'parking'`,
       [plate_number]
     );
@@ -516,6 +524,11 @@ const getDetailedRevenueReport = async (req, res) => {
        FROM parking_session s
        LEFT JOIN vehicle_types vt ON s.type_id = vt.type_id
        WHERE s.status = 'completed' AND s.fee_amount > 0
+       AND NOT EXISTS (
+         SELECT 1 FROM vehicles v
+         WHERE v.plate_number = s.plate_number
+         AND v.status = 'active'
+       )
        ORDER BY s.time_out DESC
        LIMIT 10`
     );
@@ -531,6 +544,31 @@ const getDetailedRevenueReport = async (req, res) => {
        WHERE mp.status = 'active'
        ORDER BY mp.start_date DESC
        LIMIT 10`
+    );
+
+    const [vehicleTypeRevenue] = await db.query(
+      `SELECT vt.type_id, vt.type_name,
+              IFNULL(st.revenue, 0) as shortTermRevenue,
+              IFNULL(st.count, 0) as shortTermCount,
+              IFNULL(mt.revenue, 0) as monthlyRevenue,
+              IFNULL(mt.count, 0) as monthlyCount
+       FROM vehicle_types vt
+       LEFT JOIN (
+         SELECT type_id, IFNULL(SUM(fee_amount), 0) as revenue, COUNT(*) as count
+         FROM parking_session
+         WHERE status = 'completed' AND fee_amount > 0
+         GROUP BY type_id
+       ) st ON st.type_id = vt.type_id
+       LEFT JOIN (
+         SELECT v.type_id, IFNULL(SUM(pf.monthly_fee), 0) as revenue, COUNT(*) as count
+         FROM monthly_parking mp
+         JOIN vehicles v ON mp.plate_number = v.plate_number
+         JOIN parking_fee pf ON v.type_id = pf.type_id
+         WHERE mp.status = 'active'
+         GROUP BY v.type_id
+       ) mt ON mt.type_id = vt.type_id
+       WHERE EXISTS (SELECT 1 FROM parking_area pa WHERE pa.type_id = vt.type_id)
+       ORDER BY vt.type_id`
     );
 
     res.json({
@@ -557,6 +595,14 @@ const getDetailedRevenueReport = async (req, res) => {
           totalRevenue: parseFloat(carShortTerm.revenue) + parseFloat(carMonthly.revenue)
         }
       },
+      vehicleTypeRevenue: vehicleTypeRevenue.map((row) => ({
+        ...row,
+        shortTermRevenue: parseFloat(row.shortTermRevenue || 0),
+        shortTermCount: parseInt(row.shortTermCount || 0),
+        monthlyRevenue: parseFloat(row.monthlyRevenue || 0),
+        monthlyCount: parseInt(row.monthlyCount || 0),
+        totalRevenue: parseFloat(row.shortTermRevenue || 0) + parseFloat(row.monthlyRevenue || 0)
+      })),
       history: {
         shortTerm: shortTermHistory,
         monthly: monthlyHistory
@@ -613,10 +659,27 @@ const updateParkingArea = async (req, res) => {
   }
 
   try {
+    const [[oldArea]] = await db.query(`SELECT area_name, capacity FROM parking_area WHERE area_id = ?`, [area_id]);
+
     await db.query(
       `UPDATE parking_area SET area_name = ?, capacity = ? WHERE area_id = ?`,
       [area_name, capacity, area_id]
     );
+
+    if (req.user) {
+      await logAudit(
+        req.user.user_id,
+        req.user.username,
+        "UPDATE",
+        "parking_area",
+        area_id,
+        oldArea || null,
+        { area_name, capacity },
+        `Cập nhật sức chứa bãi đỗ xe ${area_name || (oldArea && oldArea.area_name)}: ${capacity} chỗ`,
+        req.ip
+      );
+    }
+
     res.json({ message: "Cập nhật sức chứa bãi đỗ xe thành công" });
   } catch (err) {
     console.error(err);
