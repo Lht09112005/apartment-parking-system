@@ -335,32 +335,7 @@ const ResidentDashboard = () => {
   };
 
   const renderOverview = () => {
-    const displayHistory = history.length > 0 ? history.slice(0, 3) : [
-      {
-        session_id: "mock1",
-        plate_number: vehicles[0]?.plate_number || "29A-888.88",
-        type_name: vehicles[0]?.type_name || "Ô tô",
-        time_in: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-        time_out: null,
-        status: "parking"
-      },
-      {
-        session_id: "mock2",
-        plate_number: vehicles[1]?.plate_number || "30F-999.99",
-        type_name: vehicles[1]?.type_name || "Xe máy",
-        time_in: new Date(Date.now() - 28 * 60 * 60 * 1000).toISOString(),
-        time_out: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-        status: "completed"
-      },
-      {
-        session_id: "mock3",
-        plate_number: vehicles[0]?.plate_number || "29A-888.88",
-        type_name: vehicles[0]?.type_name || "Ô tô",
-        time_in: new Date(Date.now() - 50 * 60 * 60 * 1000).toISOString(),
-        time_out: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(),
-        status: "completed"
-      }
-    ];
+    const displayHistory = history.slice(0, 3);
 
     const carSlots = Array.from({ length: 10 }, (_, i) => `A-${String(i + 1).padStart(2, '0')}`);
     const motoSlots = Array.from({ length: 20 }, (_, i) => `M-${String(i + 1).padStart(2, '0')}`);
@@ -856,7 +831,19 @@ const ResidentDashboard = () => {
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", flex: 1, justifyContent: "center" }}>
-              {displayHistory.map((item, index) => {
+              {displayHistory.length === 0 ? (
+                <div style={{
+                  padding: "28px 16px",
+                  textAlign: "center",
+                  border: "2px dashed #EAE5D9",
+                  borderRadius: 16,
+                  color: "#64748b",
+                  backgroundColor: "rgba(139, 115, 85, 0.02)"
+                }}>
+                  <span className="material-symbols-rounded" style={{ fontSize: 40, color: "#9E826C", marginBottom: 8 }}>history</span>
+                  <p style={{ margin: 0, fontSize: 14, fontWeight: "600" }}>Chưa có lịch sử vào ra</p>
+                </div>
+              ) : displayHistory.map((item, index) => {
                 const isIn = item.status === "parking" || !item.time_out;
                 const eventTime = isIn ? item.time_in : item.time_out;
                 return (
@@ -2008,7 +1995,7 @@ const ResidentDashboard = () => {
                 </h3>
 
                 {history.length === 0 ? (
-                  <div style={S.empty}>Chưa có lịch sử gửi xe nào</div>
+                  <div style={S.empty}>Chưa có lịch sử vào ra</div>
                 ) : (
                   <div style={S.tableWrap}>
                     <div style={S.tHeader}>

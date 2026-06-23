@@ -8,6 +8,23 @@ const path = require("path");
 
 const SETTINGS_FILE = path.join(__dirname, '../data/settings.json');
 
+const getUnlockContactMessage = (roleId, roleName = "") => {
+  const normalizedRoleId = Number(roleId);
+  const normalizedRoleName = String(roleName).toLowerCase();
+
+  if (normalizedRoleId === 2 || normalizedRoleName === "admin") {
+    return "Liên hệ Super Admin để mở khóa.";
+  }
+  if (
+    [3, 4].includes(normalizedRoleId) ||
+    normalizedRoleName === "security" ||
+    normalizedRoleName === "resident"
+  ) {
+    return "Liên hệ Admin để mở khóa.";
+  }
+  return "Liên hệ quản trị viên để mở khóa.";
+};
+
 const login = async (req, res) => {
   const { username, password } = req.body;
 
@@ -19,7 +36,7 @@ const login = async (req, res) => {
 
   try {
     const [rows] = await db.query(
-      `SELECT u.user_id, u.username, u.password, u.status,
+      `SELECT u.user_id, u.username, u.password, u.status, u.failed_attempts,
               r.role_id, r.role_name,
               COALESCE(res.name, sec.name) as name,
               COALESCE(res.phone, sec.phone) as phone
@@ -42,14 +59,52 @@ const login = async (req, res) => {
     if (user.status === "locked") {
       return res
         .status(403)
-        .json({ message: "Tài khoản đã bị khóa. Liên hệ quản trị viên" });
+        .json({ message: `Tài khoản đã bị khóa do nhập sai mật khẩu quá nhiều lần. ${getUnlockContactMessage(user.role_id, user.role_name)}` });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res
-        .status(401)
-        .json({ message: "Tên đăng nhập hoặc mật khẩu không đúng" });
+      let maxLoginAttempts = 5;
+      try {
+        const data = await fs.readFile(SETTINGS_FILE, 'utf8');
+        const settings = JSON.parse(data);
+        if (settings.max_login_attempts !== undefined) {
+          maxLoginAttempts = parseInt(settings.max_login_attempts) || 5;
+        }
+      } catch (e) {
+        // ignore
+      }
+
+      const newAttempts = (user.failed_attempts || 0) + 1;
+      if (newAttempts >= maxLoginAttempts) {
+        await db.query(`UPDATE users SET failed_attempts = ?, status = 'locked' WHERE user_id = ?`, [newAttempts, user.user_id]);
+        
+        await logAudit(
+          user.user_id,
+          user.username,
+          "UPDATE",
+          "user",
+          user.user_id,
+          { status: user.status },
+          { status: 'locked', failed_attempts: newAttempts },
+          `Tài khoản bị khóa tự động do nhập sai mật khẩu ${newAttempts} lần: ${user.username}`,
+          req.ip
+        );
+
+        return res
+          .status(403)
+          .json({ message: `Tài khoản của bạn đã bị khóa do nhập sai mật khẩu quá nhiều lần. ${getUnlockContactMessage(user.role_id, user.role_name)}` });
+      } else {
+        await db.query(`UPDATE users SET failed_attempts = ? WHERE user_id = ?`, [newAttempts, user.user_id]);
+        const remaining = maxLoginAttempts - newAttempts;
+        return res
+          .status(401)
+          .json({ message: `Tên đăng nhập hoặc mật khẩu không đúng. Bạn còn ${remaining} lần thử.` });
+      }
+    }
+
+    if (user.failed_attempts > 0) {
+      await db.query(`UPDATE users SET failed_attempts = 0 WHERE user_id = ?`, [user.user_id]);
     }
 
     try {

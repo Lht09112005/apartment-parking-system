@@ -5,13 +5,26 @@ const NotificationService = require("../services/notification.service");
 
 const getAllUsers = async (req, res) => {
   try {
-    // Super Admin (1) sees Admins (2). Admin (2) sees Security (3).
     const currentUserRole = req.user.role_id;
-    let targetRoleId = 2; // Default for Super Admin
-    if (currentUserRole === 2) targetRoleId = 3;
+
+    if (currentUserRole === 1) {
+      const [rows] = await db.query(
+        `SELECT u.user_id, u.username, u.status, u.failed_attempts, u.created_at,
+            r.role_id, r.role_name,
+            COALESCE(s.name, res.name) as staff_name,
+            COALESCE(s.phone, res.phone) as staff_phone
+         FROM users u
+         JOIN roles r ON u.role_id = r.role_id
+         LEFT JOIN security s ON u.user_id = s.user_id
+         LEFT JOIN residents res ON u.user_id = res.user_id
+         WHERE r.role_id IN (2, 3, 4)
+         ORDER BY u.created_at DESC`
+      );
+      return res.json(rows);
+    }
 
     const [rows] = await db.query(
-      `SELECT u.user_id, u.username, u.status, u.created_at,
+      `SELECT u.user_id, u.username, u.status, u.failed_attempts, u.created_at,
           r.role_id, r.role_name,
           s.name as staff_name, s.phone as staff_phone
        FROM users u
@@ -19,7 +32,7 @@ const getAllUsers = async (req, res) => {
        LEFT JOIN security s ON u.user_id = s.user_id
        WHERE r.role_id = ?
        ORDER BY u.created_at DESC`,
-       [targetRoleId]
+       [3]
     );
     res.json(rows);
   } catch (err) {
@@ -83,21 +96,57 @@ const updateUser = async (req, res) => {
 
   try {
     // Permission check
-    const [targetUser] = await db.query(`SELECT role_id FROM users WHERE user_id = ?`, [id]);
+    const [targetUser] = await db.query(`SELECT role_id, status FROM users WHERE user_id = ?`, [id]);
     if (targetUser.length === 0) return res.status(404).json({ message: "Người dùng không tồn tại" });
     
     const currentUserRole = req.user.role_id;
     const targetUserRole = targetUser[0].role_id;
+    const targetUserStatus = targetUser[0].status;
 
-    if (currentUserRole === 1 && targetUserRole !== 2) {
-        return res.status(403).json({ message: "Super Admin chỉ được sửa tài khoản Admin" });
+    if (!["active", "locked"].includes(status)) {
+      return res.status(400).json({ message: "Trạng thái tài khoản không hợp lệ" });
     }
-    if (currentUserRole === 2 && targetUserRole !== 3) {
-        return res.status(403).json({ message: "Admin chỉ được sửa tài khoản Security" });
+
+    const isUnlocking = (targetUserStatus === 'locked' && status === 'active');
+    const hasProfileChanges = username || password || name || phone || (role_id && role_id !== targetUserRole);
+    const isSuperAdminStatusOnlyChange =
+      currentUserRole === 1 &&
+      !hasProfileChanges &&
+      targetUserRole === 2;
+    const isAdminStatusOnlyChange =
+      currentUserRole === 2 &&
+      !hasProfileChanges &&
+      targetUserRole === 3;
+
+    if (currentUserRole === 1 && !hasProfileChanges && targetUserRole !== 2) {
+      return res.status(403).json({ message: "Super Admin chỉ được khóa/mở khóa tài khoản Admin" });
+    }
+    if (currentUserRole === 2 && !hasProfileChanges && targetUserRole !== 3) {
+      return res.status(403).json({ message: "Admin chỉ được khóa/mở khóa tài khoản Security" });
+    }
+
+    if (isUnlocking && targetUserRole === 2 && currentUserRole !== 1) {
+      return res.status(403).json({ message: "Chỉ Super Admin mới có quyền mở khóa tài khoản Admin" });
+    }
+    if (isUnlocking && targetUserRole === 3 && currentUserRole !== 2) {
+      return res.status(403).json({ message: "Chỉ Admin mới có quyền mở khóa tài khoản Security" });
+    }
+
+    if (!isUnlocking && !isSuperAdminStatusOnlyChange && !isAdminStatusOnlyChange) {
+      if (currentUserRole === 1 && targetUserRole !== 2) {
+          return res.status(403).json({ message: "Super Admin chỉ được sửa tài khoản Admin" });
+      }
+      if (currentUserRole === 2 && targetUserRole !== 3) {
+          return res.status(403).json({ message: "Admin chỉ được sửa tài khoản Security" });
+      }
     }
 
     let query = `UPDATE users SET status = ?`;
     let params = [status];
+
+    if (status === 'active' && targetUserStatus === 'locked') {
+      query += `, failed_attempts = 0`;
+    }
 
     // Role can only be changed within allowed scope
     if (role_id) {
@@ -121,8 +170,8 @@ const updateUser = async (req, res) => {
 
     await db.query(query, params);
 
-    // If updating Security, also update security table
-    if (targetUserRole === 3) {
+    // If updating Security profile fields, also update security table
+    if (targetUserRole === 3 && (username !== undefined || name !== undefined || phone !== undefined)) {
       const [secExists] = await db.query(`SELECT staff_id FROM security WHERE user_id = ?`, [id]);
       if (secExists.length > 0) {
         await db.query(

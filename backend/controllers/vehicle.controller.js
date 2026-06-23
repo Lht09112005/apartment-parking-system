@@ -1,5 +1,6 @@
 const db = require("../config/db");
 const NotificationService = require("../services/notification.service");
+const { logAudit } = require("../utils/auditLogger");
 
 // GET /api/vehicles
 const getAllVehicles = async (req, res) => {
@@ -35,13 +36,28 @@ const createVehicle = async (req, res) => {
     // Gửi thông báo cho Admin (Role 1 & 2)
     const [[resident]] = await db.query(`SELECT name, apartment_number FROM residents WHERE resident_id = ?`, [resident_id]);
     if (resident) {
-        await NotificationService.notifyRole(
-            [2], 
-            "Yêu cầu duyệt đăng ký xe mới", 
-            `Cư dân ${resident.name} (Căn hộ ${resident.apartment_number}) đã đăng ký xe mới biển số ${plate_number}. Vui lòng phê duyệt.`, 
-            "VEHICLE_APPROVAL_REQUEST"
-        );
+      await NotificationService.notifyRole(
+        [2],
+        "Yêu cầu duyệt đăng ký xe mới",
+        `Cư dân ${resident.name} (Căn hộ ${resident.apartment_number}) đã đăng ký xe mới biển số ${plate_number}. Vui lòng phê duyệt.`,
+        "VEHICLE_APPROVAL_REQUEST"
+      );
     }
+
+    if (req.user) {
+      await logAudit(
+        req.user.user_id,
+        req.user.username,
+        "CREATE",
+        "vehicle",
+        plate_number,
+        null,
+        { plate_number, resident_id, type_id, color, status: 'active' },
+        `Admin đăng ký xe mới: ${plate_number} (Chủ xe: ${resident ? resident.name : resident_id})`,
+        req.ip
+      );
+    }
+
     res.status(201).json({ message: "Thêm xe thành công" });
   } catch (err) {
     if (err.code === "ER_DUP_ENTRY") {
@@ -66,10 +82,30 @@ const updateVehicle = async (req, res) => {
       return res.status(400).json({ message: "Không thể cập nhật thông tin vì xe đang đỗ trong bãi. Vui lòng check-out xe trước." });
     }
 
+    const [[oldVehicle]] = await db.query(
+      `SELECT resident_id, type_id, color FROM vehicles WHERE plate_number = ?`,
+      [plate_number]
+    );
+
     await db.query(
       `UPDATE vehicles SET resident_id=?, type_id=?, color=? WHERE plate_number=?`,
       [resident_id, type_id, color, plate_number]
     );
+
+    if (req.user) {
+      await logAudit(
+        req.user.user_id,
+        req.user.username,
+        "UPDATE",
+        "vehicle",
+        plate_number,
+        oldVehicle || null,
+        { resident_id, type_id, color },
+        `Cập nhật thông tin xe: ${plate_number}`,
+        req.ip
+      );
+    }
+
     res.json({ message: "Cập nhật thành công" });
   } catch (err) {
     console.error(err);
@@ -107,6 +143,20 @@ const deleteVehicle = async (req, res) => {
         "Thông báo xóa xe thành công",
         `Xe biển số ${plate_number} của bạn đã được xóa khỏi hệ thống bởi Admin.`,
         "VEHICLE_DELETED"
+      );
+    }
+
+    if (req.user) {
+      await logAudit(
+        req.user.user_id,
+        req.user.username,
+        "DELETE",
+        "vehicle",
+        plate_number,
+        { status: 'active' },
+        { status: 'deleted' },
+        `Xóa xe khỏi hệ thống: ${plate_number}`,
+        req.ip
       );
     }
 
@@ -173,6 +223,19 @@ const approveVehicle = async (req, res) => {
       );
     }
 
+    if (req.user) {
+      await logAudit(
+        req.user.user_id,
+        req.user.username,
+        "UPDATE",
+        "vehicle",
+        plate_number,
+        { status: 'pending' },
+        { status: 'active' },
+        `Phê duyệt đăng ký xe: ${plate_number}`,
+        req.ip
+      );
+    }
 
     res.json({ message: "Duyệt đăng ký xe thành công" });
   } catch (err) {
@@ -208,6 +271,19 @@ const rejectVehicle = async (req, res) => {
       );
     }
 
+    if (req.user) {
+      await logAudit(
+        req.user.user_id,
+        req.user.username,
+        "UPDATE",
+        "vehicle",
+        plate_number,
+        { status: 'pending' },
+        { status: 'deleted' },
+        `Từ chối đăng ký xe: ${plate_number}`,
+        req.ip
+      );
+    }
 
     res.json({ message: "Từ chối đăng ký xe thành công" });
   } catch (err) {

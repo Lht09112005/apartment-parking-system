@@ -23,6 +23,7 @@ const ResidentManagement = () => {
   });
 
   const { user } = useAuth();
+  const isSuperAdmin = user?.role_id === 1;
 
   const fetchResidents = async () => {
     try {
@@ -99,7 +100,7 @@ const ResidentManagement = () => {
       setTimeout(() => setMessage({ type: "", text: "" }), 3000);
     } catch (err) {
       console.error(err);
-      setMessage({ type: "error", text: "Lỗi thay đổi trạng thái tài khoản" });
+      setMessage({ type: "error", text: err.response?.data?.message || "Lỗi thay đổi trạng thái tài khoản" });
       setTimeout(() => setMessage({ type: "", text: "" }), 3000);
     }
   };
@@ -175,15 +176,17 @@ const ResidentManagement = () => {
                <h3 style={{ margin: 0, fontSize: 24, color: '#0f172a' }}>Danh sách cư dân</h3>
                <p style={{ margin: '4px 0 0 0', color: '#64748b', fontSize: 14 }}>Quản lý thông tin và tài khoản của cư dân chung cư.</p>
             </div>
-            <button
-              onClick={() => {
-                setShowForm(!showForm);
-                setEditData(null);
-              }}
-              style={styles.addBtn}
-            >
-              + Thêm cư dân mới
-            </button>
+            {!isSuperAdmin && (
+              <button
+                onClick={() => {
+                  setShowForm(!showForm);
+                  setEditData(null);
+                }}
+                style={styles.addBtn}
+              >
+                + Thêm cư dân mới
+              </button>
+            )}
           </div>
 
           <div style={{ padding: '16px', backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '24px' }}>
@@ -232,7 +235,7 @@ const ResidentManagement = () => {
              </div>
           )}
 
-          {(showForm || editData) && (
+          {!isSuperAdmin && (showForm || editData) && (
             <div style={styles.formCard}>
               <h4 style={{ marginTop: 0, marginBottom: 20, fontSize: 18, color: '#0f172a' }}>
                 {editData ? "Chỉnh sửa thông tin cư dân" : "Thêm cư dân mới"}
@@ -376,23 +379,26 @@ const ResidentManagement = () => {
                       </td>
                       <td style={{...styles.td, textAlign: 'right'}}>
                         <div style={{ display: 'inline-flex', gap: '8px' }}>
-                          <button
-                            onClick={() => {
-                              setEditData(r);
-                              setShowForm(false);
-                              window.scrollTo({ top: 0, behavior: 'smooth' });
-                            }}
-                            style={styles.actionBtn}
-                          >
-                            ✎ Sửa
-                          </button>
+                          {!isSuperAdmin && (
+                            <button
+                              onClick={() => {
+                                setEditData(r);
+                                setShowForm(false);
+                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                              }}
+                              style={styles.actionBtn}
+                            >
+                              ✎ Sửa
+                            </button>
+                          )}
                           <button
                             onClick={() => handleToggleStatus(r)}
                             style={{
                               ...styles.actionBtn,
                               backgroundColor: r.status === "active" ? "#fee2e2" : "#dcfce7",
                               color: r.status === "active" ? "#ef4444" : "#10b981",
-                              border: `1px solid ${r.status === "active" ? "#fecaca" : "#bbf7d0"}`
+                              border: `1px solid ${r.status === "active" ? "#fecaca" : "#bbf7d0"}`,
+                              cursor: "pointer"
                             }}
                           >
                             {r.status === "active" ? "Khóa" : "Mở khóa"}

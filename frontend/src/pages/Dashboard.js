@@ -59,7 +59,24 @@ const Dashboard = () => {
   );
 
   const cards = stats
-    ? [
+    ? user?.role_id === 1
+      ? [
+        {
+          label: "Admin & Super Admin hoạt động",
+          value: stats.activeAdminCount ?? 0,
+          color: "#ec4899",
+          icon: <span className="material-symbols-rounded" style={{ fontSize: 24 }}>admin_panel_settings</span>,
+          path: "/admin/users"
+        },
+        {
+          label: "Số lượng logs trạng thái",
+          value: stats.totalLogs ?? 0,
+          color: "#f97316",
+          icon: <span className="material-symbols-rounded" style={{ fontSize: 24 }}>receipt_long</span>,
+          path: "/admin/audit"
+        }
+      ]
+      : [
         {
           label: "Tổng cư dân",
           value: stats.totalResidents,
@@ -95,13 +112,13 @@ const Dashboard = () => {
         {/* Top Header */}
         <div style={styles.topHeader}>
           <div>
-            <h2 style={{margin: 0, fontSize: 18, fontWeight: '800', color: '#2D3327'}}>Tổng quan</h2>
+            <h2 style={{ margin: 0, fontSize: 18, fontWeight: '800', color: '#2D3327' }}>Tổng quan</h2>
           </div>
           <div style={styles.headerRight}>
             <NotificationBell />
-            <div style={{textAlign: 'right', marginRight: 12, marginLeft: 16}}>
-              <div style={{fontSize: 13, fontWeight: '700', color: '#2D3327'}}>{user?.username}</div>
-              <div style={{fontSize: 11, color: '#9E826C', fontWeight: "600"}}>
+            <div style={{ textAlign: 'right', marginRight: 12, marginLeft: 16 }}>
+              <div style={{ fontSize: 13, fontWeight: '700', color: '#2D3327' }}>{user?.username}</div>
+              <div style={{ fontSize: 11, color: '#9E826C', fontWeight: "600" }}>
                 {user?.role_id === 1 ? 'Super Admin' : 'Quản trị viên'}
               </div>
             </div>
@@ -230,25 +247,48 @@ const Dashboard = () => {
             <div style={{ padding: 40, textAlign: "center", color: "#64748b", fontWeight: "600" }}>Đang tải dữ liệu...</div>
           ) : (
             <div style={styles.grid}>
-              {cards.map((card, i) => (
-                <div key={i} style={styles.card}>
-                  <div style={styles.cardHeader}>
-                    <div style={{ ...styles.iconContainer, backgroundColor: `${card.color}12`, color: card.color }}>
-                      {card.icon}
+              {cards.map((card, i) => {
+                const isClickable = !!card.path;
+                return (
+                  <div
+                    key={i}
+                    onClick={() => isClickable && navigate(card.path)}
+                    style={{
+                      ...styles.card,
+                      cursor: isClickable ? "pointer" : "default",
+                      transition: "transform 0.2s ease, box-shadow 0.2s ease",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (isClickable) {
+                        e.currentTarget.style.transform = "translateY(-4px)";
+                        e.currentTarget.style.boxShadow = "0 12px 30px rgba(139, 115, 85, 0.12)";
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (isClickable) {
+                        e.currentTarget.style.transform = "none";
+                        e.currentTarget.style.boxShadow = "0 8px 30px rgba(139, 115, 85, 0.04)";
+                      }
+                    }}
+                  >
+                    <div style={styles.cardHeader}>
+                      <div style={{ ...styles.iconContainer, backgroundColor: `${card.color}12`, color: card.color }}>
+                        {card.icon}
+                      </div>
+                    </div>
+                    <div>
+                      <div style={styles.cardLabel}>{card.label}</div>
+                      <div style={styles.cardValue}>
+                        {card.value}
+                      </div>
                     </div>
                   </div>
-                  <div>
-                    <div style={styles.cardLabel}>{card.label}</div>
-                    <div style={styles.cardValue}>
-                      {card.value}
-                    </div>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
-          {!loading && stats && (
+          {!loading && stats && user?.role_id !== 1 && (
             <div style={{
               display: "grid",
               gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
@@ -266,7 +306,7 @@ const Dashboard = () => {
                 <h3 style={{ margin: "0 0 20px 0", color: "#2D3327", fontSize: 15, fontWeight: "800", textTransform: "uppercase", letterSpacing: "0.5px", display: "flex", alignItems: "center" }}>
                   <span className="material-symbols-rounded" style={{ fontSize: 18, marginRight: 8 }}>bar_chart</span> Công suất & Hoạt động Hầm đỗ
                 </h3>
-                
+
                 <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
                   <div>
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: "700", color: "#2D3327", marginBottom: 8 }}>

@@ -20,6 +20,10 @@ const getAllResidents = async (req, res) => {
 // POST /api/residents
 const createResident = async (req, res) => {
   const { username, password, name, apartment_number, phone, email } = req.body;
+  if (req.user.role_id !== 2) {
+    return res.status(403).json({ message: "Chỉ Admin mới có quyền thêm cư dân mới" });
+  }
+
   if (!username || !password || !name) {
     return res.status(400).json({ message: "Thiếu thông tin bắt buộc" });
   }
@@ -73,15 +77,38 @@ const updateResident = async (req, res) => {
   try {
     await conn.beginTransaction();
 
+    const [[currentResident]] = await conn.query(
+      `SELECT r.user_id, u.status
+       FROM residents r
+       JOIN users u ON r.user_id = u.user_id
+       WHERE r.resident_id = ?`,
+      [id],
+    );
+
+    if (!currentResident) {
+      await conn.rollback();
+      return res.status(404).json({ message: "Không tìm thấy cư dân" });
+    }
+
     await conn.query(
       `UPDATE residents SET name=?, apartment_number=?, phone=?, email=? WHERE resident_id=?`,
       [name, apartment_number, phone, email, id],
     );
 
     if (status) {
-      const [[resRow]] = await conn.query(`SELECT user_id FROM residents WHERE resident_id = ?`, [id]);
+      const [[resRow]] = await conn.query(
+        `SELECT r.user_id, u.status
+         FROM residents r
+         JOIN users u ON r.user_id = u.user_id
+         WHERE r.resident_id = ?`,
+        [id],
+      );
       if (resRow && resRow.user_id) {
-        await conn.query(`UPDATE users SET status = ? WHERE user_id = ?`, [status, resRow.user_id]);
+        const resetFailedAttempts = resRow.status === "locked" && status === "active" ? ", failed_attempts = 0" : "";
+        await conn.query(
+          `UPDATE users SET status = ?${resetFailedAttempts} WHERE user_id = ?`,
+          [status, resRow.user_id],
+        );
       }
     }
 

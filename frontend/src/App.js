@@ -117,6 +117,7 @@ function App() {
               </PrivateRoute>
             }
           />
+          <Route path="/admin/account-locks" element={<Navigate to="/admin/dashboard" />} />
           <Route
             path="/security"
             element={

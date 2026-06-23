@@ -52,6 +52,12 @@ const RevenueReport = () => {
   }
 
   const { summary, byVehicleType, history, recentTransactions, recentMonthlyCards } = data || {};
+  const vehicleTypeBreakdown = data?.vehicleTypeRevenue?.length
+    ? data.vehicleTypeRevenue
+    : [
+        { type_id: 1, type_name: "Xe may", ...(byVehicleType?.motorcycle || {}) },
+        { type_id: 2, type_name: "O to", ...(byVehicleType?.car || {}) },
+      ];
 
   // Combine monthly histories into unified list
   const allMonthsMap = {};
@@ -93,8 +99,10 @@ const RevenueReport = () => {
     // Vehicle breakdown
     csvContent += "PHÂN TÍCH THEO PHƯƠNG TIỆN\n";
     csvContent += "Loại xe,Doanh thu vãng lai,Số lượt vãng lai,Doanh thu vé tháng,Số vé tháng,Tổng doanh thu\n";
-    csvContent += `Xe máy,${byVehicleType.motorcycle.shortTermRevenue},${byVehicleType.motorcycle.shortTermCount},${byVehicleType.motorcycle.monthlyRevenue},${byVehicleType.motorcycle.monthlyCount},${byVehicleType.motorcycle.totalRevenue}\n`;
-    csvContent += `Ô tô,${byVehicleType.car.shortTermRevenue},${byVehicleType.car.shortTermCount},${byVehicleType.car.monthlyRevenue},${byVehicleType.car.monthlyCount},${byVehicleType.car.totalRevenue}\n\n`;
+    vehicleTypeBreakdown.forEach((item) => {
+      csvContent += `${item.type_name},${item.shortTermRevenue || 0},${item.shortTermCount || 0},${item.monthlyRevenue || 0},${item.monthlyCount || 0},${item.totalRevenue || 0}\n`;
+    });
+    csvContent += "\n";
     
     // Monthly history
     csvContent += "LỊCH SỬ DOANH THU THEO THÁNG\n";
@@ -139,6 +147,17 @@ const RevenueReport = () => {
         "<td class=\"right\">" + formatVND(h.shortTerm) + "</td>" +
         "<td class=\"right\">" + formatVND(h.monthly) + "</td>" +
         "<td class=\"right\"><strong>" + formatVND(h.total) + "</strong></td>" +
+      "</tr>"
+    ).join("");
+
+    const vehicleRowsHtml = vehicleTypeBreakdown.map(item =>
+      "<tr>" +
+        "<td><strong>" + item.type_name + "</strong></td>" +
+        "<td class=\"right\">" + formatVND(item.shortTermRevenue || 0) + "</td>" +
+        "<td class=\"right\">" + (item.shortTermCount || 0) + "</td>" +
+        "<td class=\"right\">" + formatVND(item.monthlyRevenue || 0) + "</td>" +
+        "<td class=\"right\">" + (item.monthlyCount || 0) + "</td>" +
+        "<td class=\"right\"><strong>" + formatVND(item.totalRevenue || 0) + "</strong></td>" +
       "</tr>"
     ).join("");
 
@@ -196,22 +215,7 @@ const RevenueReport = () => {
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td><strong>Xe máy</strong></td>
-                <td class="right">${formatVND(byVehicleType.motorcycle.shortTermRevenue)}</td>
-                <td class="right">${byVehicleType.motorcycle.shortTermCount}</td>
-                <td class="right">${formatVND(byVehicleType.motorcycle.monthlyRevenue)}</td>
-                <td class="right">${byVehicleType.motorcycle.monthlyCount}</td>
-                <td class="right"><strong>${formatVND(byVehicleType.motorcycle.totalRevenue)}</strong></td>
-              </tr>
-              <tr>
-                <td><strong>Ô tô</strong></td>
-                <td class="right">${formatVND(byVehicleType.car.shortTermRevenue)}</td>
-                <td class="right">${byVehicleType.car.shortTermCount}</td>
-                <td class="right">${formatVND(byVehicleType.car.monthlyRevenue)}</td>
-                <td class="right">${byVehicleType.car.monthlyCount}</td>
-                <td class="right"><strong>${formatVND(byVehicleType.car.totalRevenue)}</strong></td>
-              </tr>
+              ${vehicleRowsHtml}
             </tbody>
           </table>
 
@@ -394,6 +398,36 @@ const RevenueReport = () => {
               </h4>
 
               <div style={{ display: "flex", flexDirection: "column", gap: 16, marginTop: 12 }}>
+                {vehicleTypeBreakdown.map((item) => {
+                  const total = item.totalRevenue || 0;
+                  const percent = Math.round((total / (summary?.totalRevenue || 1)) * 100);
+
+                  return (
+                    <div key={item.type_id || item.type_name} style={styles.breakdownItem}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <div style={{ ...styles.iconSmall, backgroundColor: "rgba(63,94,77,0.12)", color: "#3F5E4D" }}>
+                            <span className="material-symbols-rounded">directions_car</span>
+                          </div>
+                          <div>
+                            <strong style={{ color: "#2D3327", fontSize: 14 }}>{item.type_name}</strong>
+                            <div style={{ fontSize: 12, color: "#64748b" }}>
+                              {item.shortTermCount || 0} lượt vãng lai · {item.monthlyCount || 0} thẻ vé tháng
+                            </div>
+                          </div>
+                        </div>
+                        <strong style={{ color: "#3F5E4D", fontSize: 16 }}>
+                          {formatVND(total)}
+                        </strong>
+                      </div>
+                      <div style={{ height: 6, backgroundColor: "#EAE5D9", borderRadius: 3, overflow: "hidden", marginTop: 8 }}>
+                        <div style={{ height: "100%", width: `${percent}%`, backgroundColor: "#3F5E4D", borderRadius: 3 }} />
+                      </div>
+                    </div>
+                  );
+                })}
+
+                <div style={{ display: "none" }}>
                 {/* Motorcycle breakdown */}
                 <div style={styles.breakdownItem}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -450,6 +484,7 @@ const RevenueReport = () => {
                       borderRadius: 3
                     }} />
                   </div>
+                </div>
                 </div>
               </div>
             </div>

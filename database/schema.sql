@@ -13,6 +13,7 @@ CREATE TABLE users (
     password VARCHAR(255) NOT NULL,
     role_id INT,
     status VARCHAR(20) DEFAULT 'active',
+    failed_attempts INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (role_id) REFERENCES roles (role_id)
 );
@@ -101,3 +102,10 @@ CREATE TABLE notifications (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
+
+
+
+SHOW DATABASES;
+
+
+SHOW TABLES

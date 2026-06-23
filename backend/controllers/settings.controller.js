@@ -1,5 +1,6 @@
 const fs = require('fs').promises;
 const path = require('path');
+const { logAudit } = require("../utils/auditLogger");
 
 const SETTINGS_FILE = path.join(__dirname, '../data/settings.json');
 
@@ -27,7 +28,19 @@ const updateSettings = async (req, res) => {
 
     await fs.writeFile(SETTINGS_FILE, JSON.stringify(newSettings, null, 2), 'utf8');
     
-    // TODO: log audit here
+    if (req.user) {
+      await logAudit(
+        req.user.user_id,
+        req.user.username,
+        "UPDATE",
+        "settings",
+        null,
+        currentSettings,
+        newSettings,
+        `Cập nhật cấu hình hệ thống: ${Object.keys(settings).join(", ")}`,
+        req.ip
+      );
+    }
     
     res.json({ message: 'Cập nhật cấu hình thành công', settings: newSettings });
   } catch (err) {
