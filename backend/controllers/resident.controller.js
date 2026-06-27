@@ -104,9 +104,8 @@ const updateResident = async (req, res) => {
         [id],
       );
       if (resRow && resRow.user_id) {
-        const resetFailedAttempts = resRow.status === "locked" && status === "active" ? ", failed_attempts = 0" : "";
         await conn.query(
-          `UPDATE users SET status = ?${resetFailedAttempts} WHERE user_id = ?`,
+          `UPDATE users SET status = ? WHERE user_id = ?`,
           [status, resRow.user_id],
         );
       }

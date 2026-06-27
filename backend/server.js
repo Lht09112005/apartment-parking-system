@@ -22,6 +22,14 @@ const { JWT_SECRET } = require("./config/auth");
 
 app.use(cors());
 app.use(express.json());
+
+// Log every request and its response status code
+app.use((req, res, next) => {
+  res.on('finish', () => {
+    console.log(`[API Log] ${req.method} ${req.path} - Status: ${res.statusCode}`);
+  });
+  next();
+});
 // Thông báo realtime cho frontend khi dữ liệu thay đổi qua API
 app.use(notifyDataChanges);
 

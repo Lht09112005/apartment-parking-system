@@ -21,6 +21,9 @@ instance.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 503) {
+      console.error("[Axios 503 Interceptor] Request Config:", error.config);
+      console.error("[Axios 503 Interceptor] Response Data:", error.response.data);
+      console.error("[Axios 503 Interceptor] Response Headers:", error.response.headers);
       localStorage.removeItem("token");
       window.dispatchEvent(new Event('maintenanceMode'));
     }

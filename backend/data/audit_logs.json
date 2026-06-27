@@ -1,5 +1,44 @@
 [
   {
+    "log_id": 1782533201805,
+    "user_id": 2,
+    "username": "admin",
+    "action": "UPDATE",
+    "target_type": "parking_area",
+    "target_id": "1",
+    "old_value": "{\"area_name\":\"Tầng hầm B1 - Xe máy\",\"capacity\":9}",
+    "new_value": "{\"area_name\":\"Tầng hầm B1 - Xe máy\",\"capacity\":90}",
+    "description": "Cập nhật sức chứa bãi đỗ xe Tầng hầm B1 - Xe máy: 90 chỗ",
+    "ip_address": "::1",
+    "created_at": "2026-06-27T04:06:41.805Z"
+  },
+  {
+    "log_id": 1782533196194,
+    "user_id": 2,
+    "username": "admin",
+    "action": "UPDATE",
+    "target_type": "parking_area",
+    "target_id": "2",
+    "old_value": "{\"area_name\":\"Tầng hầm B2 - Ô tô\",\"capacity\":9}",
+    "new_value": "{\"area_name\":\"Tầng hầm B2 - Ô tô\",\"capacity\":70}",
+    "description": "Cập nhật sức chứa bãi đỗ xe Tầng hầm B2 - Ô tô: 70 chỗ",
+    "ip_address": "::1",
+    "created_at": "2026-06-27T04:06:36.194Z"
+  },
+  {
+    "log_id": 1782528928105,
+    "user_id": 2,
+    "username": "admin",
+    "action": "UPDATE",
+    "target_type": "vehicle",
+    "target_id": "12A-3456",
+    "old_value": "{\"status\":\"pending\"}",
+    "new_value": "{\"status\":\"rejected\",\"rejection_reason\":\"chưa có màu sắc của xe\\n\"}",
+    "description": "Từ chối đăng ký xe: 12A-3456 - Lý do: chưa có màu sắc của xe\n",
+    "ip_address": "::1",
+    "created_at": "2026-06-27T02:55:28.105Z"
+  },
+  {
     "log_id": 1782227646460,
     "user_id": 4,
     "username": "resident",

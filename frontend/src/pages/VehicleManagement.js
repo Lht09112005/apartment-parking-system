@@ -21,6 +21,7 @@ const VehicleManagement = () => {
   const [sortConfig, setSortConfig] = useState({ key: 'plate_number', direction: 'asc' });
   const [activeTab, setActiveTab] = useState("active");
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, plate_number: null, action: null });
+  const [rejectReason, setRejectReason] = useState('');
   const [form, setForm] = useState({
     plate_number: "",
     resident_id: "",
@@ -129,8 +130,9 @@ const VehicleManagement = () => {
     
     if (action === 'reject') {
       try {
-        const res = await axios.put(`/vehicles/${plate_number}/reject`);
+        const res = await axios.put(`/vehicles/${plate_number}/reject`, { reason: rejectReason });
         setMessage({ type: "success", text: res.data.message || "Từ chối duyệt xe thành công!" });
+        setRejectReason('');
         fetchData();
         setTimeout(() => setMessage({ type: "", text: "" }), 3000);
       } catch (err) {
@@ -501,9 +503,35 @@ const VehicleManagement = () => {
             <h3 style={{ margin: "0 0 8px 0", color: "#2D3327", fontSize: 18, fontWeight: "800", textTransform: "uppercase" }}>
               {confirmModal.action === "reject" ? "Từ chối đăng ký xe" : "Xóa phương tiện"}
             </h3>
-            <p style={{ margin: "0 0 24px 0", color: "#64748b", fontSize: 14, lineHeight: "20px" }}>
+            <p style={{ margin: "0 0 16px 0", color: "#64748b", fontSize: 14, lineHeight: "20px" }}>
               Bạn có chắc chắn muốn {confirmModal.action === "reject" ? "từ chối yêu cầu đăng ký xe" : "xóa xe"} của biển số <strong>{confirmModal.plate_number}</strong> khỏi hệ thống?
             </p>
+            {confirmModal.action === "reject" && (
+              <div style={{ marginBottom: 20, textAlign: 'left' }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>
+                  Lý do từ chối (không bắt buộc)
+                </label>
+                <textarea
+                  value={rejectReason}
+                  onChange={(e) => setRejectReason(e.target.value)}
+                  placeholder="Ví dụ: Biển số không khớp giấy tờ, hình ảnh không rõ..."
+                  rows={3}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    border: '2px solid #EAE5D9',
+                    borderRadius: 10,
+                    fontSize: 13,
+                    fontFamily: "'Outfit', sans-serif",
+                    resize: 'none',
+                    outline: 'none',
+                    backgroundColor: '#FFFBF5',
+                    color: '#2D3327',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+            )}
             <div style={{ display: "flex", gap: 12 }}>
               <button
                 onClick={executeAction}

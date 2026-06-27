@@ -15,8 +15,8 @@ const verifyToken = (req, res, next) => {
     const decoded = jwt.verify(token, JWT_SECRET);
     req.user = decoded;
 
-    // Check maintenance mode
-    if (decoded.role_id !== 1) {
+    // Check maintenance mode - Allow role 1 (Super Admin) and 2 (Admin) to bypass
+    if (![1, 2].includes(decoded.role_id)) {
       try {
         const fs = require("fs");
         const path = require("path");

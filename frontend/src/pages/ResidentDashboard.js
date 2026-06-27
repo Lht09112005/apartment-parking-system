@@ -584,14 +584,23 @@ const ResidentDashboard = () => {
                     fontSize: 12
                   }}>
                     <span style={{
-                      color: v.status === "active" ? "#3F5E4D" : "#d97706",
+                      color: v.status === "active" ? "#3F5E4D" : v.status === "rejected" ? "#991b1b" : "#d97706",
                       fontWeight: "700"
                     }}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        {v.status === "active" ? (
-                          <><span className="material-symbols-rounded" style={{ fontSize: 16 }}>check_circle</span> ĐÃ PHÊ DUYỆT</>
-                        ) : (
-                          <><span className="material-symbols-rounded" style={{ fontSize: 16 }}>pending</span> CHỜ DUYỆT</>
+                      <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                          {v.status === "active" ? (
+                            <><span className="material-symbols-rounded" style={{ fontSize: 16 }}>check_circle</span> ĐÃ PHÊ DUYỆT</>
+                          ) : v.status === "rejected" ? (
+                            <><span className="material-symbols-rounded" style={{ fontSize: 16 }}>cancel</span> BỊ TỪ CHỐI</>
+                          ) : (
+                            <><span className="material-symbols-rounded" style={{ fontSize: 16 }}>pending</span> CHỜ DUYỆT</>
+                          )}
+                        </span>
+                        {v.status === "rejected" && v.rejection_reason && (
+                          <span style={{ fontSize: 10, color: '#991b1b', fontWeight: '500', fontStyle: 'italic' }}>
+                            {v.rejection_reason}
+                          </span>
                         )}
                       </span>
                     </span>
@@ -1687,12 +1696,21 @@ const ResidentDashboard = () => {
                             Căn hộ: {profile?.apartment_number || "---"} · {v.type_name} · {v.color || "---"}
                           </div>
 
-                          <div style={{ marginTop: 4, fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
-                            <span style={{ color: "#64748b", fontWeight: "500" }}>Trạng thái xe:</span>
-                            {v.status === "active" ? (
-                              <span style={{ color: "#3F5E4D", fontWeight: "700", display: "flex", alignItems: "center", gap: 4 }}><span className="material-symbols-rounded" style={{ fontSize: 16 }}>check_circle</span> Đã duyệt</span>
-                            ) : (
-                              <span style={{ color: "#d97706", fontWeight: "700", display: "flex", alignItems: "center", gap: 4 }}><span className="material-symbols-rounded" style={{ fontSize: 16 }}>pending</span> Chờ duyệt</span>
+                          <div style={{ marginTop: 4, fontSize: 13, display: "flex", flexDirection: "column", gap: 2 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                              <span style={{ color: "#64748b", fontWeight: "500" }}>Trạng thái xe:</span>
+                              {v.status === "active" ? (
+                                <span style={{ color: "#3F5E4D", fontWeight: "700", display: "flex", alignItems: "center", gap: 4 }}><span className="material-symbols-rounded" style={{ fontSize: 16 }}>check_circle</span> Đã duyệt</span>
+                              ) : v.status === "rejected" ? (
+                                <span style={{ color: "#991b1b", fontWeight: "700", display: "flex", alignItems: "center", gap: 4 }}><span className="material-symbols-rounded" style={{ fontSize: 16 }}>cancel</span> Bị từ chối</span>
+                              ) : (
+                                <span style={{ color: "#d97706", fontWeight: "700", display: "flex", alignItems: "center", gap: 4 }}><span className="material-symbols-rounded" style={{ fontSize: 16 }}>pending</span> Chờ duyệt</span>
+                              )}
+                            </div>
+                            {v.status === "rejected" && v.rejection_reason && (
+                              <div style={{ fontSize: 11, color: '#991b1b', fontWeight: '500', fontStyle: 'italic', paddingLeft: 84 }}>
+                                Lý do: {v.rejection_reason}
+                              </div>
                             )}
                           </div>
 
@@ -1848,12 +1866,21 @@ const ResidentDashboard = () => {
                             Căn hộ: {profile?.apartment_number || "---"} · {v.type_name} · {v.color || "---"}
                           </div>
 
-                          <div style={{ marginTop: 4, fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
-                            <span style={{ color: "#64748b", fontWeight: "500" }}>Trạng thái xe:</span>
-                            {v.status === "active" ? (
-                              <span style={{ color: "#3F5E4D", fontWeight: "700", display: "flex", alignItems: "center", gap: 4 }}><span className="material-symbols-rounded" style={{ fontSize: 16 }}>check_circle</span> Đã duyệt</span>
-                            ) : (
-                              <span style={{ color: "#d97706", fontWeight: "700", display: "flex", alignItems: "center", gap: 4 }}><span className="material-symbols-rounded" style={{ fontSize: 16 }}>pending</span> Chờ duyệt</span>
+                          <div style={{ marginTop: 4, fontSize: 13, display: "flex", flexDirection: "column", gap: 2 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                              <span style={{ color: "#64748b", fontWeight: "500" }}>Trạng thái xe:</span>
+                              {v.status === "active" ? (
+                                <span style={{ color: "#3F5E4D", fontWeight: "700", display: "flex", alignItems: "center", gap: 4 }}><span className="material-symbols-rounded" style={{ fontSize: 16 }}>check_circle</span> Đã duyệt</span>
+                              ) : v.status === "rejected" ? (
+                                <span style={{ color: "#991b1b", fontWeight: "700", display: "flex", alignItems: "center", gap: 4 }}><span className="material-symbols-rounded" style={{ fontSize: 16 }}>cancel</span> Bị từ chối</span>
+                              ) : (
+                                <span style={{ color: "#d97706", fontWeight: "700", display: "flex", alignItems: "center", gap: 4 }}><span className="material-symbols-rounded" style={{ fontSize: 16 }}>pending</span> Chờ duyệt</span>
+                              )}
+                            </div>
+                            {v.status === "rejected" && v.rejection_reason && (
+                              <div style={{ fontSize: 11, color: '#991b1b', fontWeight: '500', fontStyle: 'italic', paddingLeft: 84 }}>
+                                Lý do: {v.rejection_reason}
+                              </div>
                             )}
                           </div>
 

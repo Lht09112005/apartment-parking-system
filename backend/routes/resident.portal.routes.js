@@ -5,6 +5,7 @@ const {
   authorizeRoles,
 } = require("../middleware/auth.middleware");
 const db = require("../config/db");
+const { normalizePlate } = require("../utils/plateNormalizer");
 
 router.use(verifyToken);
 router.use(authorizeRoles("Resident"));
@@ -89,7 +90,8 @@ router.get("/vehicles", async (req, res) => {
 
 // POST /api/resident/vehicles - Đăng ký xe mới
 router.post("/vehicles", async (req, res) => {
-  const { plate_number, type_id, color } = req.body;
+  let { plate_number, type_id, color } = req.body;
+  plate_number = normalizePlate(plate_number);
   if (!plate_number || !type_id) {
     return res.status(400).json({ message: "Vui lòng nhập biển số và loại xe" });
   }
@@ -104,7 +106,7 @@ router.post("/vehicles", async (req, res) => {
     // Kiểm tra xe đã tồn tại chưa
     const [existing] = await db.query(`SELECT status FROM vehicles WHERE plate_number = ?`, [plate_number]);
     if (existing.length > 0) {
-      if (existing[0].status === 'deleted') {
+      if (existing[0].status === 'deleted' || existing[0].status === 'rejected') {
         // Đăng ký lại xe đã bị xóa/từ chối
         await db.query(
           `UPDATE vehicles SET resident_id = ?, type_id = ?, color = ?, status = 'pending' WHERE plate_number = ?`,
@@ -144,8 +146,12 @@ router.post("/vehicles", async (req, res) => {
 
 // PUT /api/resident/vehicles/:plate_number - Cập nhật thông tin xe
 router.put("/vehicles/:plate_number", async (req, res) => {
-  const { plate_number } = req.params;
-  const { type_id, color, new_plate_number } = req.body;
+  let { plate_number } = req.params;
+  plate_number = normalizePlate(plate_number);
+  let { type_id, color, new_plate_number } = req.body;
+  if (new_plate_number) {
+    new_plate_number = normalizePlate(new_plate_number);
+  }
   console.log("PUT /vehicles/:plate_number called with params:", req.params, "body:", req.body);
   try {
     const [resident] = await db.query(
@@ -210,7 +216,8 @@ router.put("/vehicles/:plate_number", async (req, res) => {
 
 // DELETE /api/resident/vehicles/:plate_number - Xóa xe
 router.delete("/vehicles/:plate_number", async (req, res) => {
-  const { plate_number } = req.params;
+  let { plate_number } = req.params;
+  plate_number = normalizePlate(plate_number);
   try {
     const [resident] = await db.query(
       `SELECT resident_id FROM residents WHERE user_id = ?`,
@@ -244,7 +251,8 @@ router.delete("/vehicles/:plate_number", async (req, res) => {
 
 // POST /api/resident/monthly - Đăng ký gửi xe theo tháng
 router.post("/monthly", async (req, res) => {
-  const { plate_number } = req.body;
+  let { plate_number } = req.body;
+  plate_number = normalizePlate(plate_number);
   if (!plate_number) {
     return res.status(400).json({ message: "Vui lòng chọn xe" });
   }
@@ -394,7 +402,8 @@ router.get("/vehicle-types", async (req, res) => {
 
 // POST /api/resident/monthly/renew - Gia hạn gửi xe theo tháng
 router.post("/monthly/renew", async (req, res) => {
-  const { plate_number } = req.body;
+  let { plate_number } = req.body;
+  plate_number = normalizePlate(plate_number);
   if (!plate_number) {
     return res.status(400).json({ message: "Vui lòng chọn xe" });
   }
@@ -489,7 +498,8 @@ router.post("/monthly/renew", async (req, res) => {
 
 // POST /api/resident/vehicles/:plate_number/request-delete - Yêu cầu xóa xe
 router.post("/vehicles/:plate_number/request-delete", async (req, res) => {
-  const { plate_number } = req.params;
+  let { plate_number } = req.params;
+  plate_number = normalizePlate(plate_number);
   try {
     // 1. Xác định cư dân và quyền sở hữu xe
     const [resident] = await db.query(

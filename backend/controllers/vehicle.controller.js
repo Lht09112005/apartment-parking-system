@@ -1,6 +1,7 @@
 const db = require("../config/db");
 const NotificationService = require("../services/notification.service");
 const { logAudit } = require("../utils/auditLogger");
+const { normalizePlate } = require("../utils/plateNormalizer");
 
 // GET /api/vehicles
 const getAllVehicles = async (req, res) => {
@@ -22,7 +23,8 @@ const getAllVehicles = async (req, res) => {
 
 // POST /api/vehicles
 const createVehicle = async (req, res) => {
-  const { plate_number, resident_id, type_id, color } = req.body;
+  let { plate_number, resident_id, type_id, color } = req.body;
+  plate_number = normalizePlate(plate_number);
   if (!plate_number || !resident_id || !type_id) {
     return res.status(400).json({ message: "Thiếu thông tin bắt buộc" });
   }
@@ -70,7 +72,8 @@ const createVehicle = async (req, res) => {
 
 // PUT /api/vehicles/:plate_number
 const updateVehicle = async (req, res) => {
-  const { plate_number } = req.params;
+  let { plate_number } = req.params;
+  plate_number = normalizePlate(plate_number);
   const { resident_id, type_id, color } = req.body;
   try {
     // 1. Kiểm tra xe có đang trong bãi không
@@ -115,7 +118,8 @@ const updateVehicle = async (req, res) => {
 
 // DELETE /api/vehicles/:plate_number
 const deleteVehicle = async (req, res) => {
-  const { plate_number } = req.params;
+  let { plate_number } = req.params;
+  plate_number = normalizePlate(plate_number);
   try {
     // 0. Kiểm tra xe có đang trong bãi không
     const [activeSessions] = await db.query(
@@ -198,7 +202,8 @@ const getPendingVehicles = async (req, res) => {
 
 // PUT /api/vehicles/:plate_number/approve
 const approveVehicle = async (req, res) => {
-  const { plate_number } = req.params;
+  let { plate_number } = req.params;
+  plate_number = normalizePlate(plate_number);
   try {
     // 1. Lấy thông tin user_id của chủ xe trước khi cập nhật
     const [[vehicleInfo]] = await db.query(
@@ -246,7 +251,9 @@ const approveVehicle = async (req, res) => {
 
 // PUT /api/vehicles/:plate_number/reject
 const rejectVehicle = async (req, res) => {
-  const { plate_number } = req.params;
+  let { plate_number } = req.params;
+  plate_number = normalizePlate(plate_number);
+  const { reason } = req.body; // Lý do từ chối (optional)
   try {
     // 1. Lấy thông tin user_id của chủ xe
     const [[vehicleInfo]] = await db.query(
@@ -255,18 +262,22 @@ const rejectVehicle = async (req, res) => {
        WHERE v.plate_number = ? AND v.status = 'pending'`, [plate_number]
     );
 
-    // 2. Cập nhật trạng thái
-    const [rows] = await db.query(`UPDATE vehicles SET status = 'deleted' WHERE plate_number = ? AND status = 'pending'`, [plate_number]);
+    // 2. Cập nhật trạng thái sang 'rejected' và lưu lý do
+    const [rows] = await db.query(
+      `UPDATE vehicles SET status = 'rejected', rejection_reason = ? WHERE plate_number = ? AND status = 'pending'`,
+      [reason || null, plate_number]
+    );
     if (rows.affectedRows === 0) {
       return res.status(404).json({ message: "Không tìm thấy xe hoặc xe không ở trạng thái chờ duyệt" });
     }
 
-    // 3. Gửi thông báo cho cư dân
+    // 3. Gửi thông báo cho cư dân (kèm lý do nếu có)
     if (vehicleInfo && vehicleInfo.user_id) {
+      const reasonText = reason ? ` Lý do: ${reason}.` : ' Vui lòng liên hệ ban quản lý để biết thêm chi tiết.';
       await NotificationService.notifyUser(
         vehicleInfo.user_id,
         "Kết quả duyệt đăng ký xe",
-        `Yêu cầu đăng ký xe biển số ${plate_number} của bạn đã bị TỪ CHỐI. Vui lòng liên hệ ban quản lý để biết thêm chi tiết.`,
+        `Yêu cầu đăng ký xe biển số ${plate_number} của bạn đã bị TỪ CHỐI.${reasonText}`,
         "VEHICLE_REJECTED"
       );
     }
@@ -279,8 +290,8 @@ const rejectVehicle = async (req, res) => {
         "vehicle",
         plate_number,
         { status: 'pending' },
-        { status: 'deleted' },
-        `Từ chối đăng ký xe: ${plate_number}`,
+        { status: 'rejected', rejection_reason: reason || null },
+        `Từ chối đăng ký xe: ${plate_number}${reason ? ` - Lý do: ${reason}` : ''}`,
         req.ip
       );
     }

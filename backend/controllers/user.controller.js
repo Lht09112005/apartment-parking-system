@@ -9,7 +9,7 @@ const getAllUsers = async (req, res) => {
 
     if (currentUserRole === 1) {
       const [rows] = await db.query(
-        `SELECT u.user_id, u.username, u.status, u.failed_attempts, u.created_at,
+        `SELECT u.user_id, u.username, u.status, u.created_at,
             r.role_id, r.role_name,
             COALESCE(s.name, res.name) as staff_name,
             COALESCE(s.phone, res.phone) as staff_phone
@@ -24,7 +24,7 @@ const getAllUsers = async (req, res) => {
     }
 
     const [rows] = await db.query(
-      `SELECT u.user_id, u.username, u.status, u.failed_attempts, u.created_at,
+      `SELECT u.user_id, u.username, u.status, u.created_at,
           r.role_id, r.role_name,
           s.name as staff_name, s.phone as staff_phone
        FROM users u
@@ -145,7 +145,7 @@ const updateUser = async (req, res) => {
     let params = [status];
 
     if (status === 'active' && targetUserStatus === 'locked') {
-      query += `, failed_attempts = 0`;
+      // failed_attempts được quản lý trong bộ nhớ, không cần reset DB
     }
 
     // Role can only be changed within allowed scope

@@ -28,7 +28,7 @@ const UserManagement = () => {
 
   const fetchUsers = async () => {
     try {
-      const res = await axios.get("/users");
+      const res = await axios.get(`/users?_t=${Date.now()}`);
       setUsers(res.data);
     } catch (err) {
       console.error(err);
@@ -119,7 +119,7 @@ const UserManagement = () => {
   };
 
   const sortedUsers = React.useMemo(() => {
-    let result = isSuperAdmin ? users.filter((u) => u.role_id === 2) : [...users];
+    let result = isSuperAdmin ? users.filter((u) => u.role_id === 2) : users.filter((u) => u.role_id === 3);
     if (sortConfig.key) {
       result.sort((a, b) => {
         const valA = a[sortConfig.key] || '';

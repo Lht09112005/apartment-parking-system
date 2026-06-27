@@ -1,10 +1,12 @@
 const db = require("../config/db");
 const { logAudit } = require("../utils/auditLogger");
 const NotificationService = require("../services/notification.service");
+const { normalizePlate } = require("../utils/plateNormalizer");
 
 // POST /api/parking/check-in
 const checkIn = async (req, res) => {
-  const { plate_number, type_id } = req.body;
+  let { plate_number, type_id } = req.body;
+  plate_number = normalizePlate(plate_number);
   if (!plate_number) {
     return res.status(400).json({ message: "Vui lòng nhập biển số xe" });
   }
@@ -64,7 +66,13 @@ const checkIn = async (req, res) => {
         [finalTypeId]
       );
       if (area && area.capacity > 0) {
-        // Đếm xe vé tháng active cho loại xe này
+        // 1. Kiểm tra xe này có vé tháng active không
+        const [[monthly]] = await db.query(
+          `SELECT * FROM monthly_parking WHERE plate_number = ? AND status = 'active' AND end_date >= CURDATE()`,
+          [plate_number]
+        );
+
+        // 2. Đếm số lượng vé tháng active cho loại xe này (đã đặt chỗ sẵn)
         const [[{ monthly_count }]] = await db.query(
           `SELECT COUNT(DISTINCT mp.plate_number) as monthly_count 
            FROM monthly_parking mp
@@ -72,7 +80,8 @@ const checkIn = async (req, res) => {
            WHERE v.type_id = ? AND mp.status = 'active' AND mp.end_date >= CURDATE()`,
           [finalTypeId]
         );
-        // Đếm xe vãng lai đang đỗ (không có vé tháng)
+
+        // 3. Đếm số lượng xe vãng lai đang đỗ thực tế (không có vé tháng)
         const [[{ visitor_count }]] = await db.query(
           `SELECT COUNT(*) as visitor_count FROM parking_session 
            WHERE status = 'parking' AND type_id = ?
@@ -82,15 +91,18 @@ const checkIn = async (req, res) => {
            )`,
           [finalTypeId]
         );
+
         const occupied = monthly_count + visitor_count;
-        if (occupied >= area.capacity) {
+
+        // Nếu đã hết chỗ trống và xe này KHÔNG phải là xe vé tháng, chặn không cho vào
+        if (occupied >= area.capacity && !monthly) {
             await NotificationService.notifyRole(
               [3], 
               "Cảnh báo bãi đỗ xe ĐÃ ĐẦY", 
-              `Khu vực ${area.area_name} đã ĐẦY sức chứa (${occupied}/${area.capacity}). Không thể nhận thêm xe.`, 
+              `Khu vực ${area.area_name} đã ĐẦY sức chứa thiết lập (${occupied}/${area.capacity}). Không thể nhận thêm xe vãng lai.`, 
               "PARKING_FULL_WARNING"
             );
-            return res.status(400).json({ message: `Khu vực ${area.area_name} đã hết chỗ (${occupied}/${area.capacity}). Không thể nhận thêm xe.` });
+            return res.status(400).json({ message: `Khu vực ${area.area_name} đã hết chỗ cho khách vãng lai (${occupied}/${area.capacity}). Chỉ xe vé tháng được phép vào.` });
         }
 
         const percent = Math.round(((occupied + 1) / area.capacity) * 100);
@@ -163,7 +175,8 @@ const checkIn = async (req, res) => {
 
 // POST /api/parking/check-out
 const checkOut = async (req, res) => {
-  const { plate_number } = req.body;
+  let { plate_number } = req.body;
+  plate_number = normalizePlate(plate_number);
   if (!plate_number) {
     return res.status(400).json({ message: "Vui lòng nhập biển số xe" });
   }
@@ -299,8 +312,11 @@ const getAllSessions = async (req, res) => {
             params.push(date_to);
         }
         if (plate_number) {
-            conditions.push("s.plate_number LIKE ?");
-            params.push(`%${plate_number}%`);
+            const normalizedPlate = normalizePlate(plate_number);
+            if (normalizedPlate) {
+                conditions.push("s.plate_number LIKE ?");
+                params.push(`%${normalizedPlate}%`);
+            }
         }
         if (type_id) {
             conditions.push("s.type_id = ?");

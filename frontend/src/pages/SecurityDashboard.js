@@ -357,6 +357,7 @@ const SecurityDashboard = () => {
         type: "error",
         text: "Vui lòng nhập biển số xe",
       });
+      setTimeout(() => setMessage({ type: "", text: "" }), 4000);
       return;
     }
 
@@ -390,6 +391,7 @@ const SecurityDashboard = () => {
           type: "error",
           text: err.response?.data?.message || "Lỗi check-in",
         });
+        setTimeout(() => setMessage({ type: "", text: "" }), 6000);
       }
     } else {
       try {
@@ -422,6 +424,7 @@ const SecurityDashboard = () => {
           type: "error",
           text: err.response?.data?.message || "Lỗi check-out",
         });
+        setTimeout(() => setMessage({ type: "", text: "" }), 6000);
       }
     }
   };
@@ -699,7 +702,7 @@ const SecurityDashboard = () => {
                         />
                       </div>
                       <div style={{ marginTop: 8, fontSize: 11, fontWeight: "700", color: statusColor }}>
-                        {area.type_name} - con trong {Math.max(0, capacity - occupied)} cho
+                        {area.type_name} - còn trống {Math.max(0, capacity - occupied)} chỗ
                       </div>
                     </div>
                     <div
@@ -919,7 +922,6 @@ const SecurityDashboard = () => {
                   </div>
 
                   <div style={styles.inputContainer}>
-                    {/* Label removed per user request */}
                     <input
                       autoFocus
                       maxLength={15}
@@ -928,8 +930,11 @@ const SecurityDashboard = () => {
                       style={styles.bigInput}
                       placeholder="--- ---"
                     />
-
-                    <div style={styles.inputUnderline}></div>
+                    <div style={{
+                      ...styles.inputUnderline,
+                      backgroundColor: mode === "IN" ? "#3F5E4D" : "#CD5C5C",
+                      boxShadow: mode === "IN" ? "0 4px 12px rgba(63, 94, 77, 0.4)" : "0 4px 12px rgba(205, 92, 92, 0.4)"
+                    }}></div>
                   </div>
 
                   <div style={styles.selectorsRow}>
@@ -1026,7 +1031,7 @@ const SecurityDashboard = () => {
                       </div>
 
                       <div style={styles.areaHint}>
-                        Khu do duoc lay tu cau hinh bai do xe cua Admin theo loai phuong tien dang chon.
+                        Khu vực đỗ được lấy tự động từ cấu hình bãi đỗ xe của Admin theo loại phương tiện đang chọn.
                       </div>
 
                       <div style={{ ...styles.areaHint, display: "none" }}>
@@ -1046,7 +1051,28 @@ const SecurityDashboard = () => {
                           message.type === "success" ? "#166534" : message.type === "warning" ? "#92400e" : "#991b1b",
                       }}
                     >
-                      {message.type === "success" ? "✅" : message.type === "warning" ? "⚠️" : "❌"} {message.text}
+                      <span>{message.type === "success" ? "✅" : message.type === "warning" ? "⚠️" : "❌"}</span>
+                      <span style={{ flex: 1, paddingRight: 8 }}>{message.text}</span>
+                      <button 
+                        onClick={() => setMessage({ type: "", text: "" })}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          color: "inherit",
+                          cursor: "pointer",
+                          fontSize: 18,
+                          fontWeight: "800",
+                          padding: "0 4px",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          opacity: 0.7,
+                          transition: "opacity 0.2s"
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.opacity = 1}
+                        onMouseLeave={(e) => e.currentTarget.style.opacity = 0.7}
+                      >
+                        ×
+                      </button>
                     </div>
                   )}
 
@@ -2349,7 +2375,7 @@ const styles = {
     border: "1px solid rgba(139, 115, 85, 0.08)",
     display: "flex",
     flexDirection: "column",
-    padding: 24,
+    padding: "12px 16px",
     boxShadow: "0 8px 30px rgba(139, 115, 85, 0.04)",
     overflow: "hidden",
   },
@@ -2358,18 +2384,18 @@ const styles = {
     backgroundColor: "#F1ECE4",
     borderRadius: 10,
     padding: 4,
-    marginBottom: 8,
+    marginBottom: 6,
     alignSelf: "center",
     flexShrink: 0,
     border: "1px solid #E4DDD3",
   },
   modeBtn: {
-    padding: "10px 30px",
+    padding: "8px 24px",
     borderRadius: 8,
     border: "none",
     backgroundColor: "transparent",
     fontWeight: "800",
-    fontSize: 14,
+    fontSize: 13,
     color: "#5F504B",
     cursor: "pointer",
     transition: "0.2s",
@@ -2387,23 +2413,23 @@ const styles = {
     border: "2px solid #CD5C5C",
   },
   inputContainer: {
-    flex: 1,
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
-    minHeight: 0,
+    padding: "24px 0",
+    width: "100%",
   },
   inputLabel: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "800",
     color: "#9E826C",
-    marginBottom: 8,
+    marginBottom: 6,
     letterSpacing: 2,
     textTransform: "uppercase",
   },
   bigInput: {
-    fontSize: 72,
+    fontSize: 60,
     fontWeight: "900",
     color: "#1E293B",
     textAlign: "center",
@@ -2412,29 +2438,30 @@ const styles = {
     width: "100%",
     background: "transparent",
     fontFamily: "'Outfit', sans-serif",
-    letterSpacing: 4,
+    letterSpacing: 6,
     textShadow: "0 4px 15px rgba(0,0,0,0.1)",
+    padding: "0px",
   },
   inputUnderline: {
-    height: 6,
-    width: 320,
+    height: 5,
+    width: 280,
     backgroundColor: "#3F5E4D",
-    marginTop: 8,
+    marginTop: 6,
     borderRadius: 3,
-    boxShadow: "0 4px 12px rgba(63, 94, 77, 0.4)",
+    boxShadow: "0 3px 10px rgba(63, 94, 77, 0.3)",
   },
   selectorsRow: {
     display: "flex",
-    gap: 20,
-    marginBottom: 12,
+    gap: 16,
+    marginBottom: 8,
     borderTop: "1px solid #F1ECE4",
-    paddingTop: 12,
+    paddingTop: 8,
     flexShrink: 0,
   },
   selectorGroup: {
     flex: 1,
     backgroundColor: "#FFFBF5",
-    padding: "8px 12px",
+    padding: "6px 10px",
     borderRadius: 12,
     border: "2px solid #EAE5D9",
   },
@@ -2442,13 +2469,13 @@ const styles = {
     fontSize: 11,
     fontWeight: "700",
     color: "#9E826C",
-    marginBottom: 6,
+    marginBottom: 4,
     textTransform: "uppercase",
     letterSpacing: "0.5px",
   },
   cardsWrap: {
     display: "flex",
-    gap: 12,
+    gap: 10,
   },
   selectCard: {
     flex: 1,
@@ -2456,34 +2483,34 @@ const styles = {
     flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
-    padding: "6px 0",
+    padding: "4px 0",
     borderRadius: 10,
     fontWeight: "700",
-    fontSize: 13,
+    fontSize: 12,
     transition: "all 0.2s ease-in-out",
     border: "2px solid #EAE5D9",
-    minHeight: 65,
+    minHeight: 52,
     backgroundColor: "#FFFBF5",
     cursor: "pointer",
     fontFamily: "'Outfit', sans-serif",
   },
   areaHint: {
-    marginTop: 6,
+    marginTop: 4,
     color: "#5F504B",
-    fontSize: 11,
-    lineHeight: 1.4,
+    fontSize: 10,
+    lineHeight: 1.3,
     backgroundColor: "#F1ECE4",
     borderRadius: 8,
-    padding: "6px 10px",
+    padding: "4px 8px",
     border: "1px solid #E4DDD3",
     fontWeight: "500",
   },
   actionsRow: {
     display: "flex",
     alignItems: "stretch",
-    height: 60,
+    height: 54,
     borderTop: "1px solid #F1ECE4",
-    paddingTop: 12,
+    paddingTop: 8,
     flexShrink: 0,
   },
   actionBtn: {
@@ -2503,11 +2530,12 @@ const styles = {
     display: "flex",
     alignItems: "center",
     gap: 10,
-    position: "absolute",
-    top: 120,
-    right: 40,
-    zIndex: 100,
-    boxShadow: "0 8px 30px rgba(139, 115, 85, 0.12)",
+    position: "fixed",
+    top: 24,
+    left: "50%",
+    transform: "translateX(-50%)",
+    zIndex: 9999,
+    boxShadow: "0 10px 35px rgba(0,0,0,0.15)",
   },
   dashboardPanel: {
     flex: 1,
