@@ -55,6 +55,18 @@ const Login = () => {
 
   return (
     <div style={styles.container}>
+      <button
+        type="button"
+        onClick={() => navigate("/")}
+        style={styles.homeButton}
+        aria-label="Về trang chủ"
+      >
+        <span className="material-symbols-rounded" style={styles.homeButtonIcon}>
+          arrow_back
+        </span>
+        Về trang chủ
+      </button>
+
       {/* Left Branding Panel */}
       <div style={styles.leftPanel}>
         {/* Background decorative luxury green & gold shapes */}
@@ -163,6 +175,31 @@ const styles = {
     display: "flex",
     fontFamily: "'Outfit', -apple-system, sans-serif",
     backgroundColor: "#FAF8F5",
+    position: "relative",
+  },
+  homeButton: {
+    position: "fixed",
+    top: "24px",
+    left: "24px",
+    zIndex: 20,
+    height: "44px",
+    padding: "0 18px",
+    border: "1px solid rgba(255, 251, 245, 0.22)",
+    borderRadius: "12px",
+    color: "#FFFBF5",
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    backdropFilter: "blur(10px)",
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    fontFamily: "'Outfit', sans-serif",
+    fontSize: "13px",
+    fontWeight: "700",
+    cursor: "pointer",
+    boxShadow: "0 8px 24px rgba(20, 38, 29, 0.12)",
+  },
+  homeButtonIcon: {
+    fontSize: "19px",
   },
   leftPanel: {
     flex: 1,
