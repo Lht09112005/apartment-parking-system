@@ -172,8 +172,8 @@ async function generateData() {
         feeAmount = blocks * pricePerBlock;
       }
 
-      // Trạng thái phần lớn là completed, chỉ có 5 xe đang đỗ hiện tại
-      const isCurrent = i >= 295;
+      // Trạng thái phần lớn là completed, có 45 xe đang đỗ hiện tại
+      const isCurrent = i >= 255;
       const status = isCurrent ? "parking" : "completed";
       const finalTimeOut = isCurrent ? null : timeOut;
       const finalFee = isCurrent ? 0 : feeAmount;
