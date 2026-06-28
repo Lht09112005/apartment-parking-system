@@ -1308,16 +1308,16 @@ const SecurityDashboard = () => {
                     <>
                       <div style={styles.sectionSummaryRow}>
                         <div style={styles.summaryCard}>
-                          <div style={styles.summaryLabel}>Xe đang gửi</div>
-                          <div style={styles.summaryValue}>{totalActive}</div>
+                          <div style={styles.summaryLabel}>Xe đang gửi thực tế</div>
+                          <div style={styles.summaryValue}>{activeMotosParked + activeCarsParked}</div>
                         </div>
                         <div style={styles.summaryCard}>
-                          <div style={styles.summaryLabel}>Xe máy</div>
-                          <div style={styles.summaryValue}>{activeMotos}</div>
+                          <div style={styles.summaryLabel}>Xe máy trong bãi</div>
+                          <div style={styles.summaryValue}>{activeMotosParked}</div>
                         </div>
                         <div style={styles.summaryCard}>
-                          <div style={styles.summaryLabel}>Ô tô</div>
-                          <div style={styles.summaryValue}>{activeCars}</div>
+                          <div style={styles.summaryLabel}>Ô tô trong bãi</div>
+                          <div style={styles.summaryValue}>{activeCarsParked}</div>
                         </div>
                       </div>
 
