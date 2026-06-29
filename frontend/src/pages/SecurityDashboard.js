@@ -1164,18 +1164,14 @@ const SecurityDashboard = () => {
                               <span>Thời gian đỗ:</span>
                               <strong style={{ color: "#2D3327" }}>{estimatedDuration} giờ</strong>
                             </div>
-                            <div style={styles.tdRow}>
-                              <span>Tạm tính check-out:</span>
-                              <strong style={{
-                                color: currentVehicle.has_monthly ? "#047857" : "#be123c",
-                                fontSize: 16
-                              }}>
-                                {currentVehicle.has_monthly 
-                                  ? "0 VNĐ (Vé tháng)" 
-                                  : `${estimatedFee.toLocaleString()} VNĐ (Vé lượt)`
-                                }
-                              </strong>
-                            </div>
+                            {!currentVehicle.has_monthly && (
+                              <div style={styles.tdRow}>
+                                <span>Tạm tính check-out:</span>
+                                <strong style={{ color: "#be123c", fontSize: 16 }}>
+                                  {estimatedFee.toLocaleString()} VNĐ (Vé lượt)
+                                </strong>
+                              </div>
+                            )}
                           </>
                         )}
                       </div>
