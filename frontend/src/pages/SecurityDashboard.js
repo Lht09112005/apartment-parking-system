@@ -1153,6 +1153,31 @@ const SecurityDashboard = () => {
                             {currentVehicle.status === 'pending' ? 'Chưa duyệt' : 'Đã duyệt / Hợp lệ'}
                           </strong>
                         </div>
+                        {activeSessionForPlate && (
+                          <>
+                            <div style={{ height: '1px', backgroundColor: '#EAE5D9', margin: '16px 0' }}></div>
+                            <div style={styles.tdRow}>
+                              <span>Tình trạng:</span>
+                              <strong style={{ color: "#047857" }}>Đang trong bãi</strong>
+                            </div>
+                            <div style={styles.tdRow}>
+                              <span>Thời gian đỗ:</span>
+                              <strong style={{ color: "#2D3327" }}>{estimatedDuration} giờ</strong>
+                            </div>
+                            <div style={styles.tdRow}>
+                              <span>Tạm tính check-out:</span>
+                              <strong style={{
+                                color: currentVehicle.has_monthly ? "#047857" : "#be123c",
+                                fontSize: 16
+                              }}>
+                                {currentVehicle.has_monthly 
+                                  ? "0 VNĐ (Vé tháng)" 
+                                  : `${estimatedFee.toLocaleString()} VNĐ (Vé lượt)`
+                                }
+                              </strong>
+                            </div>
+                          </>
+                        )}
                       </div>
                     </>
                   ) : plate.trim() ? (

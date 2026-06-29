@@ -7,7 +7,8 @@ const { normalizePlate } = require("../utils/plateNormalizer");
 const getAllVehicles = async (req, res) => {
   try {
     const [rows] = await db.query(
-      `SELECT v.plate_number, v.color, r.name as resident_name, r.apartment_number, vt.type_name, v.resident_id, v.type_id, v.status
+      `SELECT v.plate_number, v.color, r.name as resident_name, r.apartment_number, vt.type_name, v.resident_id, v.type_id, v.status,
+              EXISTS(SELECT 1 FROM monthly_parking mp WHERE mp.plate_number = v.plate_number AND mp.status = 'active' AND mp.end_date >= CURDATE()) as has_monthly
        FROM vehicles v
        LEFT JOIN residents r ON v.resident_id = r.resident_id
        LEFT JOIN vehicle_types vt ON v.type_id = vt.type_id
