@@ -926,7 +926,10 @@ const SecurityDashboard = () => {
                       autoFocus
                       maxLength={15}
                       value={plate}
-                      onChange={(e) => setPlate(e.target.value.toUpperCase())}
+                      onChange={(e) => {
+                        setPlate(e.target.value.toUpperCase());
+                        setTicketInfo(null);
+                      }}
                       style={styles.bigInput}
                       placeholder="--- ---"
                     />
