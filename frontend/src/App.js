@@ -16,6 +16,7 @@ import BackupManagement from "./pages/BackupManagement";
 import RevenueReport from "./pages/RevenueReport";
 import ParkingHistory from "./pages/ParkingHistory";
 import ParkingAreaConfig from "./pages/ParkingAreaConfig";
+import LandingPage from "./pages/LandingPage";
 const PrivateRoute = ({ children, roles }) => {
   const { token, user } = useAuth();
   
@@ -92,6 +93,7 @@ function App() {
           </div>
         )}
         <Routes>
+          <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<Login />} />
           <Route
             path="/admin/dashboard"
