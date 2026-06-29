@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+const jwt = require("jsonwebtoken");
 require("dotenv").config();
 require("./utils/cron");
 
@@ -15,38 +16,25 @@ const auditRoutes = require("./routes/audit.routes");
 const backupRoutes = require("./routes/backup.routes");
 const notificationRoutes = require("./routes/notification.routes");
 const { checkMaintenanceMode } = require("./middleware/maintenance.middleware");
-const app = express();
 const realtimeRoutes = require("./routes/realtime.routes");
 const { notifyDataChanges } = require("./middleware/realtime.middleware");
 const { JWT_SECRET } = require("./config/auth");
 
+const app = express();
+
 app.use(cors());
 app.use(express.json());
 
-// Log every request and its response status code
-app.use((req, res, next) => {
-  res.on('finish', () => {
-    console.log(`[API Log] ${req.method} ${req.path} - Status: ${res.statusCode}`);
-  });
-  next();
-});
 // Thông báo realtime cho frontend khi dữ liệu thay đổi qua API
 app.use(notifyDataChanges);
 
 app.use("/api/realtime", realtimeRoutes);
 
-// Maintenance mode check (must verify token first to skip admins)
-// For routes that need it, we can apply it. But to keep it simple, we'll apply it globally after parsing body, but we need user info.
-// Instead of applying globally, it's better to add it to specific routes or add verifyToken + checkMaintenanceMode.
-// Actually, applying it globally without verifyToken means req.user is undefined.
-// Let's use it as a custom middleware that runs before routes, but we need auth info.
-// To fix this cleanly, we can apply it to specific groups.
+// Kiểm tra chế độ bảo trì — giải mã token mềm để nhận diện super admin
 app.use(async (req, res, next) => {
   if (req.path.startsWith('/api/auth')) return next();
-  // We need to verify token softly to see if user is superadmin
   const token = req.headers.authorization?.split(" ")[1] || req.query.token;
   if (token) {
-    const jwt = require("jsonwebtoken");
     try {
       req.user = jwt.verify(token, JWT_SECRET);
     } catch (e) {}

@@ -12,8 +12,6 @@ const checkIn = async (req, res) => {
   }
 
   try {
-    // Removed: We now allow visitor vehicles to check in, so we don't enforce the vehicle to be in the 'vehicles' table.
-
     // Check if vehicle is already parking
     const [activeSessions] = await db.query(
       `SELECT * FROM parking_session WHERE plate_number = ? AND status = 'parking'`,

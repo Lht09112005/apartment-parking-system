@@ -6,8 +6,8 @@ const isCloud = process.env.DB_HOST && process.env.DB_HOST !== 'localhost';
 const pool = mysql2.createPool({
   host: process.env.DB_HOST,
   port: process.env.DB_PORT,
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '123456',
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME || 'parking_db',
   waitForConnections: true,
   connectionLimit: 10,

@@ -33,7 +33,6 @@ const createVehicle = async (req, res) => {
       `INSERT INTO vehicles (plate_number, resident_id, type_id, color, status) VALUES (?, ?, ?, ?, 'active')`,
       [plate_number, resident_id, type_id, color]
     );
-    // ... logic thêm xe hiện tại của bạn ...
 
     // Gửi thông báo cho Admin (Role 1 & 2)
     const [[resident]] = await db.query(`SELECT name, apartment_number FROM residents WHERE resident_id = ?`, [resident_id]);

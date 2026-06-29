@@ -152,26 +152,20 @@ router.put("/vehicles/:plate_number", async (req, res) => {
   if (new_plate_number) {
     new_plate_number = normalizePlate(new_plate_number);
   }
-  console.log("PUT /vehicles/:plate_number called with params:", req.params, "body:", req.body);
   try {
     const [resident] = await db.query(
       `SELECT resident_id, name, apartment_number FROM residents WHERE user_id = ?`,
       [req.user.user_id]
     );
     if (resident.length === 0) {
-      console.log("Resident not found for user_id:", req.user.user_id);
       return res.status(404).json({ message: "Không tìm thấy thông tin cư dân" });
     }
-    console.log("Found resident:", resident[0]);
 
     // Verify ownership
-    console.log("Verifying ownership for plate:", plate_number, "resident_id:", resident[0].resident_id);
     const [vehicle] = await db.query(`SELECT status FROM vehicles WHERE plate_number = ? AND resident_id = ?`, [plate_number, resident[0].resident_id]);
     if (vehicle.length === 0) {
-      console.log("Vehicle not found for ownership verify");
       return res.status(403).json({ message: "Xe không thuộc quyền sở hữu của bạn" });
     }
-    console.log("Vehicle found:", vehicle[0]);
 
     // Kiểm tra xe có đang trong bãi không
     const [activeSessions] = await db.query(

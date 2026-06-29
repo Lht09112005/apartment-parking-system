@@ -24,7 +24,7 @@ const VehicleManagement = () => {
   const [rejectReason, setRejectReason] = useState('');
   const [form, setForm] = useState({
     plate_number: "",
-    resident_id: "",
+    apartment_number: "",
     type_id: "",
     color: "",
   });
