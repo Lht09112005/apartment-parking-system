@@ -174,7 +174,7 @@ const deleteVehicle = async (req, res) => {
 // GET /api/vehicles/types
 const getVehicleTypes = async (req, res) => {
   try {
-    const [rows] = await db.query(`SELECT * FROM vehicle_types`);
+    const [rows] = await db.query(`SELECT * FROM vehicle_types WHERE type_id IN (1, 2)`);
     res.json(rows);
   } catch (err) {
     console.error(err);

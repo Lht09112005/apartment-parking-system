@@ -366,7 +366,7 @@ router.get("/fees", async (req, res) => {
       `SELECT pf.type_id, vt.type_name, pf.day_block_price, pf.night_block_price, pf.block_hours, pf.monthly_fee
        FROM parking_fee pf
        JOIN vehicle_types vt ON pf.type_id = vt.type_id
-       WHERE vt.type_name != 'Xe điện'`
+       WHERE vt.type_id IN (1, 2)`
     );
 
     // Vé tháng đang đăng ký
@@ -392,7 +392,7 @@ router.get("/fees", async (req, res) => {
 // GET /api/resident/vehicle-types
 router.get("/vehicle-types", async (req, res) => {
   try {
-    const [rows] = await db.query(`SELECT * FROM vehicle_types WHERE type_name != 'Xe điện'`);
+    const [rows] = await db.query(`SELECT * FROM vehicle_types WHERE type_id IN (1, 2)`);
     res.json(rows);
   } catch (err) {
     console.error(err);

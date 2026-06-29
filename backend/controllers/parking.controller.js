@@ -351,7 +351,7 @@ const getFeeConfig = async (req, res) => {
       `SELECT pf.type_id, vt.type_name, pf.day_block_price, pf.night_block_price, pf.block_hours, pf.monthly_fee
        FROM parking_fee pf
        JOIN vehicle_types vt ON pf.type_id = vt.type_id
-       WHERE vt.type_name != 'Xe điện'`
+       WHERE vt.type_id IN (1, 2)`
     );
     res.json(fees);
   } catch (err) {
