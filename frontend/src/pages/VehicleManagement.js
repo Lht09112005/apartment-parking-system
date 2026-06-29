@@ -40,7 +40,8 @@ const VehicleManagement = () => {
       ]);
       setVehicles(resVehicles.data);
       setResidents(resResidents.data);
-      setVehicleTypes(resTypes.data);
+      // Chỉ lấy Xe máy (type_id=1) và Ô tô (type_id=2), bỏ Xe điện
+      setVehicleTypes(resTypes.data.filter(vt => vt.type_id !== 3));
     } catch (err) {
       console.error(err);
     } finally {

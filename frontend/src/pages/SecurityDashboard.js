@@ -48,7 +48,7 @@ const SecurityDashboard = () => {
     try {
       const res = await axios.get("/vehicles/types");
 
-      setVehicleTypes(res.data || []);
+      setVehicleTypes((res.data || []).filter(vt => vt.type_id !== 3));
     } catch (err) {
       console.error("Lỗi tải loại phương tiện:", err);
     }

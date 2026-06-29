@@ -68,7 +68,7 @@ const ResidentDashboard = () => {
   const fetchVehicleTypes = async () => {
     try {
       const r = await axios.get("/resident/vehicle-types");
-      setVehicleTypes(r.data);
+      setVehicleTypes(r.data.filter(vt => vt.type_id !== 3));
 
       if (r.data.length > 0) {
         setNewVehicle((p) => ({

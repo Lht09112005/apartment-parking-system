@@ -71,7 +71,7 @@ const ParkingHistory = () => {
 
   useEffect(() => {
     // Fetch vehicle types for dropdown
-    axios.get("/parking/fees").then(r => setVehicleTypes(r.data || [])).catch(() => {});
+    axios.get("/parking/fees").then(r => setVehicleTypes((r.data || []).filter(vt => vt.type_id !== 3))).catch(() => {});
   }, []);
 
   useEffect(() => {
