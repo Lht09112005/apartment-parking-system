@@ -29,7 +29,18 @@ const getStats = async (req, res) => {
     try {
       const logData = await fs.readFile(AUDIT_FILE, 'utf8');
       const logs = JSON.parse(logData);
-      totalLogs = Array.isArray(logs) ? logs.length : 0;
+      const [adminUsers] = await db.query(
+        `SELECT user_id FROM users WHERE role_id IN (1, 2)`,
+      );
+      const adminUserIds = new Set(adminUsers.map(user => Number(user.user_id)));
+      totalLogs = Array.isArray(logs)
+        ? logs.filter(log => {
+            if (log.role_id !== undefined && log.role_id !== null) {
+              return [1, 2].includes(Number(log.role_id));
+            }
+            return adminUserIds.has(Number(log.user_id));
+          }).length
+        : 0;
     } catch (e) {
       console.error("Failed to read audit logs for dashboard stats:", e);
     }
