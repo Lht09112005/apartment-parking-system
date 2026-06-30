@@ -1,7 +1,10 @@
 const bcrypt = require("bcrypt");
+const fs = require("fs").promises;
+const path = require("path");
 const db = require("../config/db");
 const { logAudit } = require("../utils/auditLogger");
 const NotificationService = require("../services/notification.service");
+const SETTINGS_FILE = path.join(__dirname, "../data/settings.json");
 
 const getAllUsers = async (req, res) => {
   try {
@@ -43,27 +46,53 @@ const getAllUsers = async (req, res) => {
 
 const createUser = async (req, res) => {
   const { username, password, role_id, name, phone } = req.body;
-  if (!username || !password || !role_id) {
+  const requestedRoleId = Number(role_id);
+  if (!username || !password || !requestedRoleId) {
     return res.status(400).json({ message: "Thiếu thông tin bắt buộc" });
   }
 
-  const currentUserRole = req.user.role_id;
-  if (currentUserRole === 1 && role_id !== 2) {
+  const currentUserRole = Number(req.user.role_id);
+  if (currentUserRole === 1 && requestedRoleId !== 2) {
     return res.status(403).json({ message: "Super Admin chỉ được tạo tài khoản Admin" });
   }
-  if (currentUserRole === 2 && role_id !== 3) {
+  if (currentUserRole === 2 && requestedRoleId !== 3) {
     return res.status(403).json({ message: "Admin chỉ được tạo tài khoản Security" });
   }
 
   try {
+    if (currentUserRole === 2 && requestedRoleId === 3) {
+      const settingsData = await fs.readFile(SETTINGS_FILE, "utf8");
+      const settings = JSON.parse(settingsData);
+      const maxSecurityAccounts = Number(settings.max_security_accounts);
+
+      if (!Number.isInteger(maxSecurityAccounts) || maxSecurityAccounts < 0) {
+        return res.status(500).json({
+          message: "Giới hạn số tài khoản Bảo vệ chưa được cấu hình hợp lệ",
+        });
+      }
+
+      const [[{ securityCount }]] = await db.query(
+        "SELECT COUNT(*) AS securityCount FROM users WHERE role_id = ?",
+        [3]
+      );
+
+      if (Number(securityCount) >= maxSecurityAccounts) {
+        return res.status(409).json({
+          message: `Đã đạt giới hạn ${maxSecurityAccounts} tài khoản Bảo vệ. Admin không thể tạo thêm.`,
+          current: Number(securityCount),
+          limit: maxSecurityAccounts,
+        });
+      }
+    }
+
     const hashed = await bcrypt.hash(password, 10);
     const [result] = await db.query(
       `INSERT INTO users (username, password, role_id) VALUES (?, ?, ?)`,
-      [username, hashed, role_id],
+      [username, hashed, requestedRoleId],
     );
 
     // If creating Security, also add to security table
-    if (role_id === 3) {
+    if (requestedRoleId === 3) {
       await db.query(`INSERT INTO security (user_id, name, phone) VALUES (?, ?, ?)`, [result.insertId, name || username, phone || null]);
     }
 
@@ -74,8 +103,8 @@ const createUser = async (req, res) => {
       "user", 
       result.insertId, 
       null, 
-      { username, role_id, status: "active" }, 
-      `Tạo tài khoản ${role_id === 2 ? 'Admin' : 'Security'}: ${username}`, 
+      { username, role_id: requestedRoleId, status: "active" },
+      `Tạo tài khoản ${requestedRoleId === 2 ? 'Admin' : 'Security'}: ${username}`,
       req.ip
     );
 

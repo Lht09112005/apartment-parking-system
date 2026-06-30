@@ -21,6 +21,16 @@ const updateSettings = async (req, res) => {
       return res.status(400).json({ message: 'Dữ liệu cấu hình không hợp lệ' });
     }
 
+    if (Object.prototype.hasOwnProperty.call(settings, "max_security_accounts")) {
+      const maxSecurityAccounts = Number(settings.max_security_accounts);
+      if (!Number.isInteger(maxSecurityAccounts) || maxSecurityAccounts < 0) {
+        return res.status(400).json({
+          message: "Số lượng Bảo vệ tối đa phải là số nguyên không âm",
+        });
+      }
+      settings.max_security_accounts = maxSecurityAccounts;
+    }
+
     // Merge with existing settings to prevent dropping keys
     const currentData = await fs.readFile(SETTINGS_FILE, 'utf8');
     const currentSettings = JSON.parse(currentData);

@@ -1,5 +1,5 @@
 {
-  "max_security_accounts": 10,
+  "max_security_accounts": 6,
   "max_resident_accounts": 998,
   "maintenance_mode": false,
   "session_timeout_minutes": 480,

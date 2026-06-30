@@ -133,6 +133,8 @@ const SystemSettings = () => {
               </div>
               <input
                 type="number"
+                min="0"
+                step="1"
                 value={settings.max_security_accounts}
                 onChange={(e) => setSettings({ ...settings, max_security_accounts: parseInt(e.target.value) })}
                 style={styles.input}
