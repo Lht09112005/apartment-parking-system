@@ -35,47 +35,91 @@ const createBackup = async (req, res) => {
   const filename = `backup_${timestamp}.sql`;
   const filepath = path.join(BACKUPS_DIR, filename);
 
-  const dbUser = process.env.DB_USER || 'root';
-  const dbPass = process.env.DB_PASS || '123456';
-  const dbName = process.env.DB_NAME || 'parking_db';
-  const dbHost = process.env.DB_HOST || 'localhost';
+  try {
+    // 1. Lấy tên database hiện tại
+    const dbName = process.env.DB_NAME || 'parking_db';
 
-  const mysqldumpExe = process.platform === 'win32' ? '"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysqldump.exe"' : 'mysqldump';
-  const cmd = `${mysqldumpExe} -h ${dbHost} -u ${dbUser} ${dbPass ? `-p${dbPass}` : ''} ${dbName} > "${filepath}"`;
+    // 2. Lấy danh sách bảng trong database
+    const [tablesRows] = await db.query("SHOW TABLES");
+    const key = `Tables_in_${dbName}`;
+    const tables = tablesRows.map(row => row[key] || Object.values(row)[0]);
 
-  exec(cmd, async (error, stdout, stderr) => {
-    if (error) {
-      console.error(`Backup error: ${error.message}`);
-      return res.status(500).json({ message: 'Lỗi khi tạo backup database', error: error.message });
+    let sqlContent = `-- Parking Database Backup\n`;
+    sqlContent += `-- Created: ${new Date().toISOString()}\n`;
+    sqlContent += `USE \`${dbName}\`;\n\n`;
+    sqlContent += `SET FOREIGN_KEY_CHECKS = 0;\n\n`;
+
+    for (const table of tables) {
+      sqlContent += `-- Table: ${table}\n`;
+      sqlContent += `DROP TABLE IF EXISTS \`${table}\`;\n`;
+
+      // Lấy câu lệnh tạo bảng
+      const [[createRow]] = await db.query(`SHOW CREATE TABLE \`${table}\``);
+      const createTableSql = createRow['Create Table'] || Object.values(createRow)[1];
+      sqlContent += `${createTableSql};\n\n`;
+
+      // Lấy dữ liệu của bảng
+      const [rows] = await db.query(`SELECT * FROM \`${table}\``);
+      if (rows.length > 0) {
+        const columns = Object.keys(rows[0]).map(col => `\`${col}\``).join(', ');
+        sqlContent += `INSERT INTO \`${table}\` (${columns}) VALUES\n`;
+        
+        const insertValues = rows.map(row => {
+          const vals = Object.values(row).map(val => {
+            if (val === null) return 'NULL';
+            if (typeof val === 'number') return val;
+            if (val instanceof Date) {
+              // Convert to UTC/MySQL date format
+              return `'${val.toISOString().slice(0, 19).replace('T', ' ')}'`;
+            }
+            // Tránh lỗi escape SQL injection và ký tự đặc biệt
+            const escaped = String(val)
+              .replace(/\\/g, '\\\\')
+              .replace(/'/g, "\\'")
+              .replace(/"/g, '\\"')
+              .replace(/\n/g, '\\n')
+              .replace(/\r/g, '\\r');
+            return `'${escaped}'`;
+          }).join(', ');
+          return `(${vals})`;
+        }).join(',\n');
+        
+        sqlContent += `${insertValues};\n\n`;
+      }
     }
 
-    try {
-      const stats = await fs.stat(filepath);
-      const history = await getBackupHistory();
-      
-      const newRecord = {
-        backup_id: timestamp,
-        filename,
-        size_bytes: stats.size,
-        created_by: req.user.username,
-        created_at: new Date().toISOString()
-      };
-      
-      history.unshift(newRecord);
-      await saveBackupHistory(history);
+    sqlContent += `SET FOREIGN_KEY_CHECKS = 1;\n`;
 
-      await logAudit(
-        req.user.user_id, req.user.username, 
-        "BACKUP_CREATE", "system", null, null, 
-        { filename, size_bytes: stats.size }, 
-        `Tạo bản sao lưu dữ liệu: ${filename}`, req.ip
-      );
+    // Đảm bảo thư mục lưu trữ tồn tại và ghi file
+    await fs.mkdir(BACKUPS_DIR, { recursive: true });
+    await fs.writeFile(filepath, sqlContent, 'utf8');
 
-      res.status(201).json({ message: 'Tạo bản sao lưu thành công', backup: newRecord });
-    } catch (err) {
-      res.status(500).json({ message: 'Lỗi khi ghi lịch sử backup' });
-    }
-  });
+    const stats = await fs.stat(filepath);
+    const history = await getBackupHistory();
+    
+    const newRecord = {
+      backup_id: timestamp,
+      filename,
+      size_bytes: stats.size,
+      created_by: req.user.username,
+      created_at: new Date().toISOString()
+    };
+    
+    history.unshift(newRecord);
+    await saveBackupHistory(history);
+
+    await logAudit(
+      req.user.user_id, req.user.username, 
+      "BACKUP_CREATE", "system", null, null, 
+      { filename, size_bytes: stats.size }, 
+      `Tạo bản sao lưu dữ liệu: ${filename}`, req.ip
+    );
+
+    res.status(201).json({ message: 'Tạo bản sao lưu thành công', backup: newRecord });
+  } catch (err) {
+    console.error("Backup error:", err);
+    res.status(500).json({ message: 'Lỗi khi tạo backup database', error: err.message });
+  }
 };
 
 const restoreBackup = async (req, res) => {
@@ -88,18 +132,28 @@ const restoreBackup = async (req, res) => {
     return res.status(404).json({ message: 'File backup không tồn tại' });
   }
 
-  const dbUser = process.env.DB_USER || 'root';
-  const dbPass = process.env.DB_PASS || '123456';
-  const dbName = process.env.DB_NAME || 'parking_db';
-  const dbHost = process.env.DB_HOST || 'localhost';
+  try {
+    const sqlContent = await fs.readFile(filepath, 'utf8');
+    
+    // Tách các câu lệnh SQL bằng regex
+    const statements = sqlContent
+      .split(/;\s*$/m)
+      .map(stmt => stmt.trim())
+      .filter(stmt => stmt.length > 0 && !stmt.startsWith('--') && !stmt.startsWith('/*'));
 
-  const mysqlExe = process.platform === 'win32' ? '"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql.exe"' : 'mysql';
-  const cmd = `${mysqlExe} -h ${dbHost} -u ${dbUser} ${dbPass ? `-p${dbPass}` : ''} ${dbName} < "${filepath}"`;
-
-  exec(cmd, async (error, stdout, stderr) => {
-    if (error) {
-      console.error(`Restore error: ${error.message}`);
-      return res.status(500).json({ message: 'Lỗi khi phục hồi database', error: error.message });
+    // Chạy từng câu lệnh SQL tuần tự trên connection
+    const connection = await db.getConnection();
+    try {
+      await connection.query("SET FOREIGN_KEY_CHECKS = 0");
+      
+      for (const statement of statements) {
+        if (statement.toUpperCase().startsWith("USE ")) continue;
+        await connection.query(statement);
+      }
+      
+      await connection.query("SET FOREIGN_KEY_CHECKS = 1");
+    } finally {
+      connection.release();
     }
 
     await logAudit(
@@ -110,7 +164,10 @@ const restoreBackup = async (req, res) => {
     );
 
     res.json({ message: 'Phục hồi dữ liệu thành công' });
-  });
+  } catch (err) {
+    console.error("Restore error:", err);
+    res.status(500).json({ message: 'Lỗi khi khôi phục database', error: err.message });
+  }
 };
 
 const purgeData = async (req, res) => {
