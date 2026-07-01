@@ -1720,6 +1720,8 @@ const ResidentDashboard = () => {
                               <span style={{ color: "#3F5E4D", fontWeight: "700", display: "flex", alignItems: "center", gap: 4 }}><span className="material-symbols-rounded" style={{ fontSize: 16 }}>check_circle</span> Đang hoạt động</span>
                             ) : v.monthly_status === "pending" ? (
                               <span style={{ color: "#d97706", fontWeight: "700", display: "flex", alignItems: "center", gap: 4 }}><span className="material-symbols-rounded" style={{ fontSize: 16 }}>pending</span> Chờ duyệt</span>
+                            ) : v.monthly_status === "expired" ? (
+                              <span style={{ color: "#ef4444", fontWeight: "700", display: "flex", alignItems: "center", gap: 4 }}><span className="material-symbols-rounded" style={{ fontSize: 16 }}>cancel</span> Đã hết hạn</span>
                             ) : (
                               <span style={{ color: "#64748b", fontWeight: "600", display: "flex", alignItems: "center", gap: 4 }}>Chưa đăng ký</span>
                             )}

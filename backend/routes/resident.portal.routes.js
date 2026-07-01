@@ -65,18 +65,29 @@ router.get("/vehicles", async (req, res) => {
     }
       const [rows] = await db.query(
         `SELECT v.plate_number, v.color, vt.type_name, v.type_id, v.status,
-                mp.monthly_id, mp.start_date, mp.end_date, mp.status as monthly_status
+                mp.monthly_id, mp.start_date, mp.end_date,
+                CASE 
+                  WHEN mp.status = 'active' AND CURDATE() > mp.end_date THEN 'expired'
+                  ELSE mp.status 
+                END as monthly_status
          FROM vehicles v
          LEFT JOIN vehicle_types vt ON v.type_id = vt.type_id
-         LEFT JOIN (
-           SELECT mp1.*
-           FROM monthly_parking mp1
-           INNER JOIN (
-             SELECT plate_number, MAX(monthly_id) as max_id
-             FROM monthly_parking
-             GROUP BY plate_number
-           ) mp2 ON mp1.plate_number = mp2.plate_number AND mp1.monthly_id = mp2.max_id
-         ) mp ON v.plate_number = mp.plate_number
+          LEFT JOIN (
+            SELECT * FROM (
+              SELECT *,
+                     ROW_NUMBER() OVER (
+                       PARTITION BY plate_number 
+                       ORDER BY 
+                         CASE WHEN status = 'active' AND CURDATE() BETWEEN start_date AND end_date THEN 1
+                              WHEN status = 'active' AND start_date > CURDATE() THEN 2
+                              ELSE 3
+                         END ASC,
+                         end_date DESC,
+                         monthly_id DESC
+                     ) as rn
+              FROM monthly_parking
+            ) t WHERE t.rn = 1
+          ) mp ON v.plate_number = mp.plate_number
          WHERE v.resident_id = ? AND v.status != 'deleted'
          ORDER BY v.plate_number ASC`,
         [resident[0].resident_id]

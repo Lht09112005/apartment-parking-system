@@ -72,13 +72,13 @@ const createUser = async (req, res) => {
       }
 
       const [[{ securityCount }]] = await db.query(
-        "SELECT COUNT(*) AS securityCount FROM users WHERE role_id = ?",
+        "SELECT COUNT(*) AS securityCount FROM users WHERE role_id = ? AND status = 'active'",
         [3]
       );
 
       if (Number(securityCount) >= maxSecurityAccounts) {
         return res.status(409).json({
-          message: `Đã đạt giới hạn ${maxSecurityAccounts} tài khoản Bảo vệ. Admin không thể tạo thêm.`,
+          message: `Đã đạt giới hạn ${maxSecurityAccounts} tài khoản Bảo vệ hoạt động. Admin không thể tạo thêm.`,
           current: Number(securityCount),
           limit: maxSecurityAccounts,
         });
@@ -131,6 +131,31 @@ const updateUser = async (req, res) => {
     const currentUserRole = req.user.role_id;
     const targetUserRole = targetUser[0].role_id;
     const targetUserStatus = targetUser[0].status;
+
+    // Kiểm tra giới hạn số tài khoản Bảo vệ hoạt động
+    const isAddingActiveSecurity = 
+      (Number(role_id || targetUserRole) === 3 && (status || targetUserStatus) === 'active') &&
+      !(targetUserRole === 3 && targetUserStatus === 'active');
+
+    if (isAddingActiveSecurity) {
+      const settingsData = await fs.readFile(SETTINGS_FILE, "utf8");
+      const settings = JSON.parse(settingsData);
+      const maxSecurityAccounts = Number(settings.max_security_accounts);
+
+      if (Number.isInteger(maxSecurityAccounts) && maxSecurityAccounts >= 0) {
+        const [[{ securityCount }]] = await db.query(
+          "SELECT COUNT(*) AS securityCount FROM users WHERE role_id = 3 AND status = 'active'"
+        );
+
+        if (Number(securityCount) >= maxSecurityAccounts) {
+          return res.status(409).json({
+            message: `Đã đạt giới hạn ${maxSecurityAccounts} tài khoản Bảo vệ hoạt động. Không thể kích hoạt/chuyển đổi.`,
+            current: Number(securityCount),
+            limit: maxSecurityAccounts,
+          });
+        }
+      }
+    }
 
     if (!["active", "locked"].includes(status)) {
       return res.status(400).json({ message: "Trạng thái tài khoản không hợp lệ" });

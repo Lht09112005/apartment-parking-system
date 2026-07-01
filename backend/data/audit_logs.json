@@ -1,5 +1,47 @@
 [
   {
+    "log_id": 1782866141815,
+    "user_id": 8,
+    "username": "superadmin",
+    "role_id": 1,
+    "action": "UPDATE",
+    "target_type": "settings",
+    "target_id": null,
+    "old_value": "{\"max_security_accounts\":2,\"max_resident_accounts\":998,\"maintenance_mode\":false,\"session_timeout_minutes\":480,\"data_retention_years\":1,\"system_name\":\"39°C  \"}",
+    "new_value": "{\"max_security_accounts\":3,\"max_resident_accounts\":998,\"maintenance_mode\":false,\"session_timeout_minutes\":480,\"data_retention_years\":1,\"system_name\":\"39°C  \"}",
+    "description": "Cập nhật cấu hình hệ thống: max_security_accounts, max_resident_accounts, maintenance_mode, session_timeout_minutes, data_retention_years, system_name",
+    "ip_address": "::1",
+    "created_at": "2026-07-01T00:35:41.815Z"
+  },
+  {
+    "log_id": 1782865889889,
+    "user_id": 8,
+    "username": "superadmin",
+    "role_id": 1,
+    "action": "UPDATE",
+    "target_type": "settings",
+    "target_id": null,
+    "old_value": "{\"max_security_accounts\":6,\"max_resident_accounts\":998,\"maintenance_mode\":false,\"session_timeout_minutes\":480,\"data_retention_years\":1,\"system_name\":\"39°C  \"}",
+    "new_value": "{\"max_security_accounts\":2,\"max_resident_accounts\":998,\"maintenance_mode\":false,\"session_timeout_minutes\":480,\"data_retention_years\":1,\"system_name\":\"39°C  \"}",
+    "description": "Cập nhật cấu hình hệ thống: max_security_accounts, max_resident_accounts, maintenance_mode, session_timeout_minutes, data_retention_years, system_name",
+    "ip_address": "::1",
+    "created_at": "2026-07-01T00:31:29.889Z"
+  },
+  {
+    "log_id": 1782865870046,
+    "user_id": 9,
+    "username": "admin",
+    "role_id": 2,
+    "action": "UPDATE",
+    "target_type": "user",
+    "target_id": "150007",
+    "old_value": null,
+    "new_value": "{\"status\":\"locked\",\"role_id\":3,\"password_changed\":false}",
+    "description": "Cập nhật tài khoản user_id 150007",
+    "ip_address": "::1",
+    "created_at": "2026-07-01T00:31:10.046Z"
+  },
+  {
     "log_id": 1782833509761,
     "user_id": 2,
     "username": "admin",
